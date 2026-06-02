@@ -1,0 +1,281 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SpecStudioParser.ViewModels"
+        xmlns:m="clr-namespace:SpecStudioParser.Models"
+        x:Class="SpecStudioParser.Views.SpecificationSettingsWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Конфигурация спецификации"
+        Height="700" Width="960"
+        Topmost="False"
+        WindowStartupLocation="CenterOwner">
+
+	<Window.Resources>
+		<StreamGeometry x:Key="IconSettings">M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z</StreamGeometry>
+		<StreamGeometry x:Key="IconSave">M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z</StreamGeometry>
+		<StreamGeometry x:Key="IconPlus">M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z</StreamGeometry>
+		<StreamGeometry x:Key="IconUp">M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z</StreamGeometry>
+		<StreamGeometry x:Key="IconDown">M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z</StreamGeometry>
+		<StreamGeometry x:Key="IconDelete">M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z</StreamGeometry>
+		<StreamGeometry x:Key="IconFolder">M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z</StreamGeometry>
+		<StreamGeometry x:Key="IconRefresh">M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z</StreamGeometry>
+		<StreamGeometry x:Key="IconBack">M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z</StreamGeometry>
+	</Window.Resources>
+
+	<Grid RowDefinitions="Auto, *, Auto" Margin="15">
+
+		<Border Grid.Row="0" Background="#F1F5F9" CornerRadius="5" Padding="10" Margin="0,0,0,15">
+			<Grid ColumnDefinitions="Auto, *, Auto">
+				<StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" Spacing="6">
+					<PathIcon Data="{StaticResource IconSettings}" Width="16" Height="16" Foreground="#475569"/>
+					<TextBlock Text="Параметры шаблона:" FontWeight="Bold" VerticalAlignment="Center"/>
+				</StackPanel>
+				<TextBox Grid.Column="1" Text="{Binding ActiveProfile.Name, Mode=TwoWay}" Watermark="Имя файла спецификации" VerticalContentAlignment="Center"/>
+				<Button Grid.Column="2" Command="{Binding GenerateSpecificationCommand}" Background="#1E3A8A" Foreground="White" Margin="10,0,0,0" Padding="12,6" VerticalContentAlignment="Center">
+					<StackPanel Orientation="Horizontal" Spacing="6">
+						<PathIcon Data="{StaticResource IconSave}" Width="14" Height="14" Foreground="White" VerticalAlignment="Center"/>
+						<TextBlock Text="Сгенерировать" VerticalAlignment="Center"/>
+					</StackPanel>
+				</Button>
+			</Grid>
+		</Border>
+
+		<TabControl Grid.Row="1" SelectedIndex="{Binding SettingsTargetTabIdx, Mode=TwoWay}">
+
+			<TabItem Header="Наборы данных">
+				<Grid ColumnDefinitions="*, 160" Margin="0,10,0,0">
+					<DataGrid Grid.Column="0" Name="DatasetsGrid"
+                              ItemsSource="{Binding ActiveProfile.Datasets}"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserSortColumns="False"
+                              GridLinesVisibility="All" BorderThickness="1" BorderBrush="#CBD5E1">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Название набора (Caption)" Binding="{Binding Caption}" Width="2*"/>
+							<DataGridTextColumn Header="Активных типов САПР" Binding="{Binding TargetTypes.Count}" Width="150"/>
+							<DataGridTextColumn Header="Колонок в таблице" Binding="{Binding Columns.Count}" Width="150"/>
+						</DataGrid.Columns>
+					</DataGrid>
+
+					<StackPanel Grid.Column="1" Spacing="8" Margin="12,0,0,0">
+						<Button Command="{Binding AddDatasetCommand}" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+							<StackPanel Orientation="Horizontal" Spacing="8">
+								<PathIcon Data="{StaticResource IconPlus}" Width="12" Height="12" VerticalAlignment="Center"/>
+								<TextBlock Text="Создать" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+						<Button Command="{Binding MoveDatasetUpCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+							<StackPanel Orientation="Horizontal" Spacing="8">
+								<PathIcon Data="{StaticResource IconUp}" Width="12" Height="12" VerticalAlignment="Center"/>
+								<TextBlock Text="Выше" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+						<Button Command="{Binding MoveDatasetDownCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+							<StackPanel Orientation="Horizontal" Spacing="8">
+								<PathIcon Data="{StaticResource IconDown}$" Width="12" Height="12" VerticalAlignment="Center"/>
+								<TextBlock Text="Ниже" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+						<Button Command="{Binding RemoveDatasetCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}" Background="#EF4444" Foreground="White" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+							<StackPanel Orientation="Horizontal" Spacing="8">
+								<PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="White" VerticalAlignment="Center"/>
+								<TextBlock Text="Удалить" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+						<Separator Margin="0,5"/>
+						<Button Command="{Binding ConfigureSelectedDatasetCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}" Background="#2563EB" Foreground="White" Height="38" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+							<StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+								<PathIcon Data="{StaticResource IconSettings}" Width="14" Height="14" Foreground="White" VerticalAlignment="Center"/>
+								<TextBlock Text="Настроить набор" FontWeight="SemiBold" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+					</StackPanel>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="Параметры выбранного набора" IsEnabled="{Binding IsDatasetEditorActive}">
+				<Grid RowDefinitions="Auto, *" Margin="0,10,0,0">
+
+					<StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+						<TextBlock Text="Редактируется набор:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
+						<TextBox Text="{Binding SelectedDataset.Caption, Mode=TwoWay}" Width="250" VerticalContentAlignment="Center"/>
+						<Button Command="{Binding BackToDatasetListCommand}" Background="#64748B" Foreground="White" Padding="10,5" VerticalContentAlignment="Center">
+							<StackPanel Orientation="Horizontal" Spacing="6">
+								<PathIcon Data="{StaticResource IconBack}" Width="12" Height="12" Foreground="White" VerticalAlignment="Center"/>
+								<TextBlock Text="Назад к списку" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+					</StackPanel>
+
+					<TabControl Grid.Row="1">
+						<TabItem Header="Настройка фильтрации">
+							<Grid ColumnDefinitions="1.2*, 1.8*">
+
+								<StackPanel Grid.Column="0" Spacing="5" Margin="5">
+									<Label Content="1. Выберите типы объектов САПР:" FontWeight="Bold" Foreground="#334155"/>
+									<TextBox Text="{Binding TypeSearchText, Mode=TwoWay}" Watermark="Поиск по типам объектов..." VerticalContentAlignment="Center"/>
+
+									<Grid ColumnDefinitions="*,*,*" Margin="0,5">
+										<Button Grid.Column="0" Content="Все" Command="{Binding SelectAllTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,2,0"/>
+										<Button Grid.Column="1" Content="Снять" Command="{Binding UnselectAllTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,2,0"/>
+										<Button Grid.Column="2" Content="Инверт" Command="{Binding InvertTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,0,0"/>
+									</Grid>
+
+									<ListBox ItemsSource="{Binding FilteredTypeItems}" Height="280">
+										<ListBox.ItemTemplate>
+											<DataTemplate x:DataType="m:CheckableTypeItem">
+												<CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Content="{Binding TypeName}" VerticalContentAlignment="Center"/>
+											</DataTemplate>
+										</ListBox.ItemTemplate>
+									</ListBox>
+								</StackPanel>
+
+								<HeaderedContentControl Grid.Column="1" Header="2. Конструктор условий фильтрации" Margin="10,0,0,0">
+									<Grid RowDefinitions="*, Auto" Margin="5">
+										<ScrollViewer Grid.Row="0">
+											<ItemsControl ItemsSource="{Binding SelectedDataset.FilterConditions}">
+												<ItemsControl.ItemTemplate>
+													<DataTemplate x:DataType="m:FilterConditionItem">
+														<Grid ColumnDefinitions="*, 80, *, Auto" Margin="0,4">
+															<ComboBox Grid.Column="0"
+                                                                      ItemsSource="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AvailableAttributes}"
+                                                                      SelectedItem="{Binding Attribute, Mode=TwoWay}"
+                                                                      HorizontalAlignment="Stretch"
+                                                                      VerticalContentAlignment="Center"/>
+
+															<ComboBox Grid.Column="1" SelectedItem="{Binding Operator, Mode=TwoWay}" HorizontalAlignment="Stretch" Margin="4,0" VerticalContentAlignment="Center">
+																<x:String>=</x:String>
+																<x:String>&lt;&gt;</x:String>
+																<x:String>&gt;</x:String>
+																<x:String>&lt;</x:String>
+															</ComboBox>
+
+															<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение" VerticalContentAlignment="Center"/>
+
+															<Button Grid.Column="3"
+                                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveConditionCommand}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Margin="4,0,0,0" Padding="6"
+                                                                    VerticalContentAlignment="Center">
+																<PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#EF4444" VerticalAlignment="Center"/>
+															</Button>
+														</Grid>
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+										</ScrollViewer>
+
+										<StackPanel Grid.Row="1" Spacing="5" Margin="0,10,0,0">
+											<Button Command="{Binding AddConditionCommand}" HorizontalAlignment="Left" VerticalContentAlignment="Center">
+												<StackPanel Orientation="Horizontal" Spacing="6">
+													<PathIcon Data="{StaticResource IconPlus}" Width="12" Height="12" VerticalAlignment="Center"/>
+													<TextBlock Text="Добавить условие" VerticalAlignment="Center"/>
+												</StackPanel>
+											</Button>
+											<TextBlock Text="Итоговая сгенерированная формула:" FontSize="11" Foreground="#64748B" Margin="0,5,0,0"/>
+											<TextBlock Text="{Binding SelectedDataset.FilterFormula}" Background="#F8FAFC" Padding="5" FontSize="11" TextWrapping="Wrap"/>
+										</StackPanel>
+									</Grid>
+								</HeaderedContentControl>
+							</Grid>
+						</TabItem>
+
+						<TabItem Header="Настройки столбцов и полей">
+							<Grid ColumnDefinitions="*, 150" Margin="0,10,0,0">
+								<DataGrid Grid.Column="0" Name="FieldsGrid" ItemsSource="{Binding SelectedDataset.Columns}" AutoGenerateColumns="False" CanUserSortColumns="False" GridLinesVisibility="All" BorderThickness="1" BorderBrush="#CBD5E1" RowHeight="NaN">
+									<DataGrid.Columns>
+										<DataGridCheckBoxColumn Header="Видим" Binding="{Binding Visible, Converter={StaticResource IntToBoolConverter}, Mode=TwoWay}" Width="70"/>
+
+										<DataGridTemplateColumn Header="Заголовок столбца" Width="1.5*">
+											<DataGridTemplateColumn.CellTemplate>
+												<DataTemplate x:DataType="m:ReportColumnConfig">
+													<TextBlock Text="{Binding Caption}" TextWrapping="Wrap" VerticalAlignment="Center" Padding="6,4"/>
+												</DataTemplate>
+											</DataGridTemplateColumn.CellTemplate>
+											<DataGridTemplateColumn.CellEditingTemplate>
+												<DataTemplate x:DataType="m:ReportColumnConfig">
+													<TextBox Text="{Binding Caption, Mode=TwoWay}" TextWrapping="Wrap" AcceptsReturn="False" VerticalAlignment="Stretch" VerticalContentAlignment="Center"/>
+												</DataTemplate>
+											</DataGridTemplateColumn.CellEditingTemplate>
+										</DataGridTemplateColumn>
+
+										<DataGridTemplateColumn Header="Формула / Атрибут" Width="2.5*">
+											<DataGridTemplateColumn.CellTemplate>
+												<DataTemplate x:DataType="m:ReportColumnConfig">
+													<TextBlock Text="{Binding DataFormula}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" VerticalAlignment="Center" Padding="6,4"/>
+												</DataTemplate>
+											</DataGridTemplateColumn.CellTemplate>
+											<DataGridTemplateColumn.CellEditingTemplate>
+												<DataTemplate x:DataType="m:ReportColumnConfig">
+													<TextBox Text="{Binding DataFormula, Mode=TwoWay}" TextWrapping="Wrap" AcceptsReturn="True" FontFamily="Consolas" FontSize="12" VerticalAlignment="Stretch"/>
+												</DataTemplate>
+											</DataGridTemplateColumn.CellEditingTemplate>
+										</DataGridTemplateColumn>
+
+										<DataGridTextColumn Header="Агрегация" Binding="{Binding Aggregate, Mode=TwoWay}" Width="100"/>
+									</DataGrid.Columns>
+								</DataGrid>
+
+								<StackPanel Grid.Column="1" Spacing="8" Margin="12,0,0,0">
+									<Button Command="{Binding AddColumnCommand}" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<PathIcon Data="{StaticResource IconPlus}" Width="12" Height="12" VerticalAlignment="Center"/>
+											<TextBlock Text="Добавить поле" VerticalAlignment="Center"/>
+										</StackPanel>
+									</Button>
+									<Button Command="{Binding MoveColumnUpCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<PathIcon Data="{StaticResource IconUp}" Width="12" Height="12" VerticalAlignment="Center"/>
+											<TextBlock Text="Выше" VerticalAlignment="Center"/>
+										</StackPanel>
+									</Button>
+									<Button Command="{Binding MoveColumnDownCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<PathIcon Data="{StaticResource IconDown}" Width="12" Height="12" VerticalAlignment="Center"/>
+											<TextBlock Text="Ниже" VerticalAlignment="Center"/>
+										</StackPanel>
+									</Button>
+									<Button Command="{Binding RemoveColumnCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" Background="#EF4444" Foreground="White" HorizontalAlignment="Stretch" VerticalContentAlignment="Center">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="White" VerticalAlignment="Center"/>
+											<TextBlock Text="Удалить" VerticalAlignment="Center"/>
+										</StackPanel>
+									</Button>
+								</StackPanel>
+							</Grid>
+						</TabItem>
+
+						<TabItem Header="Группировка и сортировка" IsEnabled="False">
+							<TextBlock Text="Будет реализовано позже" Margin="10"/>
+						</TabItem>
+						<TabItem Header="Способ вывода" IsEnabled="False">
+							<TextBlock Text="Будет реализовано позже" Margin="10"/>
+						</TabItem>
+					</TabControl>
+				</Grid>
+			</TabItem>
+		</TabControl>
+
+		<Grid Grid.Row="2" ColumnDefinitions="Auto, *, Auto" Margin="0,15,0,0">
+			<Button Grid.Column="0" Command="{Binding ImportXmlCommand}" Background="#4B5563" Foreground="White" Padding="12,8" VerticalContentAlignment="Center">
+				<StackPanel Orientation="Horizontal" Spacing="8">
+					<PathIcon Data="{StaticResource IconFolder}" Width="14" Height="14" Foreground="White" VerticalAlignment="Center"/>
+					<TextBlock Text="Импорт XML Model Studio" VerticalAlignment="Center"/>
+				</StackPanel>
+			</Button>
+
+			<StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+				<Button Command="{Binding ApplySettingsCommand}" Height="36" FontWeight="Bold" Background="#16A34A" Foreground="White" Padding="15,0" VerticalContentAlignment="Center">
+					<StackPanel Orientation="Horizontal" Spacing="8">
+						<PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" Foreground="White" VerticalAlignment="Center"/>
+						<TextBlock Text="Обновить спецификацию" VerticalAlignment="Center"/>
+					</StackPanel>
+				</Button>
+
+				<Button Command="{Binding SaveXmlToDesktopCommand}" Height="36" Padding="12,0" VerticalContentAlignment="Center">
+					<TextBlock Text="Сохранить профиль XML"/>
+				</Button>
+
+				<Button Content="Закрыть" Click="CloseWindowClick" Width="90" Height="36" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+			</StackPanel>
+		</Grid>
+	</Grid>
+</Window>

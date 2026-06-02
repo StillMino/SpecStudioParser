@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2000/xaml"
+        xmlns:vm="using:SpecStudioParser.ViewModels"
+        xmlns:system="clr-namespace:System;assembly=System.Runtime"
+        x:Class="SpecStudioParser.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Конструктор Спецификаций nanoCAD"
+        Width="1100" Height="700"
+        WindowStartupLocation="CenterOwner">
+
+	<Grid RowDefinitions="*, Auto">
+
+		<Grid Grid.Row="0" Margin="20" RowDefinitions="Auto, *, Auto" IsVisible="{Binding IsProfileNotLoaded}">
+
+			<Border Grid.Row="0" Background="#F5F5F5" CornerRadius="4" Padding="10" Margin="0,0,0,15">
+				<Grid ColumnDefinitions="*, Auto">
+					<StackPanel Grid.Column="0">
+						<TextBlock Text="Корневая папка профилей XML спецификаций:" FontWeight="Bold" FontSize="11" Foreground="#555555"/>
+						<TextBlock Text="{Binding RootProfilesPath}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#222222"/>
+					</StackPanel>
+					<Button Grid.Column="1" Content="Изменить папку..." Command="{Binding ChangeRootFolderCommand}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+				</Grid>
+			</Border>
+
+			<Grid Grid.Row="1" ColumnDefinitions="*, 300" Margin="0,0,0,15">
+				<Border Grid.Column="0" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4" Background="White">
+					<Grid RowDefinitions="Auto, *">
+						<Border Grid.Row="0" Background="#EAEAEA" Padding="8">
+							<TextBlock Text="Доступные конфигурации спецификаций в папке:" FontWeight="Bold"/>
+						</Border>
+
+						<ListBox Grid.Row="1" ItemsSource="{Binding AvailableXmlFiles}" SelectedItem="{Binding SelectedXmlFile}">
+							<ListBox.ItemTemplate>
+								<DataTemplate x:DataType="system:String">
+									<Border Padding="4">
+										<StackPanel Orientation="Horizontal">
+											<Path Data="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M13,9V3.5L18.5,9H13Z" Fill="#FFB74D" Width="16" Height="16" Margin="0,0,8,0"/>
+											<TextBlock Text="{Binding}" VerticalAlignment="Center" FontSize="13"/>
+										</StackPanel>
+									</Border>
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+					</Grid>
+				</Border>
+
+				<StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="10">
+					<Button Content="Открыть выбранную спецификацию" Command="{Binding LoadSelectedXmlCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="12" Background="#1E88E5" Foreground="White" FontWeight="Bold"/>
+					<Button Content="Создать новую спецификацию" Command="{Binding CreateNewProfileCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="10" Background="#4CAF50" Foreground="White"/>
+					<Button Content="Импортировать внешний XML..." Command="{Binding ImportXmlCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="10"/>
+					<Border Background="#FFF3E0" CornerRadius="4" Padding="10" Margin="0,10,0,0">
+						<TextBlock Text="Выберите существующий XML файл конфигурации Model Studio из списка слева..." TextWrapping="Wrap" FontSize="11" Foreground="#E65100"/>
+					</Border>
+				</StackPanel>
+			</Grid>
+		</Grid>
+
+		<Grid Grid.Row="0" RowDefinitions="Auto, *" IsVisible="{Binding IsProfileLoaded}">
+			<Border Grid.Row="0" Background="#E0F2F1" BorderBrush="#B2DFDB" BorderThickness="0,0,0,1" Padding="10">
+				<Grid ColumnDefinitions="Auto, *, Auto, Auto">
+					<StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+						<Button Content="← К списку XML" Command="{Binding CloseProfileCommand}" Margin="0,0,15,0" HotKey="Escape"/>
+						<TextBlock Text="Активный XML профиль: " FontWeight="Bold" VerticalAlignment="Center"/>
+					</StackPanel>
+					<TextBox Grid.Column="1" Text="{Binding SelectedXmlFile}" Watermark="Имя_файла.xml" VerticalAlignment="Center" Margin="5,0,15,0"/>
+					<StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+						<Button Content="Сохранить изменения" Command="{Binding SaveCurrentProfileCommand}" Background="#00897B" Foreground="White" FontWeight="Bold"/>
+						<Button Content="Настройки структуры данных" Command="{Binding OpenSettingsWindowCommand}" Background="#78909C" Foreground="White"/>
+					</StackPanel>
+				</Grid>
+			</Border>
+			<Grid Grid.Row="1" ColumnDefinitions="*, 2*">
+				<TextBlock Grid.Column="0" Text="Здесь располагается кэш элементов чертежа САПР" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#999999"/>
+				<TextBlock Grid.Column="1" Text="Здесь располагается сформированная спецификация по формулам XML" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#999999"/>
+			</Grid>
+		</Grid>
+
+		<Border Grid.Row="1" Background="#263238" Padding="6">
+			<Grid ColumnDefinitions="*, Auto">
+				<TextBlock Grid.Column="0" Text="{Binding ConnectionStatus}" Foreground="#ECEFF1" FontSize="12" VerticalAlignment="Center" Margin="5,0,0,0"/>
+				<TextBlock Grid.Column="1" Text="SpecStudio v1.2" Foreground="#90A4AE" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
+			</Grid>
+		</Border>
+
+	</Grid>
+</Window>
