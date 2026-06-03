@@ -1,6 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Data;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using SpecStudioParser.Models;
+using SpecStudioParser.Services;
 using SpecStudioParser.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -10,11 +13,15 @@ namespace SpecStudioParser.Views
 {
     public partial class MainWindow : Window
     {
+        private MainWindowViewModel? _subscribedViewModel;
+        private DataGrid? _analyzerGrid;
+        private DataGrid? _specGrid;
+
         public MainWindow()
         {
             InitializeComponent();
 
-            // ХАК ДЛЯ nanoCAD
+            // РҐРђРљ Р”Р›РЇ nanoCAD: РІРѕР·РІСЂР°С‰Р°РµС‚ РѕРєРЅРѕ РїРѕРІРµСЂС… РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІР° РЎРђРџР  РїСЂРё РїРѕС‚РµСЂРµ С„РѕРєСѓСЃР°.
             this.Deactivated += (s, e) =>
             {
                 if (this.IsVisible)
@@ -24,54 +31,20 @@ namespace SpecStudioParser.Views
                 }
             };
 
-            DataContextChanged += (s, e) =>
+            _analyzerGrid = this.FindControl<DataGrid>("AnalyzerGrid");
+            _specGrid = this.FindControl<DataGrid>("SpecGrid");
+
+            if (_analyzerGrid != null)
             {
-                if (DataContext is MainWindowViewModel vm)
-                {
-                    vm.OnColumnsStructureChanged -= () => RebuildDataGridColumns(vm);
-                    vm.OnColumnsStructureChanged += () => RebuildDataGridColumns(vm);
+                _analyzerGrid.SelectionChanged += AnalyzerGridSelectionChanged;
+            }
 
-                    // Обработка кликов в AnalyzerGrid через чистый string
-                    var analyzerGrid = this.FindControl<DataGrid>("AnalyzerGrid");
-                    if (analyzerGrid != null)
-                    {
-                        analyzerGrid.SelectionChanged += (sender, args) =>
-                        {
-                            if (analyzerGrid.SelectedItems != null)
-                            {
-                                var selectedStrings = analyzerGrid.SelectedItems
-                                    .Cast<object>()
-                                    .Select(x => x?.ToString() ?? string.Empty)
-                                    .Where(s => !string.IsNullOrEmpty(s))
-                                    .ToList();
+            if (_specGrid != null)
+            {
+                _specGrid.SelectionChanged += SpecGridSelectionChanged;
+            }
 
-                                vm.OnAnalyzerGridSelectionChanged(selectedStrings);
-                            }
-                        };
-                    }
-
-                    // Обработка кликов в SpecGrid через чистый string
-                    var specGrid = this.FindControl<DataGrid>("SpecGrid");
-                    if (specGrid != null)
-                    {
-                        specGrid.SelectionChanged += (sender, args) =>
-                        {
-                            if (specGrid.SelectedItems != null)
-                            {
-                                var selectedStrings = specGrid.SelectedItems
-                                    .Cast<object>()
-                                    .Select(x => x?.ToString() ?? string.Empty)
-                                    .Where(s => !string.IsNullOrEmpty(s))
-                                    .ToList();
-
-                                vm.OnSpecGridSelectionChanged(selectedStrings);
-                            }
-                        };
-                    }
-
-                    RebuildDataGridColumns(vm);
-                }
-            };
+            DataContextChanged += MainWindowDataContextChanged;
         }
 
         private void InitializeComponent()
@@ -79,8 +52,81 @@ namespace SpecStudioParser.Views
             AvaloniaXamlLoader.Load(this);
         }
 
-        private void RebuildDataGridColumns(MainWindowViewModel vm)
+        private void MainWindowDataContextChanged(object? sender, EventArgs e)
         {
+            if (_subscribedViewModel != null)
+            {
+                _subscribedViewModel.OnColumnsStructureChanged -= RebuildDataGridColumns;
+                _subscribedViewModel = null;
+            }
+
+            if (DataContext is MainWindowViewModel vm)
+            {
+                _subscribedViewModel = vm;
+                _subscribedViewModel.OnColumnsStructureChanged += RebuildDataGridColumns;
+                RebuildDataGridColumns();
+            }
+        }
+
+        private void AnalyzerGridSelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm || _analyzerGrid == null) return;
+            vm.OnAnalyzerGridSelectionChanged(ExtractHandlesFromSelection(_analyzerGrid));
+        }
+
+        private void SpecGridSelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm || _specGrid == null) return;
+            vm.OnSpecGridSelectionChanged(ExtractHandlesFromSelection(_specGrid));
+        }
+
+        private static List<string> ExtractHandlesFromSelection(DataGrid grid)
+        {
+            if (grid.SelectedItems == null) return new List<string>();
+
+            return grid.SelectedItems
+                .Cast<object>()
+                .Select(ExtractHandle)
+                .Where(handle => !string.IsNullOrWhiteSpace(handle))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static string ExtractHandle(object? selectedItem)
+        {
+            if (selectedItem is DwgObject dwgObject)
+            {
+                return dwgObject.Handle;
+            }
+
+            if (selectedItem is Dictionary<string, object> objectDictionary &&
+                objectDictionary.TryGetValue("__Handle", out object? objectHandle))
+            {
+                return objectHandle?.ToString() ?? string.Empty;
+            }
+
+            if (selectedItem is Dictionary<string, string> stringDictionary &&
+                stringDictionary.TryGetValue("__Handle", out string? stringHandle))
+            {
+                return stringHandle ?? string.Empty;
+            }
+
+            return string.Empty;
+        }
+
+        private void ImportXmlClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                ProfileImportService.ImportXmlWithHostDialog(viewModel);
+                RebuildDataGridColumns();
+            }
+        }
+
+        private void RebuildDataGridColumns()
+        {
+            if (DataContext is not MainWindowViewModel vm) return;
+
             var specGrid = this.FindControl<DataGrid>("SpecGrid");
             if (specGrid == null) return;
 
