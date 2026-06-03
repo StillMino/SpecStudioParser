@@ -52,7 +52,7 @@
 				<StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="10">
 					<Button Content="Открыть выбранную спецификацию" Command="{Binding LoadSelectedXmlCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="12" Background="#1E88E5" Foreground="White" FontWeight="Bold"/>
 					<Button Content="Создать новую спецификацию" Command="{Binding CreateNewProfileCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="10" Background="#4CAF50" Foreground="White"/>
-					<Button Content="Импортировать внешний XML..." Command="{Binding ImportXmlCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="10"/>
+					<Button Content="Импортировать внешний XML..." Click="ImportXmlClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="10"/>
 					<Border Background="#FFF3E0" CornerRadius="4" Padding="10" Margin="0,10,0,0">
 						<TextBlock Text="После создания нового профиля откроется рабочий экран. Чтобы записать XML в папку профилей, используйте кнопку 'Сохранить изменения' в верхней панели. Кнопка 'Сохранить профиль XML' в окне настроек экспортирует копию на рабочий стол." TextWrapping="Wrap" FontSize="11" Foreground="#E65100"/>
 					</Border>
