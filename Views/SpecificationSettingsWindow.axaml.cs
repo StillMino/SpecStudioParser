@@ -1,5 +1,6 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Interactivity;
+using SpecStudioParser.Services;
 using SpecStudioParser.ViewModels;
 using System.Collections.Specialized;
 
@@ -67,6 +68,15 @@ namespace SpecStudioParser.Views
             var currentSource = fieldsGrid.ItemsSource;
             fieldsGrid.ItemsSource = null;
             fieldsGrid.ItemsSource = currentSource;
+        }
+
+        private void ImportXmlClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                ProfileImportService.ImportXmlWithHostDialog(viewModel);
+                RebuildDataGridColumns();
+            }
         }
 
         private void CloseWindowClick(object sender, RoutedEventArgs e)
