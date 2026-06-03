@@ -18,6 +18,12 @@ namespace SpecStudioParser.Services
             return Path.Combine(documentsPath, DefaultProfilesFolderName);
         }
 
+        public static IReadOnlyList<string> ApplyProfilesFolder(string profilesPath)
+        {
+            EnsureProfilesFolder(profilesPath);
+            return GetProfileFileNames(profilesPath);
+        }
+
         public static void EnsureProfilesFolder(string profilesPath)
         {
             if (string.IsNullOrWhiteSpace(profilesPath))
