@@ -4,7 +4,6 @@
         xmlns:system="clr-namespace:System;assembly=System.Runtime"
         x:Class="SpecStudioParser.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        x:CompileBindings="False"
         Title="Конструктор Спецификаций nanoCAD"
         Width="1100" Height="700"
         WindowStartupLocation="CenterOwner">
