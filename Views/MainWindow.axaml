@@ -69,9 +69,34 @@
 					</StackPanel>
 				</Grid>
 			</Border>
-			<Grid Grid.Row="1" ColumnDefinitions="*, 2*">
-				<TextBlock Grid.Column="0" Text="Здесь располагается кэш элементов чертежа САПР" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#999999"/>
-				<TextBlock Grid.Column="1" Text="Здесь располагается сформированная спецификация по формулам XML" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#999999"/>
+			<Grid Grid.Row="1" ColumnDefinitions="*, 2*" Margin="10">
+				<GroupBox Grid.Column="0" Header="Кэш элементов чертежа" Margin="0,0,5,0">
+					<DataGrid Name="AnalyzerGrid"
+							  ItemsSource="{Binding GridItems}"
+							  AutoGenerateColumns="False"
+							  IsReadOnly="True"
+							  SelectionMode="Extended"
+							  CanUserSortColumns="True"
+							  GridLinesVisibility="All">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Handle" Binding="{Binding Handle}" Width="90"/>
+							<DataGridTextColumn Header="Тип / наименование" Binding="{Binding ObjectName}" Width="*"/>
+							<DataGridTextColumn Header="Слой" Binding="{Binding Layer}" Width="120"/>
+							<DataGridTextColumn Header="Источник" Binding="{Binding ModelStudioId}" Width="130"/>
+							<DataGridTextColumn Header="Примечание" Binding="{Binding Note}" Width="2*"/>
+						</DataGrid.Columns>
+					</DataGrid>
+				</GroupBox>
+
+				<GroupBox Grid.Column="1" Header="Сформированная спецификация" Margin="5,0,0,0">
+					<DataGrid Name="SpecGrid"
+							  ItemsSource="{Binding SpecificationRows}"
+							  AutoGenerateColumns="False"
+							  IsReadOnly="True"
+							  SelectionMode="Extended"
+							  CanUserSortColumns="True"
+							  GridLinesVisibility="All"/>
+				</GroupBox>
 			</Grid>
 		</Grid>
 
