@@ -24,7 +24,19 @@ namespace SpecStudioParser.Services
                     return false;
                 }
 
-                var sourcePath = dialog.Filename;
+                return ImportXmlFile(viewModel, dialog.Filename);
+            }
+            catch (Exception ex)
+            {
+                viewModel.ConnectionStatus = $"Ошибка импорта XML: {ex.Message}";
+                return false;
+            }
+        }
+
+        public static bool ImportXmlFile(MainWindowViewModel viewModel, string? sourcePath)
+        {
+            try
+            {
                 if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
                 {
                     viewModel.ConnectionStatus = "Ошибка импорта XML: файл не выбран или не найден.";
