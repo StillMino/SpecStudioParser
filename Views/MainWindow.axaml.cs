@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Data;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using SpecStudioParser.Models;
+using SpecStudioParser.Services;
 using SpecStudioParser.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -110,6 +112,15 @@ namespace SpecStudioParser.Views
             }
 
             return string.Empty;
+        }
+
+        private void ImportXmlClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                ProfileImportService.ImportXmlWithHostDialog(viewModel);
+                RebuildDataGridColumns();
+            }
         }
 
         private void RebuildDataGridColumns()
