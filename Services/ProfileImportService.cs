@@ -32,11 +32,7 @@ namespace SpecStudioParser.Services
                 }
 
                 viewModel.ActiveProfile = MscsXmlService.LoadFromMscsXml(sourcePath);
-                viewModel.SelectedXmlFile = Path.GetFileName(sourcePath);
-
-                Directory.CreateDirectory(viewModel.RootProfilesPath);
-                var destinationPath = Path.Combine(viewModel.RootProfilesPath, viewModel.SelectedXmlFile);
-                File.Copy(sourcePath, destinationPath, true);
+                viewModel.SelectedXmlFile = ProfileStorageService.CopyProfileIntoStorage(sourcePath, viewModel.RootProfilesPath);
 
                 viewModel.RefreshAvailableXmlFilesList();
 
