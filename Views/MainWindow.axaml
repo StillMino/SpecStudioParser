@@ -17,8 +17,9 @@
 					<StackPanel Grid.Column="0">
 						<TextBlock Text="Корневая папка профилей XML спецификаций:" FontWeight="Bold" FontSize="11" Foreground="#555555"/>
 						<TextBlock Text="{Binding RootProfilesPath}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#222222"/>
+						<TextBlock Text="Смена папки временно отключена: стандартный диалог выбора папки нестабилен внутри nanoCAD. Поместите XML-профили в указанную папку вручную." TextWrapping="Wrap" Margin="0,4,0,0" FontSize="11" Foreground="#B45309"/>
 					</StackPanel>
-					<Button Grid.Column="1" Content="Изменить папку..." Command="{Binding ChangeRootFolderCommand}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+					<Button Grid.Column="1" Content="Изменить папку" IsEnabled="False" VerticalAlignment="Center" Margin="10,0,0,0"/>
 				</Grid>
 			</Border>
 
