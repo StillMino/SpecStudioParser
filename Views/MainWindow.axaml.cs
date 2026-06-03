@@ -114,6 +114,22 @@ namespace SpecStudioParser.Views
             return string.Empty;
         }
 
+        private void ApplyProfileFolderClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel viewModel) return;
+
+            try
+            {
+                ProfileStorageService.EnsureProfilesFolder(viewModel.RootProfilesPath);
+                viewModel.RefreshAvailableXmlFilesList();
+                viewModel.ConnectionStatus = $"Папка профилей применена: {viewModel.RootProfilesPath}";
+            }
+            catch (Exception ex)
+            {
+                viewModel.ConnectionStatus = $"Ошибка применения папки профилей: {ex.Message}";
+            }
+        }
+
         private void ImportXmlClick(object sender, RoutedEventArgs e)
         {
             if (DataContext is MainWindowViewModel viewModel)
