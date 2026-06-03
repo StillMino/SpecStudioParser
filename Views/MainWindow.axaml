@@ -4,6 +4,7 @@
         xmlns:system="clr-namespace:System;assembly=System.Runtime"
         x:Class="SpecStudioParser.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        x:CompileBindings="False"
         Title="Конструктор Спецификаций nanoCAD"
         Width="1100" Height="700"
         WindowStartupLocation="CenterOwner">
@@ -70,7 +71,7 @@
 				</Grid>
 			</Border>
 			<Grid Grid.Row="1" ColumnDefinitions="*, 2*" Margin="10">
-				<GroupBox Grid.Column="0" Header="Кэш элементов чертежа" Margin="0,0,5,0">
+				<HeaderedContentControl Grid.Column="0" Header="Кэш элементов чертежа" Margin="0,0,5,0">
 					<DataGrid Name="AnalyzerGrid"
 							  ItemsSource="{Binding GridItems}"
 							  AutoGenerateColumns="False"
@@ -86,9 +87,9 @@
 							<DataGridTextColumn Header="Примечание" Binding="{Binding Note}" Width="2*"/>
 						</DataGrid.Columns>
 					</DataGrid>
-				</GroupBox>
+				</HeaderedContentControl>
 
-				<GroupBox Grid.Column="1" Header="Сформированная спецификация" Margin="5,0,0,0">
+				<HeaderedContentControl Grid.Column="1" Header="Сформированная спецификация" Margin="5,0,0,0">
 					<DataGrid Name="SpecGrid"
 							  ItemsSource="{Binding SpecificationRows}"
 							  AutoGenerateColumns="False"
@@ -96,7 +97,7 @@
 							  SelectionMode="Extended"
 							  CanUserSortColumns="True"
 							  GridLinesVisibility="All"/>
-				</GroupBox>
+				</HeaderedContentControl>
 			</Grid>
 		</Grid>
 
