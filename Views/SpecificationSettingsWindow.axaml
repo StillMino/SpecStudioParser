@@ -97,19 +97,21 @@
 								<HeaderedContentControl Grid.Column="1" Header="2. Конструктор условий фильтрации" Margin="10,0,0,0">
 									<Grid RowDefinitions="Auto, *, Auto" Margin="5">
 										<StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-											<TextBlock Text="Связь условий:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
+											<TextBlock Text="Связь по умолчанию:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
 											<ComboBox Width="90" ItemsSource="{Binding SelectedDataset.RootFilterGroup.AvailableJoinOperators}" SelectedItem="{Binding SelectedDataset.RootFilterGroup.JoinOperator, Mode=TwoWay}"/>
+											<TextBlock Text="Основная связь задаётся в строках условий" VerticalAlignment="Center" FontSize="11" Foreground="#64748B"/>
 										</StackPanel>
 										<ScrollViewer Grid.Row="1">
 											<StackPanel Spacing="8">
 												<ItemsControl ItemsSource="{Binding SelectedDataset.FilterConditions}">
 													<ItemsControl.ItemTemplate>
 														<DataTemplate x:DataType="m:FilterConditionItem">
-															<Grid ColumnDefinitions="*, 100, *, Auto" Margin="0,4">
+															<Grid ColumnDefinitions="*, 100, *, 80, Auto" Margin="0,4">
 																<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
 																<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
 																<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
-																<Button Grid.Column="3" IsEnabled="False" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удаление условий будет возвращено после стабилизации шаблона"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#94A3B8"/></Button>
+																<ComboBox Grid.Column="3" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом"/>
+																<Button Grid.Column="4" IsEnabled="False" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удаление условий будет возвращено после стабилизации шаблона"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#94A3B8"/></Button>
 															</Grid>
 														</DataTemplate>
 													</ItemsControl.ItemTemplate>
@@ -121,18 +123,19 @@
 															<Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,6,0,0" Background="#F8FAFC">
 																<StackPanel Spacing="6">
 																	<StackPanel Orientation="Horizontal" Spacing="8">
-																		<TextBlock Text="Группа:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
-																		<ComboBox Width="90" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinOperator, Mode=TwoWay}"/>
+																		<TextBlock Text="Группа, связь дальше:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
+																		<ComboBox Width="90" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}"/>
 																		<Button Click="AddConditionToGroupClick" Content="Добавить условие" Padding="6,2"/>
 																		<Button Click="RemoveFilterGroupClick" Content="Удалить группу" Padding="6,2" Background="#EF4444" Foreground="White"/>
 																	</StackPanel>
 																	<ItemsControl ItemsSource="{Binding Conditions}">
 																		<ItemsControl.ItemTemplate>
 																			<DataTemplate x:DataType="m:FilterConditionItem">
-																				<Grid ColumnDefinitions="*, 100, *" Margin="0,4">
+																				<Grid ColumnDefinitions="*, 100, *, 80" Margin="0,4">
 																					<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
 																					<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
 																					<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
+																					<ComboBox Grid.Column="3" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим условием"/>
 																				</Grid>
 																			</DataTemplate>
 																		</ItemsControl.ItemTemplate>
