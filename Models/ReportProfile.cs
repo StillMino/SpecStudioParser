@@ -1,4 +1,6 @@
+using SpecStudioParser.Services;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -27,6 +29,12 @@ namespace SpecStudioParser.Models
         private int _aggregated = 1;
         private FilterConditionGroup _rootFilterGroup = new();
 
+        public DatasetConfig()
+        {
+            FilterConditions.CollectionChanged += FilterConditionsChanged;
+            RootFilterGroup.PropertyChanged += RootFilterGroupChanged;
+        }
+
         public string Caption
         {
             get => _caption;
@@ -48,7 +56,18 @@ namespace SpecStudioParser.Models
         public FilterConditionGroup RootFilterGroup
         {
             get => _rootFilterGroup;
-            set { _rootFilterGroup = value; OnPropertyChanged(); }
+            set
+            {
+                if (_rootFilterGroup != null)
+                {
+                    _rootFilterGroup.PropertyChanged -= RootFilterGroupChanged;
+                }
+
+                _rootFilterGroup = value ?? new FilterConditionGroup();
+                _rootFilterGroup.PropertyChanged += RootFilterGroupChanged;
+                OnPropertyChanged();
+                RebuildFilterFormula();
+            }
         }
 
         public ObservableCollection<string> TargetTypes { get; set; } = new();
@@ -58,6 +77,50 @@ namespace SpecStudioParser.Models
         // Будут задействованы позже при чтении сортировки/группировки из XML
         public ObservableCollection<GroupFieldConfig> GroupFields { get; set; } = new();
         public ObservableCollection<SortFieldConfig> SortFields { get; set; } = new();
+
+        private void FilterConditionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+            {
+                foreach (FilterConditionItem item in e.OldItems)
+                {
+                    item.PropertyChanged -= FilterConditionChanged;
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (FilterConditionItem item in e.NewItems)
+                {
+                    item.PropertyChanged += FilterConditionChanged;
+                }
+            }
+
+            RebuildFilterFormula();
+        }
+
+        private void FilterConditionChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            RebuildFilterFormula();
+        }
+
+        private void RootFilterGroupChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(FilterConditionGroup.JoinOperator))
+            {
+                RebuildFilterFormula();
+            }
+        }
+
+        private void RebuildFilterFormula()
+        {
+            var formula = FilterFormulaBuilder.BuildFromFlatConditions(FilterConditions, RootFilterGroup.JoinOperator);
+            if (_filterFormula != formula)
+            {
+                _filterFormula = formula;
+                OnPropertyChanged(nameof(FilterFormula));
+            }
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
