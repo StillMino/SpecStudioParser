@@ -123,6 +123,8 @@
 																	<StackPanel Orientation="Horizontal" Spacing="8">
 																		<TextBlock Text="Группа:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
 																		<ComboBox Width="90" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinOperator, Mode=TwoWay}"/>
+																		<Button Click="AddConditionToGroupClick" Content="Добавить условие" Padding="6,2"/>
+																		<Button Click="RemoveFilterGroupClick" Content="Удалить группу" Padding="6,2" Background="#EF4444" Foreground="White"/>
 																	</StackPanel>
 																	<ItemsControl ItemsSource="{Binding Conditions}">
 																		<ItemsControl.ItemTemplate>
