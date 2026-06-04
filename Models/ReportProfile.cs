@@ -172,6 +172,7 @@ namespace SpecStudioParser.Models
         private string _attribute = "PART_NAME";
         private string _operator = "=";
         private string _value = "";
+        private string _joinWithNext = "and";
 
         public FilterConditionItem()
         {
@@ -212,6 +213,7 @@ namespace SpecStudioParser.Models
         public string Attribute { get => _attribute; set { _attribute = value; OnPropertyChanged(); } }
         public string Operator { get => _operator; set { _operator = value; OnPropertyChanged(); } }
         public string Value { get => _value; set { _value = value; OnPropertyChanged(); } }
+        public string JoinWithNext { get => _joinWithNext; set { _joinWithNext = value; OnPropertyChanged(); } }
 
         public ObservableCollection<string> AvailableAttributes { get; } = new();
         public ObservableCollection<string> AvailableOperators { get; } = new()
@@ -228,6 +230,12 @@ namespace SpecStudioParser.Models
             "not contains",
             "isset",
             "not isset"
+        };
+
+        public ObservableCollection<string> AvailableJoinOperators { get; } = new()
+        {
+            "and",
+            "or"
         };
 
         public event PropertyChangedEventHandler? PropertyChanged;
