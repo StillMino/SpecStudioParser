@@ -9,13 +9,21 @@ namespace SpecStudioParser.Services
     {
         public static string BuildFromFlatConditions(IEnumerable<FilterConditionItem> conditions)
         {
+            return BuildFromFlatConditions(conditions, "and");
+        }
+
+        public static string BuildFromFlatConditions(IEnumerable<FilterConditionItem> conditions, string? joinOperator)
+        {
             var parts = conditions
                 .Where(c => !string.IsNullOrWhiteSpace(c.Attribute) && !string.IsNullOrWhiteSpace(c.Operator))
                 .Select(BuildConditionExpression)
                 .Where(part => !string.IsNullOrWhiteSpace(part))
                 .ToList();
 
-            return parts.Any() ? string.Join(" and ", parts) : "1";
+            if (!parts.Any()) return "1";
+
+            var normalizedJoin = NormalizeJoinOperator(joinOperator);
+            return string.Join($" {normalizedJoin} ", parts);
         }
 
         public static string BuildFromGroup(FilterConditionGroup group)
