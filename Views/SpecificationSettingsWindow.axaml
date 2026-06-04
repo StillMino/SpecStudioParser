@@ -101,21 +101,52 @@
 											<ComboBox Width="90" ItemsSource="{Binding SelectedDataset.RootFilterGroup.AvailableJoinOperators}" SelectedItem="{Binding SelectedDataset.RootFilterGroup.JoinOperator, Mode=TwoWay}"/>
 										</StackPanel>
 										<ScrollViewer Grid.Row="1">
-											<ItemsControl ItemsSource="{Binding SelectedDataset.FilterConditions}">
-												<ItemsControl.ItemTemplate>
-													<DataTemplate x:DataType="m:FilterConditionItem">
-														<Grid ColumnDefinitions="*, 100, *, Auto" Margin="0,4">
-															<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
-															<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
-															<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
-															<Button Grid.Column="3" IsEnabled="False" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удаление условий будет возвращено после стабилизации шаблона"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#94A3B8"/></Button>
-														</Grid>
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
+											<StackPanel Spacing="8">
+												<ItemsControl ItemsSource="{Binding SelectedDataset.FilterConditions}">
+													<ItemsControl.ItemTemplate>
+														<DataTemplate x:DataType="m:FilterConditionItem">
+															<Grid ColumnDefinitions="*, 100, *, Auto" Margin="0,4">
+																<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
+																<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
+																<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
+																<Button Grid.Column="3" IsEnabled="False" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удаление условий будет возвращено после стабилизации шаблона"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#94A3B8"/></Button>
+															</Grid>
+														</DataTemplate>
+													</ItemsControl.ItemTemplate>
+												</ItemsControl>
+
+												<ItemsControl ItemsSource="{Binding SelectedDataset.RootFilterGroup.Groups}">
+													<ItemsControl.ItemTemplate>
+														<DataTemplate x:DataType="m:FilterConditionGroup">
+															<Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,6,0,0" Background="#F8FAFC">
+																<StackPanel Spacing="6">
+																	<StackPanel Orientation="Horizontal" Spacing="8">
+																		<TextBlock Text="Группа:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
+																		<ComboBox Width="90" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinOperator, Mode=TwoWay}"/>
+																	</StackPanel>
+																	<ItemsControl ItemsSource="{Binding Conditions}">
+																		<ItemsControl.ItemTemplate>
+																			<DataTemplate x:DataType="m:FilterConditionItem">
+																				<Grid ColumnDefinitions="*, 100, *" Margin="0,4">
+																					<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
+																					<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
+																					<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
+																				</Grid>
+																			</DataTemplate>
+																		</ItemsControl.ItemTemplate>
+																	</ItemsControl>
+																</StackPanel>
+															</Border>
+														</DataTemplate>
+													</ItemsControl.ItemTemplate>
+												</ItemsControl>
+											</StackPanel>
 										</ScrollViewer>
 										<StackPanel Grid.Row="2" Spacing="5" Margin="0,10,0,0">
-											<Button Command="{Binding AddConditionCommand}" HorizontalAlignment="Left" Content="Добавить условие"/>
+											<StackPanel Orientation="Horizontal" Spacing="8">
+												<Button Command="{Binding AddConditionCommand}" HorizontalAlignment="Left" Content="Добавить условие"/>
+												<Button Click="AddFilterGroupClick" HorizontalAlignment="Left" Content="Добавить группу"/>
+											</StackPanel>
 											<TextBlock Text="Итоговая сгенерированная формула:" FontSize="11" Foreground="#64748B" Margin="0,5,0,0"/>
 											<TextBlock Text="{Binding SelectedDataset.FilterFormula}" Background="#F8FAFC" Padding="5" FontSize="11" TextWrapping="Wrap"/>
 										</StackPanel>

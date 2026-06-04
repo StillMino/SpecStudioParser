@@ -46,8 +46,8 @@ namespace SpecStudioParser.Models
             get => _filterFormula;
             set
             {
-                var normalized = FilterConditions.Count > 0
-                    ? FilterFormulaBuilder.BuildFromFlatConditions(FilterConditions, RootFilterGroup.JoinOperator)
+                var normalized = HasEditableFilterItems()
+                    ? FilterFormulaBuilder.BuildFromRoot(RootFilterGroup, FilterConditions)
                     : value;
 
                 if (_filterFormula != normalized)
@@ -89,6 +89,14 @@ namespace SpecStudioParser.Models
         public ObservableCollection<GroupFieldConfig> GroupFields { get; set; } = new();
         public ObservableCollection<SortFieldConfig> SortFields { get; set; } = new();
 
+        public void AddChildFilterGroup()
+        {
+            var group = new FilterConditionGroup();
+            group.Conditions.Add(new FilterConditionItem());
+            RootFilterGroup.Groups.Add(group);
+            RebuildFilterFormula();
+        }
+
         private void FilterConditionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.OldItems != null)
@@ -117,15 +125,17 @@ namespace SpecStudioParser.Models
 
         private void RootFilterGroupChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(FilterConditionGroup.JoinOperator))
-            {
-                RebuildFilterFormula();
-            }
+            RebuildFilterFormula();
+        }
+
+        private bool HasEditableFilterItems()
+        {
+            return FilterConditions.Count > 0 || RootFilterGroup.Groups.Count > 0 || RootFilterGroup.Conditions.Count > 0;
         }
 
         private void RebuildFilterFormula()
         {
-            var formula = FilterFormulaBuilder.BuildFromFlatConditions(FilterConditions, RootFilterGroup.JoinOperator);
+            var formula = FilterFormulaBuilder.BuildFromRoot(RootFilterGroup, FilterConditions);
             if (_filterFormula != formula)
             {
                 _filterFormula = formula;

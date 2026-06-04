@@ -14,30 +14,35 @@ namespace SpecStudioParser.Services
 
         public static string BuildFromFlatConditions(IEnumerable<FilterConditionItem> conditions, string? joinOperator)
         {
-            var parts = conditions
-                .Where(c => !string.IsNullOrWhiteSpace(c.Attribute) && !string.IsNullOrWhiteSpace(c.Operator))
-                .Select(BuildConditionExpression)
-                .Where(part => !string.IsNullOrWhiteSpace(part))
-                .ToList();
-
+            var parts = BuildConditionParts(conditions);
             if (!parts.Any()) return "1";
 
             var normalizedJoin = NormalizeJoinOperator(joinOperator);
             return string.Join($" {normalizedJoin} ", parts);
         }
 
-        public static string BuildFromGroup(FilterConditionGroup group)
+        public static string BuildFromRoot(FilterConditionGroup rootGroup, IEnumerable<FilterConditionItem> rootConditions)
         {
-            var parts = new List<string>();
+            var parts = BuildConditionParts(rootConditions);
 
-            foreach (var condition in group.Conditions)
+            foreach (var childGroup in rootGroup.Groups)
             {
-                var expression = BuildConditionExpression(condition);
-                if (!string.IsNullOrWhiteSpace(expression))
+                var childExpression = BuildFromGroup(childGroup);
+                if (!string.IsNullOrWhiteSpace(childExpression) && childExpression != "1")
                 {
-                    parts.Add(expression);
+                    parts.Add($"({childExpression})");
                 }
             }
+
+            if (!parts.Any()) return "1";
+
+            var joinOperator = NormalizeJoinOperator(rootGroup.JoinOperator);
+            return string.Join($" {joinOperator} ", parts);
+        }
+
+        public static string BuildFromGroup(FilterConditionGroup group)
+        {
+            var parts = BuildConditionParts(group.Conditions);
 
             foreach (var childGroup in group.Groups)
             {
@@ -69,6 +74,15 @@ namespace SpecStudioParser.Services
             if (op == "not isset") return $"not isset([{attribute}])";
 
             return $"[{attribute}] {op} {Quote(value)}";
+        }
+
+        private static List<string> BuildConditionParts(IEnumerable<FilterConditionItem> conditions)
+        {
+            return conditions
+                .Where(c => !string.IsNullOrWhiteSpace(c.Attribute) && !string.IsNullOrWhiteSpace(c.Operator))
+                .Select(BuildConditionExpression)
+                .Where(part => !string.IsNullOrWhiteSpace(part))
+                .ToList();
         }
 
         private static string NormalizeJoinOperator(string? joinOperator)
