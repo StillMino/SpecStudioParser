@@ -96,6 +96,30 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void RemoveFilterConditionClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button ||
+                button.DataContext is not FilterConditionItem condition ||
+                DataContext is not MainWindowViewModel viewModel ||
+                viewModel.SelectedDataset == null)
+            {
+                return;
+            }
+
+            if (viewModel.SelectedDataset.FilterConditions.Remove(condition))
+            {
+                return;
+            }
+
+            foreach (var group in viewModel.SelectedDataset.RootFilterGroup.Groups)
+            {
+                if (group.Conditions.Remove(condition))
+                {
+                    return;
+                }
+            }
+        }
+
         private void RemoveFilterGroupClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button button &&
