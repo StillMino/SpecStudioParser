@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -82,9 +82,62 @@ namespace SpecStudioParser.Models
         private string _operator = "=";
         private string _value = "";
 
+        public FilterConditionItem()
+        {
+            foreach (var attribute in new[]
+            {
+                "PART_NAME",
+                "PART_TYPE",
+                "PART_TAG",
+                "PART_MATERIAL",
+                "PART_STANDARD",
+                "PART_WEIGHT",
+                "PART_MANUFACTURER",
+                "BOM_INCLUDE",
+                "BOM_GROUP",
+                "BOM_NUMBER",
+                "SYS_OBJECT_CATEGORY",
+                "EXPLICATION_NUMBER",
+                "AEC_ACCESSORY",
+                "AEC_STEEL_GROUP",
+                "STEEL_PROF_HEIGHT",
+                "DIM_HEIGHT",
+                "DIM_WIDTH",
+                "DIM_LENGTH",
+                "CENTROID_POINT_X",
+                "CENTROID_POINT_Y",
+                "CENTROID_POINT_Z",
+                "Layer",
+                "Handle",
+                "ObjectName",
+                "level",
+                "sort"
+            })
+            {
+                AvailableAttributes.Add(attribute);
+            }
+        }
+
         public string Attribute { get => _attribute; set { _attribute = value; OnPropertyChanged(); } }
         public string Operator { get => _operator; set { _operator = value; OnPropertyChanged(); } }
         public string Value { get => _value; set { _value = value; OnPropertyChanged(); } }
+
+        public ObservableCollection<string> AvailableAttributes { get; } = new();
+        public ObservableCollection<string> AvailableOperators { get; } = new()
+        {
+            "=",
+            "!=",
+            "gt",
+            "lt",
+            "gte",
+            "lte",
+            "like",
+            "not like",
+            "contains",
+            "not contains",
+            "isset",
+            "not isset"
+        };
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
