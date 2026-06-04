@@ -149,7 +149,16 @@ namespace SpecStudioParser.Views
                 DataContext is MainWindowViewModel viewModel &&
                 viewModel.SelectedDataset != null)
             {
-                var rootItem = viewModel.SelectedDataset.RootFilterItems.FirstOrDefault(item => item.Group == group);
+                FilterRootItem? rootItem = null;
+                foreach (var item in viewModel.SelectedDataset.RootFilterItems)
+                {
+                    if (item.Group == group)
+                    {
+                        rootItem = item;
+                        break;
+                    }
+                }
+
                 if (rootItem != null)
                 {
                     viewModel.SelectedDataset.RemoveRootFilterItem(rootItem);
