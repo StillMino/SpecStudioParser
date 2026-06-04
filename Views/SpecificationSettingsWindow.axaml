@@ -101,8 +101,8 @@
 												<ItemsControl.ItemTemplate>
 													<DataTemplate x:DataType="m:FilterConditionItem">
 														<Grid ColumnDefinitions="*, 100, *, Auto" Margin="0,4">
-															<TextBox Grid.Column="0" Text="{Binding Attribute, Mode=TwoWay}" Watermark="Атрибут"/>
-															<TextBox Grid.Column="1" Text="{Binding Operator, Mode=TwoWay}" Watermark="Оператор" Margin="4,0"/>
+															<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
+															<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
 															<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
 															<Button Grid.Column="3" IsEnabled="False" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удаление условий будет возвращено после стабилизации шаблона"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#94A3B8"/></Button>
 														</Grid>
