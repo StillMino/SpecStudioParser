@@ -25,6 +25,7 @@ namespace SpecStudioParser.Models
         private string _caption = "Новый набор данных";
         private string _filterFormula = "";
         private int _aggregated = 1;
+        private FilterConditionGroup _rootFilterGroup = new();
 
         public string Caption
         {
@@ -42,6 +43,12 @@ namespace SpecStudioParser.Models
         {
             get => _aggregated;
             set { _aggregated = value; OnPropertyChanged(); }
+        }
+
+        public FilterConditionGroup RootFilterGroup
+        {
+            get => _rootFilterGroup;
+            set { _rootFilterGroup = value; OnPropertyChanged(); }
         }
 
         public ObservableCollection<string> TargetTypes { get; set; } = new();
