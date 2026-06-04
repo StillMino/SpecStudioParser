@@ -99,36 +99,30 @@
 										<StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
 											<TextBlock Text="Связь по умолчанию:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
 											<ComboBox Width="90" ItemsSource="{Binding SelectedDataset.RootFilterGroup.AvailableJoinOperators}" SelectedItem="{Binding SelectedDataset.RootFilterGroup.JoinOperator, Mode=TwoWay}"/>
-											<TextBlock Text="Основная связь задаётся в строках условий" VerticalAlignment="Center" FontSize="11" Foreground="#64748B"/>
+											<TextBlock Text="Порядок элементов сохраняется в общем списке" VerticalAlignment="Center" FontSize="11" Foreground="#64748B"/>
 										</StackPanel>
 										<ScrollViewer Grid.Row="1">
-											<StackPanel Spacing="8">
-												<ItemsControl ItemsSource="{Binding SelectedDataset.FilterConditions}">
-													<ItemsControl.ItemTemplate>
-														<DataTemplate x:DataType="m:FilterConditionItem">
-															<Grid ColumnDefinitions="*, 100, *, 80, Auto" Margin="0,4">
-																<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
-																<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
-																<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
-																<ComboBox Grid.Column="3" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом"/>
-																<Button Grid.Column="4" Click="RemoveFilterConditionClick" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#EF4444"/></Button>
+											<ItemsControl ItemsSource="{Binding SelectedDataset.RootFilterItems}">
+												<ItemsControl.ItemTemplate>
+													<DataTemplate x:DataType="m:FilterRootItem">
+														<StackPanel Spacing="8">
+															<Grid IsVisible="{Binding IsCondition}" ColumnDefinitions="*, 100, *, 80, Auto" Margin="0,4">
+																<ComboBox Grid.Column="0" ItemsSource="{Binding Condition.AvailableAttributes}" SelectedItem="{Binding Condition.Attribute, Mode=TwoWay}"/>
+																<ComboBox Grid.Column="1" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
+																<TextBox Grid.Column="2" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
+																<ComboBox Grid.Column="3" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом"/>
+																<Button Grid.Column="4" Click="RemoveRootFilterItemClick" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#EF4444"/></Button>
 															</Grid>
-														</DataTemplate>
-													</ItemsControl.ItemTemplate>
-												</ItemsControl>
 
-												<ItemsControl ItemsSource="{Binding SelectedDataset.RootFilterGroup.Groups}">
-													<ItemsControl.ItemTemplate>
-														<DataTemplate x:DataType="m:FilterConditionGroup">
-															<Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,6,0,0" Background="#F8FAFC">
+															<Border IsVisible="{Binding IsGroup}" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,6,0,0" Background="#F8FAFC">
 																<StackPanel Spacing="6">
 																	<StackPanel Orientation="Horizontal" Spacing="8">
 																		<TextBlock Text="Группа, связь дальше:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569"/>
-																		<ComboBox Width="90" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}"/>
-																		<Button Click="AddConditionToGroupClick" Content="Добавить условие" Padding="6,2"/>
-																		<Button Click="RemoveFilterGroupClick" Content="Удалить группу" Padding="6,2" Background="#EF4444" Foreground="White"/>
+																		<ComboBox Width="90" ItemsSource="{Binding Group.AvailableJoinOperators}" SelectedItem="{Binding Group.JoinWithNext, Mode=TwoWay}"/>
+																		<Button DataContext="{Binding Group}" Click="AddConditionToGroupClick" Content="Добавить условие" Padding="6,2"/>
+																		<Button Click="RemoveRootFilterItemClick" Content="Удалить группу" Padding="6,2" Background="#EF4444" Foreground="White"/>
 																	</StackPanel>
-																	<ItemsControl ItemsSource="{Binding Conditions}">
+																	<ItemsControl ItemsSource="{Binding Group.Conditions}">
 																		<ItemsControl.ItemTemplate>
 																			<DataTemplate x:DataType="m:FilterConditionItem">
 																				<Grid ColumnDefinitions="*, 100, *, 80, Auto" Margin="0,4">
@@ -143,14 +137,14 @@
 																	</ItemsControl>
 																</StackPanel>
 															</Border>
-														</DataTemplate>
-													</ItemsControl.ItemTemplate>
-												</ItemsControl>
-											</StackPanel>
+														</StackPanel>
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
 										</ScrollViewer>
 										<StackPanel Grid.Row="2" Spacing="5" Margin="0,10,0,0">
 											<StackPanel Orientation="Horizontal" Spacing="8">
-												<Button Command="{Binding AddConditionCommand}" HorizontalAlignment="Left" Content="Добавить условие"/>
+												<Button Click="AddRootConditionClick" HorizontalAlignment="Left" Content="Добавить условие"/>
 												<Button Click="AddFilterGroupClick" HorizontalAlignment="Left" Content="Добавить группу"/>
 											</StackPanel>
 											<TextBlock Text="Итоговая сгенерированная формула:" FontSize="11" Foreground="#64748B" Margin="0,5,0,0"/>

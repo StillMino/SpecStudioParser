@@ -14,15 +14,26 @@ namespace SpecStudioParser.Views
         {
             InitializeComponent();
 
+            Opened += (s, e) => BringSettingsWindowToFront();
+            Activated += (s, e) => BringSettingsWindowToFront();
+
             // ЖЕЛЕЗНЫЙ ХАК ДЛЯ nanoCAD: предотвращает уход окна настроек за пространство САПР
             this.Deactivated += (s, e) =>
             {
                 if (this.IsVisible)
                 {
-                    this.Topmost = false;
-                    this.Topmost = true; // Сброс и повторный вызов заставляют Win32 поднять окно наверх
+                    BringSettingsWindowToFront();
                 }
             };
+        }
+
+        private void BringSettingsWindowToFront()
+        {
+            if (!IsVisible) return;
+
+            Topmost = true;
+            Activate();
+            Focus();
         }
 
         protected override void OnDataContextChanged(System.EventArgs e)
@@ -31,6 +42,8 @@ namespace SpecStudioParser.Views
 
             if (DataContext is MainWindowViewModel viewModel)
             {
+                viewModel.SelectedDataset?.EnsureRootFilterItems();
+
                 // Безопасно подписываемся на ручной вызов перестройки структуры колонок из ViewModel
                 viewModel.OnColumnsStructureChanged -= RebuildDataGridColumns;
                 viewModel.OnColumnsStructureChanged += RebuildDataGridColumns;
@@ -76,7 +89,16 @@ namespace SpecStudioParser.Views
             if (DataContext is MainWindowViewModel viewModel)
             {
                 ProfileImportService.ImportXmlWithHostDialog(viewModel);
+                viewModel.SelectedDataset?.EnsureRootFilterItems();
                 RebuildDataGridColumns();
+            }
+        }
+
+        private void AddRootConditionClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel && viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.AddRootFilterCondition();
             }
         }
 
@@ -106,17 +128,17 @@ namespace SpecStudioParser.Views
                 return;
             }
 
-            if (viewModel.SelectedDataset.FilterConditions.Remove(condition))
-            {
-                return;
-            }
+            viewModel.SelectedDataset.RemoveFilterCondition(condition);
+        }
 
-            foreach (var group in viewModel.SelectedDataset.RootFilterGroup.Groups)
+        private void RemoveRootFilterItemClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button &&
+                button.DataContext is FilterRootItem item &&
+                DataContext is MainWindowViewModel viewModel &&
+                viewModel.SelectedDataset != null)
             {
-                if (group.Conditions.Remove(condition))
-                {
-                    return;
-                }
+                viewModel.SelectedDataset.RemoveRootFilterItem(item);
             }
         }
 
@@ -127,7 +149,24 @@ namespace SpecStudioParser.Views
                 DataContext is MainWindowViewModel viewModel &&
                 viewModel.SelectedDataset != null)
             {
-                viewModel.SelectedDataset.RootFilterGroup.Groups.Remove(group);
+                FilterRootItem? rootItem = null;
+                foreach (var item in viewModel.SelectedDataset.RootFilterItems)
+                {
+                    if (item.Group == group)
+                    {
+                        rootItem = item;
+                        break;
+                    }
+                }
+
+                if (rootItem != null)
+                {
+                    viewModel.SelectedDataset.RemoveRootFilterItem(rootItem);
+                }
+                else
+                {
+                    viewModel.SelectedDataset.RootFilterGroup.Groups.Remove(group);
+                }
             }
         }
 

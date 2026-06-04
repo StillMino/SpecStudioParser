@@ -25,6 +25,39 @@ namespace SpecStudioParser.Services
 
         public static string BuildFromRoot(FilterConditionGroup rootGroup, IEnumerable<FilterConditionItem> rootConditions)
         {
+            return BuildFromRoot(rootGroup, rootConditions, Enumerable.Empty<FilterRootItem>());
+        }
+
+        public static string BuildFromRoot(FilterConditionGroup rootGroup, IEnumerable<FilterConditionItem> rootConditions, IEnumerable<FilterRootItem> rootItems)
+        {
+            var orderedItems = rootItems.ToList();
+            if (orderedItems.Any())
+            {
+                var orderedParts = new List<FormulaPart>();
+
+                foreach (var item in orderedItems)
+                {
+                    if (item.Condition != null)
+                    {
+                        var expression = BuildConditionExpression(item.Condition);
+                        if (!string.IsNullOrWhiteSpace(expression))
+                        {
+                            orderedParts.Add(new FormulaPart(expression, item.Condition.JoinWithNext));
+                        }
+                    }
+                    else if (item.Group != null)
+                    {
+                        var childExpression = BuildFromGroup(item.Group);
+                        if (!string.IsNullOrWhiteSpace(childExpression) && childExpression != "1")
+                        {
+                            orderedParts.Add(new FormulaPart($"({childExpression})", item.Group.JoinWithNext));
+                        }
+                    }
+                }
+
+                return BuildJoinedExpression(orderedParts);
+            }
+
             var parts = BuildConditionFormulaParts(rootConditions);
 
             foreach (var childGroup in rootGroup.Groups)

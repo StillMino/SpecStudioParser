@@ -2,6 +2,7 @@ using SpecStudioParser.Services;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace SpecStudioParser.Models
@@ -33,6 +34,7 @@ namespace SpecStudioParser.Models
         {
             FilterConditions.CollectionChanged += FilterConditionsChanged;
             RootFilterGroup.PropertyChanged += RootFilterGroupChanged;
+            RootFilterItems.CollectionChanged += RootFilterItemsChanged;
         }
 
         public string Caption
@@ -46,8 +48,9 @@ namespace SpecStudioParser.Models
             get => _filterFormula;
             set
             {
+                EnsureRootFilterItems();
                 var normalized = HasEditableFilterItems()
-                    ? FilterFormulaBuilder.BuildFromRoot(RootFilterGroup, FilterConditions)
+                    ? FilterFormulaBuilder.BuildFromRoot(RootFilterGroup, FilterConditions, RootFilterItems)
                     : value;
 
                 if (_filterFormula != normalized)
@@ -84,16 +87,88 @@ namespace SpecStudioParser.Models
         public ObservableCollection<string> TargetTypes { get; set; } = new();
         public ObservableCollection<ReportColumnConfig> Columns { get; set; } = new();
         public ObservableCollection<FilterConditionItem> FilterConditions { get; set; } = new();
+        public ObservableCollection<FilterRootItem> RootFilterItems { get; } = new();
 
         // Будут задействованы позже при чтении сортировки/группировки из XML
         public ObservableCollection<GroupFieldConfig> GroupFields { get; set; } = new();
         public ObservableCollection<SortFieldConfig> SortFields { get; set; } = new();
 
+        public void EnsureRootFilterItems()
+        {
+            if (RootFilterItems.Count > 0) return;
+
+            foreach (var condition in FilterConditions)
+            {
+                RootFilterItems.Add(FilterRootItem.FromCondition(condition));
+            }
+
+            foreach (var group in RootFilterGroup.Groups)
+            {
+                RootFilterItems.Add(FilterRootItem.FromGroup(group));
+            }
+        }
+
+        public void AddRootFilterCondition()
+        {
+            EnsureRootFilterItems();
+            var condition = new FilterConditionItem();
+            FilterConditions.Add(condition);
+            RootFilterItems.Add(FilterRootItem.FromCondition(condition));
+            RebuildFilterFormula();
+        }
+
         public void AddChildFilterGroup()
         {
+            EnsureRootFilterItems();
             var group = new FilterConditionGroup();
             group.Conditions.Add(new FilterConditionItem());
             RootFilterGroup.Groups.Add(group);
+            RootFilterItems.Add(FilterRootItem.FromGroup(group));
+            RebuildFilterFormula();
+        }
+
+        public void RemoveRootFilterItem(FilterRootItem? item)
+        {
+            if (item == null) return;
+
+            if (item.Condition != null)
+            {
+                FilterConditions.Remove(item.Condition);
+            }
+
+            if (item.Group != null)
+            {
+                RootFilterGroup.Groups.Remove(item.Group);
+            }
+
+            RootFilterItems.Remove(item);
+            RebuildFilterFormula();
+        }
+
+        public void RemoveFilterCondition(FilterConditionItem? condition)
+        {
+            if (condition == null) return;
+
+            FilterConditions.Remove(condition);
+            foreach (var group in RootFilterGroup.Groups)
+            {
+                if (group.Conditions.Remove(condition))
+                {
+                    break;
+                }
+            }
+
+            var rootItem = RootFilterItems.FirstOrDefault(item => item.Condition == condition);
+            if (rootItem != null)
+            {
+                RootFilterItems.Remove(rootItem);
+            }
+
+            RebuildFilterFormula();
+        }
+
+        private void RootFilterItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
             RebuildFilterFormula();
         }
 
@@ -130,12 +205,12 @@ namespace SpecStudioParser.Models
 
         private bool HasEditableFilterItems()
         {
-            return FilterConditions.Count > 0 || RootFilterGroup.Groups.Count > 0 || RootFilterGroup.Conditions.Count > 0;
+            return RootFilterItems.Count > 0 || FilterConditions.Count > 0 || RootFilterGroup.Groups.Count > 0 || RootFilterGroup.Conditions.Count > 0;
         }
 
         private void RebuildFilterFormula()
         {
-            var formula = FilterFormulaBuilder.BuildFromRoot(RootFilterGroup, FilterConditions);
+            var formula = FilterFormulaBuilder.BuildFromRoot(RootFilterGroup, FilterConditions, RootFilterItems);
             if (_filterFormula != formula)
             {
                 _filterFormula = formula;
@@ -146,6 +221,23 @@ namespace SpecStudioParser.Models
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    public class FilterRootItem
+    {
+        private FilterRootItem(FilterConditionItem? condition, FilterConditionGroup? group)
+        {
+            Condition = condition;
+            Group = group;
+        }
+
+        public FilterConditionItem? Condition { get; }
+        public FilterConditionGroup? Group { get; }
+        public bool IsCondition => Condition != null;
+        public bool IsGroup => Group != null;
+
+        public static FilterRootItem FromCondition(FilterConditionItem condition) => new(condition, null);
+        public static FilterRootItem FromGroup(FilterConditionGroup group) => new(null, group);
     }
 
     public class ReportColumnConfig : INotifyPropertyChanged
