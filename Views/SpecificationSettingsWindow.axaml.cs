@@ -79,6 +79,14 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void AddFilterGroupClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel && viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.AddChildFilterGroup();
+            }
+        }
+
         private void CloseWindowClick(object sender, RoutedEventArgs e)
         {
             this.Close();
