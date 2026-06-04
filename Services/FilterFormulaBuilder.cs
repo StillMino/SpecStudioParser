@@ -7,6 +7,8 @@ namespace SpecStudioParser.Services
 {
     public static class FilterFormulaBuilder
     {
+        private sealed record FormulaPart(string Expression, string JoinWithNext);
+
         public static string BuildFromFlatConditions(IEnumerable<FilterConditionItem> conditions)
         {
             return BuildFromFlatConditions(conditions, "and");
@@ -14,49 +16,43 @@ namespace SpecStudioParser.Services
 
         public static string BuildFromFlatConditions(IEnumerable<FilterConditionItem> conditions, string? joinOperator)
         {
-            var parts = BuildConditionParts(conditions);
-            if (!parts.Any()) return "1";
+            var parts = BuildConditionParts(conditions)
+                .Select(expression => new FormulaPart(expression, joinOperator ?? "and"))
+                .ToList();
 
-            var normalizedJoin = NormalizeJoinOperator(joinOperator);
-            return string.Join($" {normalizedJoin} ", parts);
+            return BuildJoinedExpression(parts);
         }
 
         public static string BuildFromRoot(FilterConditionGroup rootGroup, IEnumerable<FilterConditionItem> rootConditions)
         {
-            var parts = BuildConditionParts(rootConditions);
+            var parts = BuildConditionFormulaParts(rootConditions);
 
             foreach (var childGroup in rootGroup.Groups)
             {
                 var childExpression = BuildFromGroup(childGroup);
                 if (!string.IsNullOrWhiteSpace(childExpression) && childExpression != "1")
                 {
-                    parts.Add($"({childExpression})");
+                    parts.Add(new FormulaPart($"({childExpression})", childGroup.JoinWithNext));
                 }
             }
 
-            if (!parts.Any()) return "1";
-
-            var joinOperator = NormalizeJoinOperator(rootGroup.JoinOperator);
-            return string.Join($" {joinOperator} ", parts);
+            return BuildJoinedExpression(parts);
         }
 
         public static string BuildFromGroup(FilterConditionGroup group)
         {
-            var parts = BuildConditionParts(group.Conditions);
+            var parts = BuildConditionFormulaParts(group.Conditions);
 
             foreach (var childGroup in group.Groups)
             {
                 var childExpression = BuildFromGroup(childGroup);
                 if (!string.IsNullOrWhiteSpace(childExpression) && childExpression != "1")
                 {
-                    parts.Add($"({childExpression})");
+                    parts.Add(new FormulaPart($"({childExpression})", childGroup.JoinWithNext));
                 }
             }
 
-            if (!parts.Any()) return "1";
-
-            var joinOperator = NormalizeJoinOperator(group.JoinOperator);
-            return string.Join($" {joinOperator} ", parts);
+            return BuildJoinedExpression(parts);
         }
 
         public static string BuildConditionExpression(FilterConditionItem condition)
@@ -76,6 +72,15 @@ namespace SpecStudioParser.Services
             return $"[{attribute}] {op} {Quote(value)}";
         }
 
+        private static List<FormulaPart> BuildConditionFormulaParts(IEnumerable<FilterConditionItem> conditions)
+        {
+            return conditions
+                .Where(c => !string.IsNullOrWhiteSpace(c.Attribute) && !string.IsNullOrWhiteSpace(c.Operator))
+                .Select(c => new FormulaPart(BuildConditionExpression(c), c.JoinWithNext))
+                .Where(part => !string.IsNullOrWhiteSpace(part.Expression))
+                .ToList();
+        }
+
         private static List<string> BuildConditionParts(IEnumerable<FilterConditionItem> conditions)
         {
             return conditions
@@ -83,6 +88,21 @@ namespace SpecStudioParser.Services
                 .Select(BuildConditionExpression)
                 .Where(part => !string.IsNullOrWhiteSpace(part))
                 .ToList();
+        }
+
+        private static string BuildJoinedExpression(IReadOnlyList<FormulaPart> parts)
+        {
+            if (parts.Count == 0) return "1";
+            if (parts.Count == 1) return parts[0].Expression;
+
+            var result = parts[0].Expression;
+            for (var i = 1; i < parts.Count; i++)
+            {
+                var join = NormalizeJoinOperator(parts[i - 1].JoinWithNext);
+                result += $" {join} {parts[i].Expression}";
+            }
+
+            return result;
         }
 
         private static string NormalizeJoinOperator(string? joinOperator)
