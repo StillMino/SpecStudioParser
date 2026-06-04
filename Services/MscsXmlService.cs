@@ -43,6 +43,8 @@ namespace SpecStudioParser.Services
                         datasetConfig.FilterConditions.Add(condition);
                     }
 
+                    datasetConfig.EnsureRootFilterItems();
+
                     // Чтение разрешенных типов объектов (<Types><Type name="..."/></Types>)
                     XElement? typesEl = tableEl.Element("Types");
                     if (typesEl != null)
