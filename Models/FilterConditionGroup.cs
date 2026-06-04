@@ -8,6 +8,7 @@ namespace SpecStudioParser.Models
     public class FilterConditionGroup : INotifyPropertyChanged
     {
         private string _joinOperator = "and";
+        private string _joinWithNext = "and";
 
         public FilterConditionGroup()
         {
@@ -23,6 +24,19 @@ namespace SpecStudioParser.Models
                 if (_joinOperator != value)
                 {
                     _joinOperator = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string JoinWithNext
+        {
+            get => _joinWithNext;
+            set
+            {
+                if (_joinWithNext != value)
+                {
+                    _joinWithNext = value;
                     OnPropertyChanged();
                 }
             }
