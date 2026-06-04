@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using SpecStudioParser.Models;
 using SpecStudioParser.Services;
 using SpecStudioParser.ViewModels;
 using System.Collections.Specialized;
@@ -84,6 +85,25 @@ namespace SpecStudioParser.Views
             if (DataContext is MainWindowViewModel viewModel && viewModel.SelectedDataset != null)
             {
                 viewModel.SelectedDataset.AddChildFilterGroup();
+            }
+        }
+
+        private void AddConditionToGroupClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.DataContext is FilterConditionGroup group)
+            {
+                group.Conditions.Add(new FilterConditionItem());
+            }
+        }
+
+        private void RemoveFilterGroupClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button &&
+                button.DataContext is FilterConditionGroup group &&
+                DataContext is MainWindowViewModel viewModel &&
+                viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.RootFilterGroup.Groups.Remove(group);
             }
         }
 
