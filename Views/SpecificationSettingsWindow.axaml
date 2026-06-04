@@ -111,7 +111,7 @@
 																<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
 																<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
 																<ComboBox Grid.Column="3" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом"/>
-																<Button Grid.Column="4" IsEnabled="False" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удаление условий будет возвращено после стабилизации шаблона"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#94A3B8"/></Button>
+																<Button Grid.Column="4" Click="RemoveFilterConditionClick" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#EF4444"/></Button>
 															</Grid>
 														</DataTemplate>
 													</ItemsControl.ItemTemplate>
@@ -131,11 +131,12 @@
 																	<ItemsControl ItemsSource="{Binding Conditions}">
 																		<ItemsControl.ItemTemplate>
 																			<DataTemplate x:DataType="m:FilterConditionItem">
-																				<Grid ColumnDefinitions="*, 100, *, 80" Margin="0,4">
+																				<Grid ColumnDefinitions="*, 100, *, 80, Auto" Margin="0,4">
 																					<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
 																					<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
 																					<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
 																					<ComboBox Grid.Column="3" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим условием"/>
+																					<Button Grid.Column="4" Click="RemoveFilterConditionClick" Margin="4,0,0,0" Padding="6" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="#EF4444"/></Button>
 																				</Grid>
 																			</DataTemplate>
 																		</ItemsControl.ItemTemplate>
