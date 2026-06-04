@@ -44,7 +44,18 @@ namespace SpecStudioParser.Models
         public string FilterFormula
         {
             get => _filterFormula;
-            set { _filterFormula = value; OnPropertyChanged(); }
+            set
+            {
+                var normalized = FilterConditions.Count > 0
+                    ? FilterFormulaBuilder.BuildFromFlatConditions(FilterConditions, RootFilterGroup.JoinOperator)
+                    : value;
+
+                if (_filterFormula != normalized)
+                {
+                    _filterFormula = normalized;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         public int Aggregated
