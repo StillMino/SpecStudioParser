@@ -839,36 +839,17 @@ namespace SpecStudioParser.ViewModels
 
         private void ExecuteAddCondition()
         {
-            if (SelectedDataset == null) return;
-
-            var item = new FilterConditionItem();
-            item.PropertyChanged += (s, e) => RebuildFilterFormulaFromConditions();
-            SelectedDataset.FilterConditions.Add(item);
-            RebuildFilterFormulaFromConditions();
+            SelectedDataset?.AddRootFilterCondition();
         }
 
         private void ExecuteRemoveCondition(FilterConditionItem? item)
         {
-            if (SelectedDataset == null || item == null) return;
-            SelectedDataset.FilterConditions.Remove(item);
-            RebuildFilterFormulaFromConditions();
+            SelectedDataset?.RemoveFilterCondition(item);
         }
 
         private void RebuildFilterFormulaFromConditions()
         {
-            if (SelectedDataset == null) return;
-
-            if (!SelectedDataset.FilterConditions.Any())
-            {
-                SelectedDataset.FilterFormula = "1";
-                return;
-            }
-
-            var parts = SelectedDataset.FilterConditions
-                .Where(c => !string.IsNullOrWhiteSpace(c.Attribute) && !string.IsNullOrWhiteSpace(c.Operator))
-                .Select(c => $"[{c.Attribute}] {c.Operator} '{c.Value}'");
-
-            SelectedDataset.FilterFormula = parts.Any() ? string.Join(" AND ", parts) : "1";
+            SelectedDataset?.EnsureRootFilterItems();
         }
 
         #endregion
