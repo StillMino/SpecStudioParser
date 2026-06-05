@@ -666,18 +666,9 @@ namespace SpecStudioParser.ViewModels
                     evalDict["ObjectName"] = dwgObj.ObjectName;
                     evalDict["Layer"] = dwgObj.Layer;
 
-                    if (!string.IsNullOrEmpty(dataset.FilterFormula) && dataset.FilterFormula != "1")
+                    if (!FilterConditionEvaluator.Matches(dataset, evalDict))
                     {
-                        bool conditionPassed = true;
-                        foreach (var cond in dataset.FilterConditions)
-                        {
-                            string val = evalDict.ContainsKey(cond.Attribute) ? evalDict[cond.Attribute] : "";
-                            if (cond.Operator == "=" && val != cond.Value) conditionPassed = false;
-                            if (cond.Operator == "<>" && val == cond.Value) conditionPassed = false;
-                            if (cond.Operator == ">" && string.Compare(val, cond.Value) <= 0) conditionPassed = false;
-                            if (cond.Operator == "<" && string.Compare(val, cond.Value) >= 0) conditionPassed = false;
-                        }
-                        if (!conditionPassed) continue;
+                        continue;
                     }
 
                     var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -907,3 +898,4 @@ namespace SpecStudioParser.ViewModels
         #endregion
     }
 }
+
