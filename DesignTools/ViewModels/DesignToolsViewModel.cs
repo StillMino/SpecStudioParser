@@ -1,9 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HostMgd.ApplicationServices;
+using SpecStudioParser.DesignTools.Services;
 using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Windows.Input;
 using CadApp = HostMgd.ApplicationServices.Application;
 
@@ -82,6 +82,8 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
     public partial class DesignToolsViewModel : ObservableObject
     {
+        private readonly MultiCadLeaderAlignmentService _leaderAlignmentService = new();
+
         [ObservableProperty]
         private string _status = "Инструменты проектировщика готовы к работе.";
 
@@ -108,6 +110,22 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 "2d-drafting",
                 "2D-проектирование",
                 "Быстрые команды для работы с чертежом и выделением объектов.");
+
+            block.Features.Add(new DesignToolFeatureViewModel(
+                "2d-leaders-align-horizontal",
+                "Выровнять выноски по горизонтали",
+                "Выравнивает текстовые точки выбранных выносок по Y первой выбранной выноски.",
+                DesignToolAccessLevel.Free,
+                DesignToolContext.Drafting2D,
+                ExecuteAlignLeadersHorizontal));
+
+            block.Features.Add(new DesignToolFeatureViewModel(
+                "2d-leaders-align-vertical",
+                "Выровнять выноски по вертикали",
+                "Выравнивает текстовые точки выбранных выносок по X первой выбранной выноски.",
+                DesignToolAccessLevel.Free,
+                DesignToolContext.Drafting2D,
+                ExecuteAlignLeadersVertical));
 
             block.Features.Add(new DesignToolFeatureViewModel(
                 "2d-selection-info",
@@ -172,6 +190,30 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return block;
         }
 
+        private void ExecuteAlignLeadersHorizontal(DesignToolFeatureViewModel feature)
+        {
+            ExecuteLeaderAlignment(feature, LeaderAlignmentAxis.Horizontal);
+        }
+
+        private void ExecuteAlignLeadersVertical(DesignToolFeatureViewModel feature)
+        {
+            ExecuteLeaderAlignment(feature, LeaderAlignmentAxis.Vertical);
+        }
+
+        private void ExecuteLeaderAlignment(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis)
+        {
+            try
+            {
+                var result = _leaderAlignmentService.AlignSelectedLeaders(axis);
+                SetFeatureStatus(feature, result.Message);
+                WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
+            }
+            catch (Exception ex)
+            {
+                SetFeatureStatus(feature, $"Ошибка выравнивания выносок: {ex.Message}");
+            }
+        }
+
         private void ExecuteSelectionInfo(DesignToolFeatureViewModel feature)
         {
             try
@@ -220,6 +262,17 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 : $"Активный документ: {doc.Name}";
 
             Status = "Контекст nanoCAD обновлен.";
+        }
+
+        private static void WriteToNanoCad(string message)
+        {
+            try
+            {
+                CadApp.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage(message);
+            }
+            catch
+            {
+            }
         }
     }
 }
