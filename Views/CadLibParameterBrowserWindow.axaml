@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:cadlib="using:SpecStudioParser.CadLib"
+        x:Class="SpecStudioParser.Views.CadLibParameterBrowserWindow"
+        x:DataType="cadlib:CadLibParameterBrowserViewModel"
+        Title="Параметры CADLib БД"
+        Width="1000"
+        Height="650"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+        <Grid Grid.Row="0" ColumnDefinitions="220,*" ColumnSpacing="10" Margin="0,0,0,10">
+            <TextBox Grid.Column="0" Watermark="Категории" IsEnabled="False"/>
+            <TextBox Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Watermark="Поиск параметров"/>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="220,*" ColumnSpacing="10">
+            <Border Grid.Column="0" BorderBrush="#66888888" BorderThickness="1" CornerRadius="4">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="Категории" FontWeight="Bold" Margin="8"/>
+                    <ListBox Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"/>
+                </Grid>
+            </Border>
+
+            <DataGrid Grid.Column="1" ItemsSource="{Binding Parameters}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True" GridLinesVisibility="All">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Категория" Binding="{Binding CategoryName}" Width="180"/>
+                    <DataGridTextColumn Header="Системное имя" Binding="{Binding SystemName}" Width="220"/>
+                    <DataGridTextColumn Header="Отображаемое имя" Binding="{Binding DisplayName}" Width="260"/>
+                    <DataGridTextColumn Header="Тип" Binding="{Binding TypeId}" Width="70"/>
+                    <DataGridTextColumn Header="Комментарий" Binding="{Binding Comment}" Width="*"/>
+                    <DataGridTextColumn Header="idParamDef" Binding="{Binding IdParamDef}" Width="90"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+            <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Закрыть" Command="{Binding CloseCommand}"/>
+        </Grid>
+    </Grid>
+</Window>
