@@ -189,6 +189,16 @@ namespace SpecStudioParser.Models
             }
         }
 
+        public void GroupSelectedNestedFilterItems(FilterConditionGroup? group)
+        {
+            if (group == null) return;
+
+            if (group.GroupSelectedItems())
+            {
+                RebuildFilterFormula();
+            }
+        }
+
         private string GetLastRootItemJoinWithNext()
         {
             var lastItem = RootFilterItems.LastOrDefault();
