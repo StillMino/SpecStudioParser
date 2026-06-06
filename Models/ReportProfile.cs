@@ -163,8 +163,21 @@ namespace SpecStudioParser.Models
             }
 
             var insertIndex = RootFilterItems.IndexOf(rootParentItem) + 1;
-            RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(group));
-            RootFilterGroup.Items.Insert(insertIndex, FilterGroupItem.FromGroup(group));
+            if (insertIndex < 0 || insertIndex > RootFilterItems.Count)
+            {
+                insertIndex = RootFilterItems.Count;
+            }
+
+            if (!RootFilterItems.Any(item => item.Group == group))
+            {
+                RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(group));
+            }
+
+            if (!RootFilterGroup.Items.Any(item => item.Group == group))
+            {
+                RootFilterGroup.Items.Add(FilterGroupItem.FromGroup(group));
+            }
+
             RebuildFilterFormula();
         }
 
