@@ -70,12 +70,12 @@
 
 			<Grid IsVisible="{Binding IsDatasetEditorActive}" RowDefinitions="Auto, *" Margin="0,10,0,0">
 				<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,10">
-					<Grid ColumnDefinitions="Auto, Auto, *" ColumnSpacing="10">
+					<Grid ColumnDefinitions="Auto, Auto, *">
 						<Button Grid.Column="0" Classes="neutralButton" Command="{Binding BackToDatasetListCommand}" VerticalContentAlignment="Center" ToolTip.Tip="Вернуться к списку наборов данных">
 							<StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource IconBack}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="Назад"/></StackPanel>
 						</Button>
-						<TextBlock Grid.Column="1" Text="Набор:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
-						<TextBox Grid.Column="2" Text="{Binding SelectedDataset.Caption, Mode=TwoWay}" Watermark="Название набора данных" VerticalContentAlignment="Center"/>
+						<TextBlock Grid.Column="1" Text="Набор:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}" Margin="10,0,0,0"/>
+						<TextBox Grid.Column="2" Text="{Binding SelectedDataset.Caption, Mode=TwoWay}" Watermark="Название набора данных" VerticalContentAlignment="Center" Margin="10,0,0,0"/>
 					</Grid>
 				</Border>
 
