@@ -19,6 +19,7 @@ namespace SpecStudioParser.Commands
     public static class NanoCadCommands
     {
         private static MainWindow? _currentWindow;
+        private static MainWindowViewModel? _currentViewModel;
         private static bool _isAvaloniaInitialized = false;
 
         public static AppBuilder BuildAvaloniaApp()
@@ -64,8 +65,8 @@ namespace SpecStudioParser.Commands
                     try
                     {
                         _currentWindow = new MainWindow();
-                        var viewModel = new MainWindowViewModel();
-                        _currentWindow.DataContext = viewModel;
+                        _currentViewModel ??= new MainWindowViewModel();
+                        _currentWindow.DataContext = _currentViewModel;
 
                         _currentWindow.Closed += (s, e) => { _currentWindow = null; };
 
@@ -108,7 +109,17 @@ namespace SpecStudioParser.Commands
             try
             {
                 ed.WriteMessage("\n[SpecStudio]: Запуск фонового анализа чертежа...");
-                var viewModel = _currentWindow?.DataContext as MainWindowViewModel ?? new MainWindowViewModel();
+                var viewModel = _currentWindow?.DataContext as MainWindowViewModel;
+                if (viewModel == null)
+                {
+                    _currentViewModel ??= new MainWindowViewModel();
+                    viewModel = _currentViewModel;
+                }
+                else
+                {
+                    _currentViewModel = viewModel;
+                }
+
                 viewModel.ScanAllCommand.Execute(null);
                 ed.WriteMessage($"\n[SpecStudio]: Сканирование завершено. {viewModel.ConnectionStatus}\n");
             }
