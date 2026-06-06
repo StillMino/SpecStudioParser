@@ -183,6 +183,29 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void MoveNestedFilterGroupItemUpClick(object sender, RoutedEventArgs e)
+        {
+            MoveNestedFilterGroupItem(sender, -1);
+        }
+
+        private void MoveNestedFilterGroupItemDownClick(object sender, RoutedEventArgs e)
+        {
+            MoveNestedFilterGroupItem(sender, 1);
+        }
+
+        private void MoveNestedFilterGroupItem(object sender, int direction)
+        {
+            if (sender is not Button button ||
+                button.DataContext is not FilterGroupItem item ||
+                DataContext is not MainWindowViewModel viewModel ||
+                viewModel.SelectedDataset == null)
+            {
+                return;
+            }
+
+            viewModel.SelectedDataset.MoveNestedFilterGroupItem(item, direction);
+        }
+
         private void RemoveFilterGroupClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button button &&
