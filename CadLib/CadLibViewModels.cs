@@ -48,17 +48,8 @@ namespace SpecStudioParser.CadLib
         public ObservableCollection<CadLibConnectionProfile> Profiles { get; } = new();
         public ObservableCollection<CadLibDatabaseInfo> Databases { get; } = new();
 
-        public CadLibConnectionProfile? SelectedProfile
-        {
-            get => _selectedProfile;
-            set { _selectedProfile = value; OnPropertyChanged(); NotifyCommands(); }
-        }
-
-        public string ProfileName
-        {
-            get => _profileName;
-            set { _profileName = value ?? string.Empty; OnPropertyChanged(); NotifyCommands(); }
-        }
+        public CadLibConnectionProfile? SelectedProfile { get => _selectedProfile; set { _selectedProfile = value; OnPropertyChanged(); NotifyCommands(); } }
+        public string ProfileName { get => _profileName; set { _profileName = value ?? string.Empty; OnPropertyChanged(); NotifyCommands(); } }
 
         public CadLibDatabaseProviderKind ProviderKind
         {
@@ -162,10 +153,7 @@ namespace SpecStudioParser.CadLib
                     Status = Databases.Count == 0 ? "Сервер доступен, но список баз данных пуст." : $"Загружено баз: {Databases.Count}. CADLib: {cadLibCount}.";
                 });
             }
-            catch (Exception ex)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() => SetError("Не удалось загрузить список баз.", ex));
-            }
+            catch (Exception ex) { await Dispatcher.UIThread.InvokeAsync(() => SetError("Не удалось загрузить список баз.", ex)); }
             finally { await Dispatcher.UIThread.InvokeAsync(() => IsBusy = false); }
         }
 
@@ -182,10 +170,7 @@ namespace SpecStudioParser.CadLib
                 await Task.Run(async () => await _service.ConnectAndLoadParametersAsync(settings));
                 await Dispatcher.UIThread.InvokeAsync(() => Status = "CADLib схема найдена. Параметры доступны.");
             }
-            catch (Exception ex)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() => SetError("Проверка CADLib схемы не выполнена.", ex));
-            }
+            catch (Exception ex) { await Dispatcher.UIThread.InvokeAsync(() => SetError("Проверка CADLib схемы не выполнена.", ex)); }
             finally { await Dispatcher.UIThread.InvokeAsync(() => IsBusy = false); }
         }
 
@@ -209,18 +194,11 @@ namespace SpecStudioParser.CadLib
                     RequestClose?.Invoke(new CadLibConnectionResult { Settings = settings, Parameters = parameters });
                 });
             }
-            catch (Exception ex)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() => SetError("Не удалось прочитать CADLib БД.", ex));
-            }
+            catch (Exception ex) { await Dispatcher.UIThread.InvokeAsync(() => SetError("Не удалось прочитать CADLib БД.", ex)); }
             finally { await Dispatcher.UIThread.InvokeAsync(() => IsBusy = false); }
         }
 
-        private void SetError(string message, Exception ex)
-        {
-            Status = message;
-            Details = ex.Message;
-        }
+        private void SetError(string message, Exception ex) { Status = message; Details = ex.Message; }
 
         private CadLibConnectionSettings BuildSettings()
         {
@@ -260,10 +238,12 @@ namespace SpecStudioParser.CadLib
 
     public sealed class CadLibParameterBrowserViewModel : INotifyPropertyChanged
     {
+        private const string NoFilter = "Без фильтра";
         private readonly ObservableCollection<CadLibParameterInfo> _source = new();
         private string _searchText = string.Empty;
+        private string _categorySearchText = string.Empty;
         private string _selectedCategory = "Все";
-        private string _selectedType = "Все";
+        private string _selectedType = NoFilter;
         private CadLibParameterInfo? _selectedParameter;
         private string _status = string.Empty;
 
@@ -273,6 +253,7 @@ namespace SpecStudioParser.CadLib
             CopySystemNameCommand = new RelayCommand(() => RequestCopy?.Invoke(SelectedParameter?.SystemName ?? string.Empty), () => SelectedParameter != null);
             CopyDisplayNameCommand = new RelayCommand(() => RequestCopy?.Invoke(SelectedParameter?.DisplayName ?? string.Empty), () => SelectedParameter != null);
             CopyIdCommand = new RelayCommand(() => RequestCopy?.Invoke(SelectedParameter?.IdParamDef.ToString() ?? string.Empty), () => SelectedParameter != null);
+            ClearTypeFilterCommand = new RelayCommand(() => SelectedType = NoFilter);
             foreach (var parameter in CadLibParameterCache.Current.Parameters) _source.Add(parameter);
             ConnectionInfo = CadLibParameterCache.Current.ConnectionStatusText;
             RebuildCategories();
@@ -284,32 +265,51 @@ namespace SpecStudioParser.CadLib
         public event Action? RequestClose;
         public event Action<string>? RequestCopy;
         public ObservableCollection<string> Categories { get; } = new();
+        public ObservableCollection<string> FilteredCategories { get; } = new();
         public ObservableCollection<string> Types { get; } = new();
         public ObservableCollection<CadLibParameterInfo> Parameters { get; } = new();
         public ICommand CloseCommand { get; }
         public ICommand CopySystemNameCommand { get; }
         public ICommand CopyDisplayNameCommand { get; }
         public ICommand CopyIdCommand { get; }
+        public ICommand ClearTypeFilterCommand { get; }
         public string ConnectionInfo { get; }
 
         public string SearchText { get => _searchText; set { _searchText = value ?? string.Empty; OnPropertyChanged(); ApplyFilter(); } }
+        public string CategorySearchText { get => _categorySearchText; set { _categorySearchText = value ?? string.Empty; OnPropertyChanged(); ApplyCategorySearch(); } }
         public string SelectedCategory { get => _selectedCategory; set { _selectedCategory = value ?? "Все"; OnPropertyChanged(); ApplyFilter(); } }
-        public string SelectedType { get => _selectedType; set { _selectedType = value ?? "Все"; OnPropertyChanged(); ApplyFilter(); } }
+        public string SelectedType { get => _selectedType; set { _selectedType = value ?? NoFilter; OnPropertyChanged(); OnPropertyChanged(nameof(TypeFilterCaption)); ApplyFilter(); } }
+        public string TypeFilterCaption => string.Equals(SelectedType, NoFilter, StringComparison.OrdinalIgnoreCase) ? "Тип" : SelectedType;
         public CadLibParameterInfo? SelectedParameter { get => _selectedParameter; set { _selectedParameter = value; OnPropertyChanged(); NotifyCopyCommands(); } }
         public string Status { get => _status; set { _status = value; OnPropertyChanged(); } }
 
         private void RebuildCategories()
         {
-            Categories.Clear(); Categories.Add("Все");
-            foreach (var category in _source.Select(p => string.IsNullOrWhiteSpace(p.CategoryName) ? "Без категории" : p.CategoryName).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(c => c)) Categories.Add(category);
+            Categories.Clear();
+            Categories.Add("Все");
+            foreach (var category in _source.Select(p => string.IsNullOrWhiteSpace(p.CategoryName) ? "Без категории" : p.CategoryName).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(c => c))
+                Categories.Add(category);
             SelectedCategory = "Все";
+            ApplyCategorySearch();
+        }
+
+        private void ApplyCategorySearch()
+        {
+            FilteredCategories.Clear();
+            var search = CategorySearchText.Trim().ToLowerInvariant();
+            foreach (var category in Categories.Where(c => string.IsNullOrWhiteSpace(search) || c.ToLowerInvariant().Contains(search)))
+                FilteredCategories.Add(category);
+
+            if (!FilteredCategories.Contains(SelectedCategory)) SelectedCategory = "Все";
         }
 
         private void RebuildTypes()
         {
-            Types.Clear(); Types.Add("Все");
-            foreach (var type in _source.Select(p => p.TypeDisplayName).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(t => t)) Types.Add(type);
-            SelectedType = "Все";
+            Types.Clear();
+            Types.Add(NoFilter);
+            foreach (var type in _source.Select(p => p.TypeDisplayName).Where(t => !string.IsNullOrWhiteSpace(t)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(t => t))
+                Types.Add(type);
+            SelectedType = NoFilter;
         }
 
         private void ApplyFilter()
@@ -318,7 +318,7 @@ namespace SpecStudioParser.CadLib
             var query = _source.AsEnumerable();
             if (!string.IsNullOrWhiteSpace(SelectedCategory) && !string.Equals(SelectedCategory, "Все", StringComparison.OrdinalIgnoreCase))
                 query = string.Equals(SelectedCategory, "Без категории", StringComparison.OrdinalIgnoreCase) ? query.Where(p => string.IsNullOrWhiteSpace(p.CategoryName)) : query.Where(p => string.Equals(p.CategoryName, SelectedCategory, StringComparison.OrdinalIgnoreCase));
-            if (!string.IsNullOrWhiteSpace(SelectedType) && !string.Equals(SelectedType, "Все", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(SelectedType) && !string.Equals(SelectedType, NoFilter, StringComparison.OrdinalIgnoreCase))
                 query = query.Where(p => string.Equals(p.TypeDisplayName, SelectedType, StringComparison.OrdinalIgnoreCase));
             if (!string.IsNullOrWhiteSpace(SearchText))
             {
