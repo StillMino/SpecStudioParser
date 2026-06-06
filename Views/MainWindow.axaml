@@ -2,50 +2,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:SpecStudioParser.ViewModels"
         xmlns:system="clr-namespace:System;assembly=System.Runtime"
-        xmlns:media="using:Avalonia.Media"
         x:Class="SpecStudioParser.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Конструктор Спецификаций nanoCAD"
         Width="1100" Height="700"
         Background="{StaticResource AppBackgroundBrush}"
         WindowStartupLocation="CenterOwner">
-
-	<Window.Resources>
-		<media:SolidColorBrush x:Key="AppBackgroundBrush" Color="#F7F7F5"/>
-		<media:SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
-		<media:SolidColorBrush x:Key="TextBrush" Color="#1F1F1F"/>
-		<media:SolidColorBrush x:Key="SecondaryTextBrush" Color="#5F6368"/>
-		<media:SolidColorBrush x:Key="BorderBrush" Color="#D0D0CC"/>
-		<media:SolidColorBrush x:Key="AccentBrush" Color="#B76E2B"/>
-		<media:SolidColorBrush x:Key="AccentSoftBrush" Color="#F3E6DA"/>
-	</Window.Resources>
-
-	<Window.Styles>
-		<Style Selector="Button.neutralButton">
-			<Setter Property="Background" Value="{StaticResource PanelBrush}"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Padding" Value="10,6"/>
-		</Style>
-		<Style Selector="Button.accentButton">
-			<Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Padding" Value="10,6"/>
-		</Style>
-		<Style Selector="Button.commandButton">
-			<Setter Property="HorizontalAlignment" Value="Stretch"/>
-			<Setter Property="HorizontalContentAlignment" Value="Center"/>
-			<Setter Property="Padding" Value="10"/>
-		</Style>
-		<Style Selector="Button.iconButton">
-			<Setter Property="Width" Value="32"/>
-			<Setter Property="Height" Value="28"/>
-			<Setter Property="Padding" Value="4"/>
-		</Style>
-	</Window.Styles>
 
 	<Grid RowDefinitions="*, Auto" Background="{StaticResource AppBackgroundBrush}">
 
