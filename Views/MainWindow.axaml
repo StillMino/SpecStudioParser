@@ -19,7 +19,7 @@
 						<TextBox Text="{Binding RootProfilesPath, Mode=TwoWay}" Watermark="Путь к папке XML-профилей" Margin="0,4,0,0"/>
 						<TextBlock Text="Выберите папку профилей через проводник или введите путь вручную и нажмите 'Применить путь'. Если папки нет, она будет создана." TextWrapping="Wrap" Margin="0,4,0,0" FontSize="11" Foreground="#475569"/>
 					</StackPanel>
-					<Button Grid.Column="1" Content="Выбрать папку..." Command="{Binding ChangeRootFolderCommand}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+					<Button Grid.Column="1" Content="Выбрать папку..." Click="ChooseProfileFolderClick" VerticalAlignment="Center" Margin="10,0,0,0"/>
 					<Button Grid.Column="2" Content="Применить путь" Click="ApplyProfileFolderClick" VerticalAlignment="Center" Margin="8,0,0,0"/>
 				</Grid>
 			</Border>
