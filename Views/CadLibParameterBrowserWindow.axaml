@@ -6,22 +6,25 @@
         Title="Параметры CADLib БД"
         Width="1000"
         Height="650"
+        Background="{StaticResource AppBackgroundBrush}"
         WindowStartupLocation="CenterOwner">
-    <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="12" Background="{StaticResource AppBackgroundBrush}">
         <Grid Grid.Row="0" ColumnDefinitions="220,*" Margin="0,0,0,10">
             <TextBox Grid.Column="0" Watermark="Категории" IsEnabled="False"/>
             <TextBox Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Watermark="Поиск параметров" Margin="10,0,0,0"/>
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="220,*">
-            <Border Grid.Column="0" BorderBrush="#66888888" BorderThickness="1" CornerRadius="4">
+            <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4">
                 <Grid RowDefinitions="Auto,*">
-                    <TextBlock Grid.Row="0" Text="Категории" FontWeight="Bold" Margin="8"/>
-                    <ListBox Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"/>
+                    <Border Grid.Row="0" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="0,0,0,1" Padding="8">
+                        <TextBlock Text="Категории" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                    </Border>
+                    <ListBox Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}"/>
                 </Grid>
             </Border>
 
-            <DataGrid Grid.Column="1" ItemsSource="{Binding Parameters}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True" GridLinesVisibility="All" Margin="10,0,0,0">
+            <DataGrid Grid.Column="1" ItemsSource="{Binding Parameters}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True" GridLinesVisibility="All" BorderBrush="{StaticResource BorderBrush}" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" Margin="10,0,0,0">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Категория" Binding="{Binding CategoryName}" Width="180"/>
                     <DataGridTextColumn Header="Системное имя" Binding="{Binding SystemName}" Width="220"/>
@@ -34,8 +37,8 @@
         </Grid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
-            <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Center"/>
-            <Button Grid.Column="1" Content="Закрыть" Command="{Binding CloseCommand}"/>
+            <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}"/>
+            <Button Grid.Column="1" Classes="neutralButton" Content="Закрыть" Command="{Binding CloseCommand}"/>
         </Grid>
     </Grid>
 </Window>
