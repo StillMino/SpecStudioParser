@@ -7,6 +7,7 @@ using SpecStudioParser.Services;
 using SpecStudioParser.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace SpecStudioParser.Views
@@ -122,6 +123,7 @@ namespace SpecStudioParser.Views
             {
                 ProfileStorageService.EnsureProfilesFolder(viewModel.RootProfilesPath);
                 viewModel.RefreshAvailableXmlFilesList();
+                ApplyProfileSearchFilter();
                 viewModel.ConnectionStatus = $"Папка профилей применена: {viewModel.RootProfilesPath}";
             }
             catch (Exception ex)
@@ -143,6 +145,7 @@ namespace SpecStudioParser.Views
                 viewModel.RootProfilesPath = result;
                 ProfileStorageService.EnsureProfilesFolder(viewModel.RootProfilesPath);
                 viewModel.RefreshAvailableXmlFilesList();
+                ApplyProfileSearchFilter();
                 viewModel.ConnectionStatus = $"Папка профилей выбрана: {viewModel.RootProfilesPath}";
             }
             catch (Exception ex)
@@ -151,11 +154,44 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void ProfileSearchTextChanged(object sender, TextChangedEventArgs e)
+        {
+            ApplyProfileSearchFilter();
+        }
+
+        private void ApplyProfileSearchFilter()
+        {
+            if (DataContext is not MainWindowViewModel viewModel) return;
+
+            var searchBox = this.FindControl<TextBox>("ProfileSearchBox");
+            var searchText = searchBox?.Text?.Trim() ?? string.Empty;
+
+            viewModel.AvailableXmlFiles.Clear();
+            if (!Directory.Exists(viewModel.RootProfilesPath)) return;
+
+            var files = Directory.GetFiles(viewModel.RootProfilesPath, "*.xml")
+                .Select(Path.GetFileName)
+                .Where(file => !string.IsNullOrWhiteSpace(file))
+                .Where(file => string.IsNullOrWhiteSpace(searchText) || file!.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(file => file);
+
+            foreach (var file in files)
+            {
+                viewModel.AvailableXmlFiles.Add(file!);
+            }
+
+            if (!string.IsNullOrWhiteSpace(viewModel.SelectedXmlFile) && !viewModel.AvailableXmlFiles.Contains(viewModel.SelectedXmlFile))
+            {
+                viewModel.SelectedXmlFile = string.Empty;
+            }
+        }
+
         private void ImportXmlClick(object sender, RoutedEventArgs e)
         {
             if (DataContext is MainWindowViewModel viewModel)
             {
                 ProfileImportService.ImportXmlWithHostDialog(viewModel);
+                ApplyProfileSearchFilter();
                 RebuildDataGridColumns();
             }
         }
