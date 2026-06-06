@@ -4,35 +4,47 @@
         x:Class="SpecStudioParser.Views.CadLibParameterPickerWindow"
         x:DataType="cadlib:CadLibParameterPickerViewModel"
         Title="Выбор параметра CADLib"
-        Width="560"
+        Width="540"
         Height="500"
         Background="{StaticResource AppBackgroundBrush}"
         WindowStartupLocation="CenterOwner">
-    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,116" Margin="10" Background="{StaticResource AppBackgroundBrush}">
+    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,42" Margin="10" Background="{StaticResource AppBackgroundBrush}">
         <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding SearchText, Mode=TwoWay}" Watermark="Поиск по группе или параметру" Margin="0,0,8,8"/>
 
-        <StackPanel Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Spacing="6">
-            <Button Classes="neutralButton" Content="{Binding SortButtonText}" Command="{Binding ToggleSortCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
-            <Button Classes="neutralButton" Content="Раскрыть" Command="{Binding ExpandAllCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
-            <Button Classes="neutralButton" Content="Скрыть" Command="{Binding CollapseAllCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
-            <Button Classes="neutralButton" Content="{Binding NameModeButtonText}" Command="{Binding ToggleNameModeCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
+        <StackPanel Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Spacing="6" HorizontalAlignment="Stretch">
+            <Button Classes="neutralButton iconButton" Command="{Binding ToggleSortCommand}" ToolTip.Tip="Изменить сортировку" HorizontalAlignment="Stretch">
+                <Path Data="M7 3h10l-4 4h3v10h-6V7h3L7 3z M7 21h10l-4-4h3V7h-6v10h3l-6 4z" Fill="{StaticResource AccentBrush}" Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
+            <Button Classes="neutralButton iconButton" Command="{Binding ExpandAllCommand}" ToolTip.Tip="Раскрыть все группы" HorizontalAlignment="Stretch">
+                <Path Data="M7 10l5 5 5-5H7z M4 4h16v2H4V4z M4 18h16v2H4v-2z" Fill="{StaticResource AccentBrush}" Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
+            <Button Classes="neutralButton iconButton" Command="{Binding CollapseAllCommand}" ToolTip.Tip="Скрыть все группы" HorizontalAlignment="Stretch">
+                <Path Data="M7 14l5-5 5 5H7z M4 4h16v2H4V4z M4 18h16v2H4v-2z" Fill="{StaticResource AccentBrush}" Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
+            <Button Classes="neutralButton iconButton" Command="{Binding ToggleNameModeCommand}" ToolTip.Tip="Переключить системные/отображаемые имена" HorizontalAlignment="Stretch">
+                <Path Data="M4 7h10v2H4V7z M4 11h16v2H4v-2z M4 15h10v2H4v-2z M17 6h3v3h-3V6z M17 15h3v3h-3v-3z" Fill="{StaticResource AccentBrush}" Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
             <Separator Margin="0,2"/>
-            <Button Classes="accentButton" Content="Выбрать" Command="{Binding SelectCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
-            <Button Classes="neutralButton" Content="Закрыть" Command="{Binding CloseCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
+            <Button Classes="accentButton iconButton" Command="{Binding SelectCommand}" ToolTip.Tip="Выбрать параметр" HorizontalAlignment="Stretch">
+                <Path Data="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" Fill="{StaticResource AccentBrush}" Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
+            <Button Classes="neutralButton iconButton" Command="{Binding CloseCommand}" ToolTip.Tip="Закрыть" HorizontalAlignment="Stretch">
+                <Path Data="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.29 10.59 10.59 16.89 4.29z" Fill="{StaticResource AccentBrush}" Width="16" Height="16" Stretch="Uniform"/>
+            </Button>
         </StackPanel>
 
-        <ScrollViewer Grid.Row="1" Grid.Column="0" Margin="0,0,8,0" Background="{StaticResource PanelBrush}">
-            <ItemsControl ItemsSource="{Binding Groups}">
+        <ScrollViewer Grid.Row="1" Grid.Column="0" Margin="0,0,8,0" Background="{StaticResource PanelBrush}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Groups}" HorizontalAlignment="Stretch">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="cadlib:CadLibParameterGroupViewModel">
-                        <Expander Header="{Binding Caption}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,1" Padding="0" Foreground="{StaticResource TextBrush}">
-                            <ItemsControl ItemsSource="{Binding Parameters}">
+                        <Expander Header="{Binding Caption}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,1" Padding="0" Foreground="{StaticResource TextBrush}">
+                            <ItemsControl ItemsSource="{Binding Parameters}" HorizontalAlignment="Stretch">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="cadlib:CadLibParameterListItemViewModel">
                                         <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="18,0,0,1" Padding="6,3" Background="Transparent" BorderThickness="0" Tag="{Binding Parameter}" Click="OnParameterClick">
-                                            <Grid RowDefinitions="Auto,Auto">
-                                                <TextBlock Grid.Row="0" Text="{Binding DisplayText}" Foreground="{StaticResource TextBrush}"/>
-                                                <TextBlock Grid.Row="1" Text="{Binding DetailText}" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
+                                            <Grid RowDefinitions="Auto,Auto" HorizontalAlignment="Stretch">
+                                                <TextBlock Grid.Row="0" Text="{Binding DisplayText}" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Row="1" Text="{Binding DetailText}" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
                                             </Grid>
                                         </Button>
                                     </DataTemplate>
