@@ -163,6 +163,7 @@ namespace SpecStudioParser.ViewModels
         public ICommand ScanSelectedCommand { get; }
         public ICommand RefreshDrawingDataCommand { get; }
         public ICommand RefreshDrawingDataCommand { get; }
+        public ICommand RefreshDrawingDataCommand { get; }
         public ICommand OpenSettingsWindowCommand { get; }
         public ICommand ImportXmlCommand { get; }
         public ICommand GenerateSpecificationCommand { get; }
@@ -909,5 +910,6 @@ namespace SpecStudioParser.ViewModels
         #endregion
     }
 }
+
 
 
