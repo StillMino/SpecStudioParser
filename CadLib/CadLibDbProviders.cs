@@ -42,20 +42,28 @@ namespace SpecStudioParser.CadLib
     {
         public async Task<IReadOnlyList<CadLibDatabaseInfo>> GetDatabasesAsync(CadLibConnectionSettings settings, CancellationToken cancellationToken = default)
         {
-            var result = new List<CadLibDatabaseInfo>();
-            await using var connection = new NpgsqlConnection(BuildConnectionString(settings, "postgres"));
-            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname;";
-
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            var databaseNames = new List<string>();
+            await using (var connection = new NpgsqlConnection(BuildConnectionString(settings, "postgres")))
             {
-                result.Add(new CadLibDatabaseInfo { Name = reader.GetString(0) });
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname;";
+
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    databaseNames.Add(reader.GetString(0));
+                }
             }
 
-            return result;
+            var result = new List<CadLibDatabaseInfo>();
+            foreach (var databaseName in databaseNames)
+            {
+                var isCadLib = await IsCadLibDatabaseAsync(settings, databaseName, cancellationToken).ConfigureAwait(false);
+                result.Add(new CadLibDatabaseInfo { Name = databaseName, IsCadLib = isCadLib });
+            }
+
+            return result.OrderByDescending(d => d.IsCadLib).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         public async Task ValidateCadLibSchemaAsync(CadLibConnectionSettings settings, CancellationToken cancellationToken = default)
@@ -88,6 +96,21 @@ namespace SpecStudioParser.CadLib
             }
 
             return result;
+        }
+
+        private static async Task<bool> IsCadLibDatabaseAsync(CadLibConnectionSettings settings, string databaseName, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await using var connection = new NpgsqlConnection(BuildConnectionString(settings, databaseName));
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                var schema = await LoadSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+                return schema.ContainsKey("ParamDefs") && schema.ContainsKey("ObjectsShadow");
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static string BuildConnectionString(CadLibConnectionSettings settings, string databaseName)
@@ -125,20 +148,28 @@ namespace SpecStudioParser.CadLib
     {
         public async Task<IReadOnlyList<CadLibDatabaseInfo>> GetDatabasesAsync(CadLibConnectionSettings settings, CancellationToken cancellationToken = default)
         {
-            var result = new List<CadLibDatabaseInfo>();
-            await using var connection = new SqlConnection(BuildConnectionString(settings, "master"));
-            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT name FROM sys.databases WHERE state_desc = 'ONLINE' ORDER BY name;";
-
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            var databaseNames = new List<string>();
+            await using (var connection = new SqlConnection(BuildConnectionString(settings, "master")))
             {
-                result.Add(new CadLibDatabaseInfo { Name = reader.GetString(0) });
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT name FROM sys.databases WHERE state_desc = 'ONLINE' ORDER BY name;";
+
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    databaseNames.Add(reader.GetString(0));
+                }
             }
 
-            return result;
+            var result = new List<CadLibDatabaseInfo>();
+            foreach (var databaseName in databaseNames)
+            {
+                var isCadLib = await IsCadLibDatabaseAsync(settings, databaseName, cancellationToken).ConfigureAwait(false);
+                result.Add(new CadLibDatabaseInfo { Name = databaseName, IsCadLib = isCadLib });
+            }
+
+            return result.OrderByDescending(d => d.IsCadLib).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         public async Task ValidateCadLibSchemaAsync(CadLibConnectionSettings settings, CancellationToken cancellationToken = default)
@@ -160,7 +191,7 @@ namespace SpecStudioParser.CadLib
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
             var schema = await LoadSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
-            var sql = CadLibParameterSqlBuilder.Build(schema, quote: s => $"[{s.Replace("]", "]]")}]", coalesce: "ISNULL");
+            var sql = CadLibParameterSqlBuilder.Build(schema, quote: s => $"[{s.Replace("]", "]]" )}]", coalesce: "ISNULL");
 
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
@@ -171,6 +202,21 @@ namespace SpecStudioParser.CadLib
             }
 
             return result;
+        }
+
+        private static async Task<bool> IsCadLibDatabaseAsync(CadLibConnectionSettings settings, string databaseName, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await using var connection = new SqlConnection(BuildConnectionString(settings, databaseName));
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                var schema = await LoadSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+                return schema.ContainsKey("ParamDefs") && schema.ContainsKey("ObjectsShadow");
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static string BuildConnectionString(CadLibConnectionSettings settings, string databaseName)
