@@ -161,6 +161,28 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void DissolveNestedFilterGroupClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button &&
+                button.DataContext is FilterConditionGroup group &&
+                DataContext is MainWindowViewModel viewModel &&
+                viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.DissolveNestedFilterGroup(group);
+            }
+        }
+
+        private void PromoteNestedFilterGroupClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button &&
+                button.DataContext is FilterConditionGroup group &&
+                DataContext is MainWindowViewModel viewModel &&
+                viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.PromoteNestedFilterGroup(group);
+            }
+        }
+
         private void RemoveFilterGroupClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button button &&

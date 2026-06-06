@@ -132,6 +132,55 @@ namespace SpecStudioParser.Models
             RebuildFilterFormula();
         }
 
+        public void DissolveNestedFilterGroup(FilterConditionGroup? group)
+        {
+            if (RootFilterGroup.DissolveGroup(group))
+            {
+                RebuildFilterFormula();
+            }
+        }
+
+        public void PromoteNestedFilterGroup(FilterConditionGroup? group)
+        {
+            if (group == null) return;
+            EnsureRootFilterItems();
+
+            var parent = RootFilterGroup.FindParentOfGroup(group);
+            if (parent == null || parent == RootFilterGroup)
+            {
+                return;
+            }
+
+            var rootParentItem = RootFilterItems.FirstOrDefault(item => item.Group == parent);
+            if (rootParentItem == null)
+            {
+                return;
+            }
+
+            if (!parent.RemoveGroup(group))
+            {
+                return;
+            }
+
+            var insertIndex = RootFilterItems.IndexOf(rootParentItem) + 1;
+            if (insertIndex < 0 || insertIndex > RootFilterItems.Count)
+            {
+                insertIndex = RootFilterItems.Count;
+            }
+
+            if (!RootFilterItems.Any(item => item.Group == group))
+            {
+                RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(group));
+            }
+
+            if (!RootFilterGroup.Items.Any(item => item.Group == group))
+            {
+                RootFilterGroup.Items.Add(FilterGroupItem.FromGroup(group));
+            }
+
+            RebuildFilterFormula();
+        }
+
         private string GetLastRootItemJoinWithNext()
         {
             var lastItem = RootFilterItems.LastOrDefault();
