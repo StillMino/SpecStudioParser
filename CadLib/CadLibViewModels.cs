@@ -121,7 +121,7 @@ namespace SpecStudioParser.CadLib
             try
             {
                 var settings = BuildSettings();
-                var databases = await Task.Run(() => _service.GetDatabasesAsync(settings)).Unwrap();
+                var databases = await Task.Run(async () => await _service.GetDatabasesAsync(settings));
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -163,7 +163,7 @@ namespace SpecStudioParser.CadLib
             {
                 var settings = BuildSettings();
                 settings.DatabaseName = SelectedDatabase.Name;
-                var parameters = await Task.Run(() => _service.ConnectAndLoadParametersAsync(settings)).Unwrap();
+                var parameters = await Task.Run(async () => await _service.ConnectAndLoadParametersAsync(settings));
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
