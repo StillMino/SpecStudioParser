@@ -88,18 +88,27 @@ namespace SpecStudioParser.CadLib
     {
         public int IdParamDef { get; init; }
         public int TypeId { get; init; }
+        public string TypeName { get; init; } = string.Empty;
         public string SystemName { get; init; } = string.Empty;
         public string DisplayName { get; init; } = string.Empty;
         public string CategoryName { get; init; } = string.Empty;
         public string Comment { get; init; } = string.Empty;
 
-        public string TypeDisplayName => TypeId switch
+        public string TypeDisplayName
         {
-            1 => "Строка",
-            2 => "Целое",
-            3 => "Число",
-            _ => TypeId == 0 ? "Не задан" : TypeId.ToString()
-        };
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(TypeName)) return TypeName;
+
+                return TypeId switch
+                {
+                    1 => "Строка",
+                    2 => "Целое",
+                    3 => "Число",
+                    _ => TypeId == 0 ? "Не задан" : TypeId.ToString()
+                };
+            }
+        }
 
         public string SearchText => $"{SystemName} {DisplayName} {CategoryName} {Comment} {TypeDisplayName}".ToLowerInvariant();
     }
