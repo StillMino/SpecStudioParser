@@ -7,10 +7,15 @@ namespace SpecStudioParser.Views
 {
     public partial class CadLibParameterPickerWindow : Window
     {
-        public CadLibParameterPickerWindow()
+        public CadLibParameterPickerWindow() : this(new CadLibParameterPickerOptions())
+        {
+        }
+
+        public CadLibParameterPickerWindow(CadLibParameterPickerOptions options)
         {
             InitializeComponent();
-            DataContext ??= new CadLibParameterPickerViewModel();
+            DataContext = new CadLibParameterPickerViewModel(options);
+            Title = options.Title;
 
             if (DataContext is CadLibParameterPickerViewModel viewModel)
             {
@@ -18,7 +23,8 @@ namespace SpecStudioParser.Views
             }
         }
 
-        public CadLibParameterInfo? SelectedParameter { get; private set; }
+        public CadLibParameterPickerResult? Result { get; private set; }
+        public CadLibParameterInfo? SelectedParameter => Result?.SingleParameter;
 
         private void InitializeComponent()
         {
@@ -33,10 +39,10 @@ namespace SpecStudioParser.Views
             }
         }
 
-        private void OnRequestClose(CadLibParameterInfo? parameter)
+        private void OnRequestClose(CadLibParameterPickerResult? result)
         {
-            SelectedParameter = parameter;
-            Close(parameter);
+            Result = result;
+            Close(result);
         }
     }
 }
