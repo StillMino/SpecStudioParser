@@ -38,155 +38,153 @@
 			</Grid>
 		</Border>
 
-		<TabControl Grid.Row="1" SelectedIndex="{Binding SettingsTargetTabIdx, Mode=TwoWay}">
-			<TabItem Header="Наборы данных">
-				<Grid ColumnDefinitions="*, 160" Margin="0,10,0,0">
-					<DataGrid Grid.Column="0" Name="DatasetsGrid" ItemsSource="{Binding ActiveProfile.Datasets}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="False" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
-						<DataGrid.Columns>
-							<DataGridTextColumn Header="Название набора (Caption)" Binding="{Binding Caption}" Width="2*"/>
-							<DataGridTextColumn Header="Активных типов САПР" Binding="{Binding TargetTypes.Count}" Width="150"/>
-							<DataGridTextColumn Header="Колонок в таблице" Binding="{Binding Columns.Count}" Width="150"/>
-						</DataGrid.Columns>
-					</DataGrid>
+		<Grid Grid.Row="1">
+			<Grid IsVisible="{Binding !IsDatasetEditorActive}" ColumnDefinitions="*, 160" Margin="0,10,0,0">
+				<DataGrid Grid.Column="0" Name="DatasetsGrid" ItemsSource="{Binding ActiveProfile.Datasets}" AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="False" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+					<DataGrid.Columns>
+						<DataGridTextColumn Header="Название набора" Binding="{Binding Caption}" Width="2*"/>
+						<DataGridTextColumn Header="Типов САПР" Binding="{Binding TargetTypes.Count}" Width="150"/>
+						<DataGridTextColumn Header="Колонок" Binding="{Binding Columns.Count}" Width="120"/>
+					</DataGrid.Columns>
+				</DataGrid>
 
-					<StackPanel Grid.Column="1" Spacing="8" Margin="12,0,0,0">
-						<Button Classes="neutralButton commandButton" Command="{Binding AddDatasetCommand}">
-							<StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconPlus}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="Создать"/></StackPanel>
-						</Button>
-						<Button Classes="neutralButton commandButton" Command="{Binding MoveDatasetUpCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}">
-							<StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconUp}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="Выше"/></StackPanel>
-						</Button>
-						<Button Classes="neutralButton commandButton" Command="{Binding MoveDatasetDownCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}">
-							<StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconDown}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="Ниже"/></StackPanel>
-						</Button>
-						<Button Classes="dangerButton commandButton" Command="{Binding RemoveDatasetCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}">
-							<StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/><TextBlock Text="Удалить"/></StackPanel>
-						</Button>
-						<Separator Margin="0,5"/>
-						<Button Classes="accentButton commandButton" Command="{Binding ConfigureSelectedDatasetCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}" Height="38">
-							<TextBlock Text="Настроить" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-						</Button>
-					</StackPanel>
-				</Grid>
-			</TabItem>
+				<StackPanel Grid.Column="1" Spacing="8" Margin="12,0,0,0">
+					<Button Classes="neutralButton commandButton" Command="{Binding AddDatasetCommand}">
+						<StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconPlus}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="Создать"/></StackPanel>
+					</Button>
+					<Button Classes="neutralButton commandButton" Command="{Binding MoveDatasetUpCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}">
+						<StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconUp}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="Выше"/></StackPanel>
+					</Button>
+					<Button Classes="neutralButton commandButton" Command="{Binding MoveDatasetDownCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}">
+						<StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconDown}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="Ниже"/></StackPanel>
+					</Button>
+					<Button Classes="dangerButton commandButton" Command="{Binding RemoveDatasetCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}">
+						<StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/><TextBlock Text="Удалить"/></StackPanel>
+					</Button>
+					<Separator Margin="0,5"/>
+					<Button Classes="accentButton commandButton" Command="{Binding ConfigureSelectedDatasetCommand}" CommandParameter="{Binding #DatasetsGrid.SelectedItem}" Height="38">
+						<TextBlock Text="Настроить" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+					</Button>
+				</StackPanel>
+			</Grid>
 
-			<TabItem Header="Параметры выбранного набора" IsEnabled="{Binding IsDatasetEditorActive}">
-				<Grid RowDefinitions="Auto, *" Margin="0,10,0,0">
-					<StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
-						<TextBlock Text="Редактируется набор:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
-						<TextBox Text="{Binding SelectedDataset.Caption, Mode=TwoWay}" Width="250" VerticalContentAlignment="Center"/>
-						<Button Classes="neutralButton" Command="{Binding BackToDatasetListCommand}" VerticalContentAlignment="Center" ToolTip.Tip="Вернуться к списку наборов данных">
-							<StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource IconBack}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="К списку"/></StackPanel>
+			<Grid IsVisible="{Binding IsDatasetEditorActive}" RowDefinitions="Auto, *" Margin="0,10,0,0">
+				<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,10">
+					<Grid ColumnDefinitions="Auto, Auto, *" ColumnSpacing="10">
+						<Button Grid.Column="0" Classes="neutralButton" Command="{Binding BackToDatasetListCommand}" VerticalContentAlignment="Center" ToolTip.Tip="Вернуться к списку наборов данных">
+							<StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource IconBack}" Width="12" Height="12" Foreground="{StaticResource AccentBrush}"/><TextBlock Text="Назад"/></StackPanel>
 						</Button>
-					</StackPanel>
+						<TextBlock Grid.Column="1" Text="Набор:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
+						<TextBox Grid.Column="2" Text="{Binding SelectedDataset.Caption, Mode=TwoWay}" Watermark="Название набора данных" VerticalContentAlignment="Center"/>
+					</Grid>
+				</Border>
 
-					<TabControl Grid.Row="1">
-						<TabItem Header="Настройка фильтрации">
-							<Grid ColumnDefinitions="1.2*, 1.8*">
-								<StackPanel Grid.Column="0" Spacing="5" Margin="5">
-									<Label Content="1. Выберите типы объектов САПР:" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-									<TextBox Text="{Binding TypeSearchText, Mode=TwoWay}" Watermark="Поиск по типам объектов..." VerticalContentAlignment="Center"/>
-									<Grid ColumnDefinitions="*,*,*" Margin="0,5">
-										<Button Grid.Column="0" Classes="neutralButton" Content="Все" Command="{Binding SelectAllTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,2,0"/>
-										<Button Grid.Column="1" Classes="neutralButton" Content="Снять" Command="{Binding UnselectAllTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,2,0"/>
-										<Button Grid.Column="2" Classes="neutralButton" Content="Инверт" Command="{Binding InvertTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,0,0"/>
-									</Grid>
-									<ListBox ItemsSource="{Binding FilteredTypeItems}" Height="280" Background="{StaticResource PanelBrush}">
-										<ListBox.ItemTemplate><DataTemplate x:DataType="m:CheckableTypeItem"><CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Content="{Binding TypeName}"/></DataTemplate></ListBox.ItemTemplate>
-									</ListBox>
-								</StackPanel>
+				<TabControl Grid.Row="1">
+					<TabItem Header="Фильтры">
+						<Grid ColumnDefinitions="1.2*, 1.8*" Margin="0,10,0,0">
+							<StackPanel Grid.Column="0" Spacing="5" Margin="5">
+								<Label Content="Типы объектов САПР" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+								<TextBox Text="{Binding TypeSearchText, Mode=TwoWay}" Watermark="Поиск по типам объектов..." VerticalContentAlignment="Center"/>
+								<Grid ColumnDefinitions="*,*,*" Margin="0,5">
+									<Button Grid.Column="0" Classes="neutralButton" Content="Все" Command="{Binding SelectAllTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,2,0"/>
+									<Button Grid.Column="1" Classes="neutralButton" Content="Снять" Command="{Binding UnselectAllTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,2,0"/>
+									<Button Grid.Column="2" Classes="neutralButton" Content="Инверт" Command="{Binding InvertTypesCmd}" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,0,0"/>
+								</Grid>
+								<ListBox ItemsSource="{Binding FilteredTypeItems}" Height="280" Background="{StaticResource PanelBrush}">
+									<ListBox.ItemTemplate><DataTemplate x:DataType="m:CheckableTypeItem"><CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Content="{Binding TypeName}"/></DataTemplate></ListBox.ItemTemplate>
+								</ListBox>
+							</StackPanel>
 
-								<HeaderedContentControl Grid.Column="1" Header="2. Конструктор условий фильтрации" Margin="10,0,0,0">
-									<Grid RowDefinitions="Auto, *, Auto" Margin="5">
-										<StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-											<TextBlock Text="Связь старых условий:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
-											<ComboBox Width="90" ItemsSource="{Binding SelectedDataset.RootFilterGroup.AvailableJoinOperators}" SelectedItem="{Binding SelectedDataset.RootFilterGroup.JoinOperator, Mode=TwoWay}" ToolTip.Tip="Используется только для совместимости со старым плоским списком условий"/>
-											<TextBlock Text="В строках и группах выбирается связь со следующим элементом; у последнего элемента она не учитывается" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-										</StackPanel>
-										<ScrollViewer Grid.Row="1">
-											<ItemsControl ItemsSource="{Binding SelectedDataset.RootFilterItems}">
-												<ItemsControl.ItemTemplate>
-													<DataTemplate x:DataType="m:FilterRootItem">
-														<StackPanel Spacing="8">
-															<Grid IsVisible="{Binding IsCondition}" ColumnDefinitions="Auto, *, 100, *, 80, Auto" Margin="0,4">
-																<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="0,0,4,0">
+							<HeaderedContentControl Grid.Column="1" Header="Конструктор условий" Margin="10,0,0,0">
+								<Grid RowDefinitions="Auto, *, Auto" Margin="5">
+									<StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+										<TextBlock Text="Связь старых условий:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
+										<ComboBox Width="90" ItemsSource="{Binding SelectedDataset.RootFilterGroup.AvailableJoinOperators}" SelectedItem="{Binding SelectedDataset.RootFilterGroup.JoinOperator, Mode=TwoWay}" ToolTip.Tip="Используется только для совместимости со старым плоским списком условий"/>
+										<TextBlock Text="В строках и группах выбирается связь со следующим элементом" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
+									</StackPanel>
+									<ScrollViewer Grid.Row="1">
+										<ItemsControl ItemsSource="{Binding SelectedDataset.RootFilterItems}">
+											<ItemsControl.ItemTemplate>
+												<DataTemplate x:DataType="m:FilterRootItem">
+													<StackPanel Spacing="8">
+														<Grid IsVisible="{Binding IsCondition}" ColumnDefinitions="Auto, *, 100, *, 80, Auto" Margin="0,4">
+															<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="0,0,4,0">
+																<Button Classes="neutralButton iconMiniButton" Click="MoveRootFilterItemUpClick" ToolTip.Tip="Переместить выше"><PathIcon Data="{StaticResource IconUp}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
+																<Button Classes="neutralButton iconMiniButton" Click="MoveRootFilterItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
+															</StackPanel>
+															<ComboBox Grid.Column="1" ItemsSource="{Binding Condition.AvailableAttributes}" SelectedItem="{Binding Condition.Attribute, Mode=TwoWay}"/>
+															<ComboBox Grid.Column="2" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
+															<TextBox Grid.Column="3" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
+															<ComboBox Grid.Column="4" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом; у последнего элемента не используется"/>
+															<Button Grid.Column="5" Classes="neutralButton iconMiniButton" Click="RemoveRootFilterItemClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
+														</Grid>
+
+														<Border IsVisible="{Binding IsGroup}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,6,0,0" Background="{StaticResource PanelBrush}">
+															<StackPanel Spacing="6">
+																<StackPanel Orientation="Horizontal" Spacing="8">
 																	<Button Classes="neutralButton iconMiniButton" Click="MoveRootFilterItemUpClick" ToolTip.Tip="Переместить выше"><PathIcon Data="{StaticResource IconUp}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
 																	<Button Classes="neutralButton iconMiniButton" Click="MoveRootFilterItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
+																	<TextBlock Text="Группа:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
+																	<ComboBox Width="90" ItemsSource="{Binding Group.AvailableJoinOperators}" SelectedItem="{Binding Group.JoinWithNext, Mode=TwoWay}" ToolTip.Tip="Связь со следующим корневым элементом; у последней группы не используется"/>
+																	<Button Classes="neutralButton" DataContext="{Binding Group}" Click="AddConditionToGroupClick" Content="+ Условие" Padding="6,2"/>
+																	<Button Classes="dangerButton" Click="RemoveRootFilterItemClick" Content="Удалить" Padding="6,2"/>
 																</StackPanel>
-																<ComboBox Grid.Column="1" ItemsSource="{Binding Condition.AvailableAttributes}" SelectedItem="{Binding Condition.Attribute, Mode=TwoWay}"/>
-																<ComboBox Grid.Column="2" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
-																<TextBox Grid.Column="3" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
-																<ComboBox Grid.Column="4" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом; у последнего элемента не используется"/>
-																<Button Grid.Column="5" Classes="neutralButton iconMiniButton" Click="RemoveRootFilterItemClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
-															</Grid>
-
-															<Border IsVisible="{Binding IsGroup}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,6,0,0" Background="{StaticResource PanelBrush}">
-																<StackPanel Spacing="6">
-																	<StackPanel Orientation="Horizontal" Spacing="8">
-																		<Button Classes="neutralButton iconMiniButton" Click="MoveRootFilterItemUpClick" ToolTip.Tip="Переместить выше"><PathIcon Data="{StaticResource IconUp}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
-																		<Button Classes="neutralButton iconMiniButton" Click="MoveRootFilterItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
-																		<TextBlock Text="Группа, связь со следующим:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
-																		<ComboBox Width="90" ItemsSource="{Binding Group.AvailableJoinOperators}" SelectedItem="{Binding Group.JoinWithNext, Mode=TwoWay}" ToolTip.Tip="Связь со следующим корневым элементом; у последней группы не используется"/>
-																		<Button Classes="neutralButton" DataContext="{Binding Group}" Click="AddConditionToGroupClick" Content="+ Условие" Padding="6,2"/>
-																		<Button Classes="dangerButton" Click="RemoveRootFilterItemClick" Content="Удалить" Padding="6,2"/>
-																	</StackPanel>
-																	<ItemsControl ItemsSource="{Binding Group.Conditions}">
-																		<ItemsControl.ItemTemplate>
-																			<DataTemplate x:DataType="m:FilterConditionItem">
-																				<Grid ColumnDefinitions="*, 100, *, 80, Auto" Margin="0,4">
-																					<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
-																					<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
-																					<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
-																					<ComboBox Grid.Column="3" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим условием внутри группы; у последнего условия не используется"/>
-																					<Button Grid.Column="4" Classes="neutralButton iconMiniButton" Click="RemoveFilterConditionClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
-																				</Grid>
-																			</DataTemplate>
-																		</ItemsControl.ItemTemplate>
-																	</ItemsControl>
-																</StackPanel>
-															</Border>
-														</StackPanel>
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
-										</ScrollViewer>
-										<StackPanel Grid.Row="2" Spacing="5" Margin="0,10,0,0">
-											<StackPanel Orientation="Horizontal" Spacing="8">
-												<Button Classes="neutralButton" Click="AddRootConditionClick" HorizontalAlignment="Left" Content="+ Условие"/>
-												<Button Classes="neutralButton" Click="AddFilterGroupClick" HorizontalAlignment="Left" Content="+ Группа"/>
-											</StackPanel>
-											<TextBlock Text="Итоговая сгенерированная формула:" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,5,0,0"/>
-											<TextBlock Text="{Binding SelectedDataset.FilterFormula}" Background="{StaticResource AccentSoftBrush}" Padding="5" FontSize="11" TextWrapping="Wrap"/>
+																<ItemsControl ItemsSource="{Binding Group.Conditions}">
+																	<ItemsControl.ItemTemplate>
+																		<DataTemplate x:DataType="m:FilterConditionItem">
+																			<Grid ColumnDefinitions="*, 100, *, 80, Auto" Margin="0,4">
+																				<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
+																				<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
+																				<TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay}" Watermark="Значение"/>
+																				<ComboBox Grid.Column="3" ItemsSource="{Binding AvailableJoinOperators}" SelectedItem="{Binding JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим условием внутри группы; у последнего условия не используется"/>
+																				<Button Grid.Column="4" Classes="neutralButton iconMiniButton" Click="RemoveFilterConditionClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
+																			</Grid>
+																		</DataTemplate>
+																	</ItemsControl.ItemTemplate>
+																</ItemsControl>
+															</StackPanel>
+														</Border>
+													</StackPanel>
+												</DataTemplate>
+											</ItemsControl.ItemTemplate>
+										</ItemsControl>
+									</ScrollViewer>
+									<StackPanel Grid.Row="2" Spacing="5" Margin="0,10,0,0">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<Button Classes="neutralButton" Click="AddRootConditionClick" HorizontalAlignment="Left" Content="+ Условие"/>
+											<Button Classes="neutralButton" Click="AddFilterGroupClick" HorizontalAlignment="Left" Content="+ Группа"/>
 										</StackPanel>
-									</Grid>
-								</HeaderedContentControl>
-							</Grid>
-						</TabItem>
+										<TextBlock Text="Итоговая формула:" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,5,0,0"/>
+										<TextBlock Text="{Binding SelectedDataset.FilterFormula}" Background="{StaticResource AccentSoftBrush}" Padding="5" FontSize="11" TextWrapping="Wrap"/>
+									</StackPanel>
+								</Grid>
+							</HeaderedContentControl>
+						</Grid>
+					</TabItem>
 
-						<TabItem Header="Настройки столбцов и полей">
-							<Grid ColumnDefinitions="*, 150" Margin="0,10,0,0">
-								<DataGrid Grid.Column="0" Name="FieldsGrid" ItemsSource="{Binding SelectedDataset.Columns}" AutoGenerateColumns="False" CanUserSortColumns="False" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}" RowHeight="NaN">
-									<DataGrid.Columns>
-										<DataGridCheckBoxColumn Header="Видим" Binding="{Binding Visible, Converter={StaticResource IntToBoolConverter}, Mode=TwoWay}" Width="70"/>
-										<DataGridTextColumn Header="Заголовок столбца" Binding="{Binding Caption, Mode=TwoWay}" Width="1.5*"/>
-										<DataGridTextColumn Header="Формула / Атрибут" Binding="{Binding DataFormula, Mode=TwoWay}" Width="2.5*"/>
-										<DataGridTextColumn Header="Агрегация" Binding="{Binding Aggregate, Mode=TwoWay}" Width="100"/>
-									</DataGrid.Columns>
-								</DataGrid>
-								<StackPanel Grid.Column="1" Spacing="8" Margin="12,0,0,0">
-									<Button Classes="neutralButton commandButton" Command="{Binding AddColumnCommand}" Content="+ Поле"/>
-									<Button Classes="neutralButton commandButton" Command="{Binding MoveColumnUpCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" Content="Выше"/>
-									<Button Classes="neutralButton commandButton" Command="{Binding MoveColumnDownCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" Content="Ниже"/>
-									<Button Classes="dangerButton commandButton" Command="{Binding RemoveColumnCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" Content="Удалить"/>
-								</StackPanel>
-							</Grid>
-						</TabItem>
-						<TabItem Header="Группировка и сортировка" IsEnabled="False"><TextBlock Text="Будет реализовано позже" Margin="10" Foreground="{StaticResource SecondaryTextBrush}"/></TabItem>
-						<TabItem Header="Способ вывода" IsEnabled="False"><TextBlock Text="Будет реализовано позже" Margin="10" Foreground="{StaticResource SecondaryTextBrush}"/></TabItem>
-					</TabControl>
-				</Grid>
-			</TabItem>
-		</TabControl>
+					<TabItem Header="Столбцы и поля">
+						<Grid ColumnDefinitions="*, 150" Margin="0,10,0,0">
+							<DataGrid Grid.Column="0" Name="FieldsGrid" ItemsSource="{Binding SelectedDataset.Columns}" AutoGenerateColumns="False" CanUserSortColumns="False" GridLinesVisibility="All" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}" RowHeight="NaN">
+								<DataGrid.Columns>
+									<DataGridCheckBoxColumn Header="Видим" Binding="{Binding Visible, Converter={StaticResource IntToBoolConverter}, Mode=TwoWay}" Width="70"/>
+									<DataGridTextColumn Header="Заголовок столбца" Binding="{Binding Caption, Mode=TwoWay}" Width="1.5*"/>
+									<DataGridTextColumn Header="Формула / Атрибут" Binding="{Binding DataFormula, Mode=TwoWay}" Width="2.5*"/>
+									<DataGridTextColumn Header="Агрегация" Binding="{Binding Aggregate, Mode=TwoWay}" Width="100"/>
+								</DataGrid.Columns>
+							</DataGrid>
+							<StackPanel Grid.Column="1" Spacing="8" Margin="12,0,0,0">
+								<Button Classes="neutralButton commandButton" Command="{Binding AddColumnCommand}" Content="+ Поле"/>
+								<Button Classes="neutralButton commandButton" Command="{Binding MoveColumnUpCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" Content="Выше"/>
+								<Button Classes="neutralButton commandButton" Command="{Binding MoveColumnDownCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" Content="Ниже"/>
+								<Button Classes="dangerButton commandButton" Command="{Binding RemoveColumnCommand}" CommandParameter="{Binding #FieldsGrid.SelectedItem}" Content="Удалить"/>
+							</StackPanel>
+						</Grid>
+					</TabItem>
+					<TabItem Header="Группировка" IsEnabled="False"><TextBlock Text="Будет реализовано позже" Margin="10" Foreground="{StaticResource SecondaryTextBrush}"/></TabItem>
+					<TabItem Header="Вывод" IsEnabled="False"><TextBlock Text="Будет реализовано позже" Margin="10" Foreground="{StaticResource SecondaryTextBrush}"/></TabItem>
+				</TabControl>
+			</Grid>
+		</Grid>
 
 		<Grid Grid.Row="2" ColumnDefinitions="Auto, *, Auto" Margin="0,15,0,0">
 			<Button Grid.Column="0" Classes="neutralButton" Click="ImportXmlClick" VerticalContentAlignment="Center" ToolTip.Tip="Импортировать XML Model Studio">
