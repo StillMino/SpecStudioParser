@@ -146,7 +146,7 @@ namespace SpecStudioParser.Commands
 
                 IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
 
-                Dispatcher.UIThread.Post(async () =>
+                Dispatcher.UIThread.Post(() =>
                 {
                     try
                     {
@@ -157,27 +157,29 @@ namespace SpecStudioParser.Commands
                             connectionWindow.Opened += (_, _) => AttachToNanoCadWindow(connectionWindow, nanoCadHwnd);
                         }
 
-                        await connectionWindow.ShowDialog(_currentWindow);
-
-                        if (connectionWindow.Result == null)
+                        connectionWindow.Closed += (_, _) =>
                         {
-                            LogToNanoCadConsole("\n[SpecStudio]: Подключение к CADLib БД отменено.\n");
-                            return;
-                        }
+                            try
+                            {
+                                if (connectionWindow.Result == null)
+                                {
+                                    LogToNanoCadConsole("\n[SpecStudio]: Подключение к CADLib БД отменено.\n");
+                                    return;
+                                }
 
-                        LogToNanoCadConsole($"\n[SpecStudio]: CADLib БД подключена. Параметров: {CadLibParameterCache.Current.Parameters.Count}.\n");
-
-                        var browserWindow = new CadLibParameterBrowserWindow();
-
-                        if (nanoCadHwnd != IntPtr.Zero)
-                        {
-                            browserWindow.Opened += (_, _) => AttachToNanoCadWindow(browserWindow, nanoCadHwnd);
-                        }
+                                LogToNanoCadConsole($"\n[SpecStudio]: CADLib БД подключена. Параметров: {CadLibParameterCache.Current.Parameters.Count}.\n");
+                                ShowCadLibParameterBrowser(nanoCadHwnd);
+                            }
+                            catch (System.Exception closedEx)
+                            {
+                                LogToNanoCadConsole($"\n[SpecStudio CADLib Error]: {closedEx.Message}\n");
+                            }
+                        };
 
                         if (_currentWindow != null)
-                            browserWindow.Show(_currentWindow);
+                            connectionWindow.Show(_currentWindow);
                         else
-                            browserWindow.Show();
+                            connectionWindow.Show();
                     }
                     catch (System.Exception innerEx)
                     {
@@ -189,6 +191,21 @@ namespace SpecStudioParser.Commands
             {
                 LogToNanoCadConsole($"\n[SpecStudio CADLib Error]: Ошибка запуска подключения: {ex.Message}\n");
             }
+        }
+
+        private static void ShowCadLibParameterBrowser(IntPtr nanoCadHwnd)
+        {
+            var browserWindow = new CadLibParameterBrowserWindow();
+
+            if (nanoCadHwnd != IntPtr.Zero)
+            {
+                browserWindow.Opened += (_, _) => AttachToNanoCadWindow(browserWindow, nanoCadHwnd);
+            }
+
+            if (_currentWindow != null)
+                browserWindow.Show(_currentWindow);
+            else
+                browserWindow.Show();
         }
 
         private static void AttachToNanoCadWindow(Window window, IntPtr nanoCadHwnd)
