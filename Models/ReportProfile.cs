@@ -181,6 +181,14 @@ namespace SpecStudioParser.Models
             RebuildFilterFormula();
         }
 
+        public void MoveNestedFilterGroupItem(FilterGroupItem? item, int direction)
+        {
+            if (RootFilterGroup.MoveItem(item, direction))
+            {
+                RebuildFilterFormula();
+            }
+        }
+
         private string GetLastRootItemJoinWithNext()
         {
             var lastItem = RootFilterItems.LastOrDefault();
