@@ -130,6 +130,27 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private async void ChooseProfileFolderClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel viewModel) return;
+
+            try
+            {
+                var dialog = new OpenFolderDialog();
+                var result = await dialog.ShowAsync(this);
+                if (string.IsNullOrWhiteSpace(result)) return;
+
+                viewModel.RootProfilesPath = result;
+                ProfileStorageService.EnsureProfilesFolder(viewModel.RootProfilesPath);
+                viewModel.RefreshAvailableXmlFilesList();
+                viewModel.ConnectionStatus = $"Папка профилей выбрана: {viewModel.RootProfilesPath}";
+            }
+            catch (Exception ex)
+            {
+                viewModel.ConnectionStatus = $"Ошибка выбора папки профилей: {ex.Message}";
+            }
+        }
+
         private void ImportXmlClick(object sender, RoutedEventArgs e)
         {
             if (DataContext is MainWindowViewModel viewModel)
