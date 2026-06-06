@@ -49,6 +49,7 @@ namespace SpecStudioParser.Commands
                 if (_currentWindow != null)
                 {
                     _currentWindow.Activate();
+                    RefreshCurrentViewModelFromDrawing();
                     return;
                 }
 
@@ -84,6 +85,8 @@ namespace SpecStudioParser.Commands
                                 NativeWin32.SetWindowLongPtr(avaloniaHwnd, NativeWin32.GWLP_HWNDPARENT, nanoCadHwnd);
                             }
                         }
+
+                        RefreshCurrentViewModelFromDrawing();
                     }
                     catch (System.Exception innerEx)
                     {
@@ -126,6 +129,18 @@ namespace SpecStudioParser.Commands
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n[SpecStudio Error]: Ошибка фонового сканирования: {ex.Message}\n");
+            }
+        }
+
+        private static void RefreshCurrentViewModelFromDrawing()
+        {
+            try
+            {
+                _currentViewModel?.ScanAllCommand.Execute(null);
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[SpecStudio Error]: Ошибка автоматического чтения чертежа: {ex.Message}\n");
             }
         }
 
