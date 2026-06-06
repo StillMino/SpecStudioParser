@@ -121,6 +121,21 @@ namespace SpecStudioParser.Models
             return "and";
         }
 
+        private static string GetItemJoinWithNext(FilterGroupItem item)
+        {
+            if (item.Condition != null)
+            {
+                return item.Condition.JoinWithNext;
+            }
+
+            if (item.Group != null)
+            {
+                return item.Group.JoinWithNext;
+            }
+
+            return "and";
+        }
+
         public FilterConditionGroup? FindParentOfGroup(FilterConditionGroup? targetGroup)
         {
             if (targetGroup == null) return null;
@@ -182,6 +197,62 @@ namespace SpecStudioParser.Models
             }
 
             parent.Items.Move(oldIndex, newIndex);
+            return true;
+        }
+
+        public bool GroupSelectedItems()
+        {
+            EnsureItems();
+
+            var selectedItems = Items
+                .Where(item => item.IsSelected)
+                .ToList();
+
+            if (selectedItems.Count < 2)
+            {
+                return false;
+            }
+
+            var selectedIndexes = selectedItems
+                .Select(item => Items.IndexOf(item))
+                .OrderBy(index => index)
+                .ToList();
+
+            if (selectedIndexes.Any(index => index < 0))
+            {
+                return false;
+            }
+
+            for (var i = 1; i < selectedIndexes.Count; i++)
+            {
+                if (selectedIndexes[i] != selectedIndexes[i - 1] + 1)
+                {
+                    return false;
+                }
+            }
+
+            var insertIndex = selectedIndexes[0];
+            var groupedItems = selectedIndexes
+                .Select(index => Items[index])
+                .ToList();
+
+            var newGroup = new FilterConditionGroup
+            {
+                JoinWithNext = GetItemJoinWithNext(groupedItems.Last())
+            };
+
+            for (var i = groupedItems.Count - 1; i >= 0; i--)
+            {
+                Items.Remove(groupedItems[i]);
+            }
+
+            foreach (var item in groupedItems)
+            {
+                item.IsSelected = false;
+                newGroup.Items.Add(item);
+            }
+
+            Items.Insert(insertIndex, FilterGroupItem.FromGroup(newGroup));
             return true;
         }
 
@@ -419,8 +490,10 @@ namespace SpecStudioParser.Models
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public class FilterGroupItem
+    public class FilterGroupItem : INotifyPropertyChanged
     {
+        private bool _isSelected;
+
         private FilterGroupItem(FilterConditionItem? condition, FilterConditionGroup? group)
         {
             Condition = condition;
@@ -432,7 +505,24 @@ namespace SpecStudioParser.Models
         public bool IsCondition => Condition != null;
         public bool IsGroup => Group != null;
 
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public static FilterGroupItem FromCondition(FilterConditionItem condition) => new(condition, null);
         public static FilterGroupItem FromGroup(FilterConditionGroup group) => new(null, group);
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }
