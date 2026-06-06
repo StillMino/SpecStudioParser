@@ -12,4 +12,46 @@
 		<media:SolidColorBrush x:Key="DangerBrush" Color="#A24B3A"/>
 		<media:SolidColorBrush x:Key="DangerSoftBrush" Color="#F1E0DD"/>
 	</Styles.Resources>
+
+	<Style Selector="Button.neutralButton">
+		<Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+		<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+		<Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+		<Setter Property="BorderThickness" Value="1"/>
+		<Setter Property="Padding" Value="10,6"/>
+	</Style>
+
+	<Style Selector="Button.accentButton">
+		<Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+		<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+		<Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+		<Setter Property="BorderThickness" Value="1"/>
+		<Setter Property="Padding" Value="10,6"/>
+	</Style>
+
+	<Style Selector="Button.dangerButton">
+		<Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
+		<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+		<Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
+		<Setter Property="BorderThickness" Value="1"/>
+		<Setter Property="Padding" Value="10,6"/>
+	</Style>
+
+	<Style Selector="Button.commandButton">
+		<Setter Property="HorizontalAlignment" Value="Stretch"/>
+		<Setter Property="HorizontalContentAlignment" Value="Center"/>
+		<Setter Property="VerticalContentAlignment" Value="Center"/>
+		<Setter Property="Padding" Value="10"/>
+	</Style>
+
+	<Style Selector="Button.iconButton">
+		<Setter Property="Width" Value="32"/>
+		<Setter Property="Height" Value="28"/>
+		<Setter Property="Padding" Value="4"/>
+	</Style>
+
+	<Style Selector="Button.iconMiniButton">
+		<Setter Property="Padding" Value="4"/>
+		<Setter Property="MinWidth" Value="24"/>
+	</Style>
 </Styles>
