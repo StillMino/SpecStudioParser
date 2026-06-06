@@ -97,7 +97,11 @@ namespace SpecStudioParser.Models
         public void EnsureRootFilterItems()
         {
             RootFilterGroup.EnsureItems();
-            if (RootFilterItems.Count > 0) return;
+            if (RootFilterItems.Count > 0)
+            {
+                UpdateRootFilterItemStates();
+                return;
+            }
 
             foreach (var condition in FilterConditions)
             {
@@ -109,6 +113,8 @@ namespace SpecStudioParser.Models
                 group.EnsureItems();
                 RootFilterItems.Add(FilterRootItem.FromGroup(group));
             }
+
+            UpdateRootFilterItemStates();
         }
 
         public void AddRootFilterCondition()
@@ -164,7 +170,16 @@ namespace SpecStudioParser.Models
 
         private void RootFilterItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            UpdateRootFilterItemStates();
             RebuildFilterFormula();
+        }
+
+        private void UpdateRootFilterItemStates()
+        {
+            for (var i = 0; i < RootFilterItems.Count; i++)
+            {
+                RootFilterItems[i].SetIsLast(i == RootFilterItems.Count - 1);
+            }
         }
 
         private void FilterConditionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -218,8 +233,10 @@ namespace SpecStudioParser.Models
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public class FilterRootItem
+    public class FilterRootItem : INotifyPropertyChanged
     {
+        private bool _isLast;
+
         private FilterRootItem(FilterConditionItem? condition, FilterConditionGroup? group)
         {
             Condition = condition;
@@ -230,9 +247,23 @@ namespace SpecStudioParser.Models
         public FilterConditionGroup? Group { get; }
         public bool IsCondition => Condition != null;
         public bool IsGroup => Group != null;
+        public bool IsLast => _isLast;
+
+        internal void SetIsLast(bool value)
+        {
+            if (_isLast != value)
+            {
+                _isLast = value;
+                OnPropertyChanged(nameof(IsLast));
+            }
+        }
 
         public static FilterRootItem FromCondition(FilterConditionItem condition) => new(condition, null);
         public static FilterRootItem FromGroup(FilterConditionGroup group) => new(null, group);
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     public class ReportColumnConfig : INotifyPropertyChanged
