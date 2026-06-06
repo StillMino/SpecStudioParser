@@ -17,7 +17,7 @@
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,10">
             <Grid ColumnDefinitions="150,*,Auto,Auto" RowDefinitions="Auto,Auto">
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Профиль" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
-                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" Width="330" HorizontalAlignment="Left"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" HorizontalAlignment="Stretch"/>
                 <Button Grid.Row="0" Grid.Column="2" Classes="neutralButton iconMiniButton" Command="{Binding ApplyProfileCommand}" ToolTip.Tip="Применить профиль" Margin="8,0,0,0">
                     <Path Data="M8 5v14l11-7z" Fill="{StaticResource AccentBrush}" Width="12" Height="12" Stretch="Uniform"/>
                 </Button>
@@ -25,7 +25,7 @@
                     <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zM15.5 4l-1-1h-5l-1 1H5v2h14V4z" Fill="{StaticResource DangerBrush}" Width="12" Height="12" Stretch="Uniform"/>
                 </Button>
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Имя профиля" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,8,0,0"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ProfileName, Mode=TwoWay}" Watermark="Например: Проект / сервер" Width="330" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ProfileName, Mode=TwoWay}" Watermark="Например: Проект / сервер" HorizontalAlignment="Stretch" Margin="0,8,0,0"/>
                 <Button Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Classes="neutralButton iconMiniButton" Command="{Binding SaveProfileCommand}" ToolTip.Tip="Сохранить профиль без пароля" Margin="8,8,0,0">
                     <Path Data="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zM12 19c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zM6 8V5h9v3H6z" Fill="{StaticResource AccentBrush}" Width="12" Height="12" Stretch="Uniform"/>
                 </Button>
@@ -33,24 +33,33 @@
         </Border>
 
         <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="12">
-            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Тип СУБД" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8"/>
-                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Providers}" SelectedItem="{Binding ProviderKind}" Width="360" HorizontalAlignment="Left" Margin="10,0,0,8"/>
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Хост" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Host, Mode=TwoWay}" Watermark="localhost или адрес сервера" Width="360" HorizontalAlignment="Left" Margin="10,0,0,8"/>
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Порт" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8"/>
-                <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Port, Mode=TwoWay}" Minimum="1" Maximum="65535" Width="360" HorizontalAlignment="Left" Margin="10,0,0,8"/>
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Логин" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8"/>
-                <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Login, Mode=TwoWay}" Watermark="Имя пользователя" Width="360" HorizontalAlignment="Left" Margin="10,0,0,8"/>
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Пароль" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8"/>
-                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Password, Mode=TwoWay}" PasswordChar="●" Watermark="Пароль не сохраняется в профиле" Width="360" HorizontalAlignment="Left" Margin="10,0,0,8"/>
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="Регистр" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8"/>
-                <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="14" Margin="10,0,0,8">
+            <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Тип СУБД" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,10,8"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding Providers}" SelectedItem="{Binding ProviderKind}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Хост" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,10,8"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Host, Mode=TwoWay}" Watermark="localhost или адрес сервера" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Порт" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,10,8"/>
+                <NumericUpDown Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Value="{Binding Port, Mode=TwoWay}" Minimum="1" Maximum="65535" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Логин" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,10,8"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Login, Mode=TwoWay}" Watermark="Имя пользователя" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Пароль" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,10,8"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Password, Mode=TwoWay}" PasswordChar="●" Watermark="Пароль не сохраняется в профиле" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Регистр" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,10,8"/>
+                <StackPanel Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="14" Margin="0,0,0,8">
                     <CheckBox Content="Логин" IsChecked="{Binding LowercaseLogin}" Foreground="{StaticResource TextBrush}" ToolTip.Tip="Привести логин к нижнему регистру"/>
                     <CheckBox Content="Пароль" IsChecked="{Binding LowercasePassword}" Foreground="{StaticResource TextBrush}" ToolTip.Tip="Привести пароль к нижнему регистру"/>
                 </StackPanel>
-                <TextBlock Grid.Row="6" Grid.Column="0" Text="База данных" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
-                <ComboBox Grid.Row="6" Grid.Column="1" ItemsSource="{Binding Databases}" SelectedItem="{Binding SelectedDatabase}" Width="360" MinHeight="32" HorizontalAlignment="Left" Margin="10,0,0,0"/>
+
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="База данных" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}" Margin="0,0,10,0"/>
+                <ComboBox Grid.Row="6" Grid.Column="1" ItemsSource="{Binding Databases}" SelectedItem="{Binding SelectedDatabase}" MinHeight="32" HorizontalAlignment="Stretch"/>
+                <Button Grid.Row="6" Grid.Column="2" Classes="neutralButton iconMiniButton" Command="{Binding LoadDatabasesCommand}" ToolTip.Tip="Загрузить список баз данных" Margin="8,0,0,0">
+                    <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
+                </Button>
             </Grid>
         </Border>
 
@@ -62,7 +71,6 @@
                 </StackPanel>
             </Border>
             <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <Button Classes="neutralButton" Content="Базы" Command="{Binding LoadDatabasesCommand}" ToolTip.Tip="Загрузить список баз данных"/>
                 <Button Classes="neutralButton" Content="Проверить" Command="{Binding TestConnectionCommand}" ToolTip.Tip="Проверить CADLib схему"/>
                 <Button Classes="accentButton" Content="Подключить" Command="{Binding ConnectCommand}" ToolTip.Tip="Подключиться и прочитать параметры"/>
                 <Button Classes="neutralButton" Content="Отмена" Command="{Binding CancelCommand}"/>
