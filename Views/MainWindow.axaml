@@ -38,8 +38,8 @@
 			<Grid Grid.Row="1" ColumnDefinitions="*, 300" Margin="0,0,0,15">
 				<Border Grid.Column="0" BorderBrush="#D0D0CC" BorderThickness="1" CornerRadius="4" Background="#FFFFFF">
 					<Grid RowDefinitions="Auto, Auto, Auto, *">
-						<Border Grid.Row="0" Background="#242424" Padding="8">
-							<TextBlock Text="Доступные конфигурации спецификаций в папке:" FontWeight="Bold" Foreground="#FFFFFF"/>
+						<Border Grid.Row="0" Background="#F3E6DA" BorderBrush="#B76E2B" BorderThickness="0,0,0,1" Padding="8">
+							<TextBlock Text="Доступные конфигурации спецификаций в папке:" FontWeight="Bold" Foreground="#1F1F1F"/>
 						</Border>
 
 						<Border Grid.Row="1" Background="#FFFFFF" Padding="10" BorderBrush="#D0D0CC" BorderThickness="0,0,0,1">
@@ -141,10 +141,10 @@
 			</Grid>
 		</Grid>
 
-		<Border Grid.Row="1" Background="#242424" Padding="6">
+		<Border Grid.Row="1" Background="#FFFFFF" BorderBrush="#D0D0CC" BorderThickness="0,1,0,0" Padding="6">
 			<Grid ColumnDefinitions="*, Auto">
-				<TextBlock Grid.Column="0" Text="{Binding ConnectionStatus}" Foreground="#FFFFFF" FontSize="12" VerticalAlignment="Center" Margin="5,0,0,0"/>
-				<TextBlock Grid.Column="1" Text="SpecStudio v1.2" Foreground="#D8A06B" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
+				<TextBlock Grid.Column="0" Text="{Binding ConnectionStatus}" Foreground="#1F1F1F" FontSize="12" VerticalAlignment="Center" Margin="5,0,0,0"/>
+				<TextBlock Grid.Column="1" Text="SpecStudio v1.2" Foreground="#B76E2B" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,5,0"/>
 			</Grid>
 		</Border>
 
