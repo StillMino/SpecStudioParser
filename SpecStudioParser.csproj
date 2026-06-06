@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
-	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+ 	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,8 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-	  <PackageReference Include="System.Dynamic.Runtime" Version="4.3.0" />
-	  <PackageReference Include="Avalonia" Version="11.2.3" />
+ 	  <PackageReference Include="System.Dynamic.Runtime" Version="4.3.0" />
+ 	  <PackageReference Include="Avalonia" Version="11.2.3" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.3" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
@@ -24,20 +24,22 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Npgsql" Version="8.0.5" />
   </ItemGroup>
 
-	<ItemGroup>
-		<Reference Include="hostmgd">
-			<HintPath>C:\Program Files\Nanosoft\nanoCAD x64 25.0\bin\hostmgd.dll</HintPath>
-			<Private>False</Private>
-		</Reference>
-		<Reference Include="hostdbmgd">
-			<HintPath>C:\Program Files\Nanosoft\nanoCAD x64 25.0\bin\hostdbmgd.dll</HintPath>
-			<Private>False</Private>
-		</Reference>
-		<Reference Include="hostMgdAvalonia">
-			<HintPath>C:\Program Files\Nanosoft\nanoCAD x64 25.0\bin\hostMgdAvalonia.dll</HintPath>
-			<Private>False</Private>
-		</Reference>
-	</ItemGroup>
+ 	<ItemGroup>
+ 		<Reference Include="hostmgd">
+ 			<HintPath>C:\Program Files\Nanosoft\nanoCAD x64 25.0\bin\hostmgd.dll</HintPath>
+ 			<Private>False</Private>
+ 		</Reference>
+ 		<Reference Include="hostdbmgd">
+ 			<HintPath>C:\Program Files\Nanosoft\nanoCAD x64 25.0\bin\hostdbmgd.dll</HintPath>
+ 			<Private>False</Private>
+ 		</Reference>
+ 		<Reference Include="hostMgdAvalonia">
+ 			<HintPath>C:\Program Files\Nanosoft\nanoCAD x64 25.0\bin\hostMgdAvalonia.dll</HintPath>
+ 			<Private>False</Private>
+ 		</Reference>
+ 	</ItemGroup>
 </Project>
