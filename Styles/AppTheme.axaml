@@ -13,6 +13,11 @@
 		<media:SolidColorBrush x:Key="DangerSoftBrush" Color="#F1E0DD"/>
 	</Styles.Resources>
 
+	<Style Selector="Window">
+		<Setter Property="FontFamily" Value="Segoe UI"/>
+		<Setter Property="FontSize" Value="13"/>
+	</Style>
+
 	<Style Selector="Button.neutralButton">
 		<Setter Property="Background" Value="{StaticResource PanelBrush}"/>
 		<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
