@@ -5,6 +5,7 @@ using HostMgd.ApplicationServices;
 using Teigha.Runtime;
 using SpecStudioParser.Views;
 using SpecStudioParser.ViewModels;
+using SpecStudioParser.CadLib;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform; // Для работы с IPlatformHandle
@@ -129,6 +130,73 @@ namespace SpecStudioParser.Commands
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n[SpecStudio Error]: Ошибка фонового сканирования: {ex.Message}\n");
+            }
+        }
+
+        [CommandMethod("SPEC_DB_CONNECT", CommandFlags.Session)]
+        public static void ConnectCadLibDatabase()
+        {
+            try
+            {
+                if (!_isAvaloniaInitialized)
+                {
+                    BuildAvaloniaApp().SetupWithoutStarting();
+                    _isAvaloniaInitialized = true;
+                }
+
+                IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
+
+                Dispatcher.UIThread.Post(async () =>
+                {
+                    try
+                    {
+                        var connectionWindow = new CadLibConnectionWindow();
+
+                        if (nanoCadHwnd != IntPtr.Zero)
+                        {
+                            connectionWindow.Opened += (_, _) => AttachToNanoCadWindow(connectionWindow, nanoCadHwnd);
+                        }
+
+                        await connectionWindow.ShowDialog(_currentWindow);
+
+                        if (connectionWindow.Result == null)
+                        {
+                            LogToNanoCadConsole("\n[SpecStudio]: Подключение к CADLib БД отменено.\n");
+                            return;
+                        }
+
+                        LogToNanoCadConsole($"\n[SpecStudio]: CADLib БД подключена. Параметров: {CadLibParameterCache.Current.Parameters.Count}.\n");
+
+                        var browserWindow = new CadLibParameterBrowserWindow();
+
+                        if (nanoCadHwnd != IntPtr.Zero)
+                        {
+                            browserWindow.Opened += (_, _) => AttachToNanoCadWindow(browserWindow, nanoCadHwnd);
+                        }
+
+                        if (_currentWindow != null)
+                            browserWindow.Show(_currentWindow);
+                        else
+                            browserWindow.Show();
+                    }
+                    catch (System.Exception innerEx)
+                    {
+                        LogToNanoCadConsole($"\n[SpecStudio CADLib Error]: {innerEx.Message}\n");
+                    }
+                });
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[SpecStudio CADLib Error]: Ошибка запуска подключения: {ex.Message}\n");
+            }
+        }
+
+        private static void AttachToNanoCadWindow(Window window, IntPtr nanoCadHwnd)
+        {
+            var platformHandle = window.TryGetPlatformHandle();
+            if (platformHandle != null && platformHandle.Handle != IntPtr.Zero)
+            {
+                NativeWin32.SetWindowLongPtr(platformHandle.Handle, NativeWin32.GWLP_HWNDPARENT, nanoCadHwnd);
             }
         }
 
