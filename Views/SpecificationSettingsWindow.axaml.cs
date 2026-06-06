@@ -183,6 +183,17 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void GroupSelectedNestedFilterItemsClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button &&
+                button.DataContext is FilterConditionGroup group &&
+                DataContext is MainWindowViewModel viewModel &&
+                viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.GroupSelectedNestedFilterItems(group);
+            }
+        }
+
         private void MoveNestedFilterGroupItemUpClick(object sender, RoutedEventArgs e)
         {
             MoveNestedFilterGroupItem(sender, -1);
