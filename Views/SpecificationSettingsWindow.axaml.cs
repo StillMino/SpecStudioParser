@@ -114,7 +114,15 @@ namespace SpecStudioParser.Views
         {
             if (sender is Button button && button.DataContext is FilterConditionGroup group)
             {
-                group.Conditions.Add(new FilterConditionItem());
+                group.AddCondition();
+            }
+        }
+
+        private void AddNestedGroupToGroupClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.DataContext is FilterConditionGroup group)
+            {
+                group.AddGroup();
             }
         }
 
@@ -142,6 +150,17 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void RemoveNestedFilterGroupClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button &&
+                button.DataContext is FilterConditionGroup group &&
+                DataContext is MainWindowViewModel viewModel &&
+                viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.RootFilterGroup.RemoveGroup(group);
+            }
+        }
+
         private void RemoveFilterGroupClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button button &&
@@ -165,7 +184,7 @@ namespace SpecStudioParser.Views
                 }
                 else
                 {
-                    viewModel.SelectedDataset.RootFilterGroup.Groups.Remove(group);
+                    viewModel.SelectedDataset.RootFilterGroup.RemoveGroup(group);
                 }
             }
         }

@@ -30,6 +30,8 @@ namespace SpecStudioParser.Services
 
         public static string BuildFromRoot(FilterConditionGroup rootGroup, IEnumerable<FilterConditionItem> rootConditions, IEnumerable<FilterRootItem> rootItems)
         {
+            rootGroup.EnsureItems();
+
             var orderedItems = rootItems.ToList();
             if (orderedItems.Any())
             {
@@ -58,33 +60,45 @@ namespace SpecStudioParser.Services
                 return BuildJoinedExpression(orderedParts);
             }
 
-            var parts = BuildConditionFormulaParts(rootConditions);
-
-            foreach (var childGroup in rootGroup.Groups)
-            {
-                var childExpression = BuildFromGroup(childGroup);
-                if (!string.IsNullOrWhiteSpace(childExpression) && childExpression != "1")
-                {
-                    parts.Add(new FormulaPart($"({childExpression})", childGroup.JoinWithNext));
-                }
-            }
-
-            return BuildJoinedExpression(parts);
+            return BuildFromGroup(rootGroup, rootConditions);
         }
 
         public static string BuildFromGroup(FilterConditionGroup group)
         {
-            var parts = BuildConditionFormulaParts(group.Conditions);
+            return BuildFromGroup(group, Enumerable.Empty<FilterConditionItem>());
+        }
 
-            foreach (var childGroup in group.Groups)
+        private static string BuildFromGroup(FilterConditionGroup group, IEnumerable<FilterConditionItem> fallbackConditions)
+        {
+            group.EnsureItems();
+
+            var orderedParts = new List<FormulaPart>();
+            foreach (var item in group.Items)
             {
-                var childExpression = BuildFromGroup(childGroup);
-                if (!string.IsNullOrWhiteSpace(childExpression) && childExpression != "1")
+                if (item.Condition != null)
                 {
-                    parts.Add(new FormulaPart($"({childExpression})", childGroup.JoinWithNext));
+                    var expression = BuildConditionExpression(item.Condition);
+                    if (!string.IsNullOrWhiteSpace(expression))
+                    {
+                        orderedParts.Add(new FormulaPart(expression, item.Condition.JoinWithNext));
+                    }
+                }
+                else if (item.Group != null)
+                {
+                    var childExpression = BuildFromGroup(item.Group);
+                    if (!string.IsNullOrWhiteSpace(childExpression) && childExpression != "1")
+                    {
+                        orderedParts.Add(new FormulaPart($"({childExpression})", item.Group.JoinWithNext));
+                    }
                 }
             }
 
+            if (orderedParts.Any())
+            {
+                return BuildJoinedExpression(orderedParts);
+            }
+
+            var parts = BuildConditionFormulaParts(fallbackConditions);
             return BuildJoinedExpression(parts);
         }
 
