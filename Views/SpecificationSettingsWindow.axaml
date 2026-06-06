@@ -2,7 +2,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:SpecStudioParser.ViewModels"
         xmlns:m="clr-namespace:SpecStudioParser.Models"
-        xmlns:media="using:Avalonia.Media"
         x:Class="SpecStudioParser.Views.SpecificationSettingsWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Конфигурация спецификации"
@@ -12,16 +11,6 @@
         WindowStartupLocation="CenterOwner">
 
 	<Window.Resources>
-		<media:SolidColorBrush x:Key="AppBackgroundBrush" Color="#F7F7F5"/>
-		<media:SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
-		<media:SolidColorBrush x:Key="TextBrush" Color="#1F1F1F"/>
-		<media:SolidColorBrush x:Key="SecondaryTextBrush" Color="#5F6368"/>
-		<media:SolidColorBrush x:Key="BorderBrush" Color="#D0D0CC"/>
-		<media:SolidColorBrush x:Key="AccentBrush" Color="#B76E2B"/>
-		<media:SolidColorBrush x:Key="AccentSoftBrush" Color="#F3E6DA"/>
-		<media:SolidColorBrush x:Key="DangerBrush" Color="#A24B3A"/>
-		<media:SolidColorBrush x:Key="DangerSoftBrush" Color="#F1E0DD"/>
-
 		<StreamGeometry x:Key="IconSettings">M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z</StreamGeometry>
 		<StreamGeometry x:Key="IconSave">M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z</StreamGeometry>
 		<StreamGeometry x:Key="IconPlus">M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z</StreamGeometry>
@@ -31,39 +20,6 @@
 		<StreamGeometry x:Key="IconFolder">M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z</StreamGeometry>
 		<StreamGeometry x:Key="IconBack">M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z</StreamGeometry>
 	</Window.Resources>
-
-	<Window.Styles>
-		<Style Selector="Button.neutralButton">
-			<Setter Property="Background" Value="{StaticResource PanelBrush}"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Padding" Value="10,6"/>
-		</Style>
-		<Style Selector="Button.accentButton">
-			<Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Padding" Value="10,6"/>
-		</Style>
-		<Style Selector="Button.dangerButton">
-			<Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Padding" Value="10,6"/>
-		</Style>
-		<Style Selector="Button.commandButton">
-			<Setter Property="HorizontalAlignment" Value="Stretch"/>
-			<Setter Property="HorizontalContentAlignment" Value="Center"/>
-			<Setter Property="VerticalContentAlignment" Value="Center"/>
-		</Style>
-		<Style Selector="Button.iconMiniButton">
-			<Setter Property="Padding" Value="4"/>
-			<Setter Property="MinWidth" Value="24"/>
-		</Style>
-	</Window.Styles>
 
 	<Grid RowDefinitions="Auto, *, Auto" Margin="15" Background="{StaticResource AppBackgroundBrush}">
 		<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,15">
