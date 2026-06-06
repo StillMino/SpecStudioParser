@@ -272,7 +272,8 @@ namespace SpecStudioParser.CadLib
                 DisplayName = SafeString(reader, 2),
                 TypeId = SafeInt(reader, 3),
                 CategoryName = SafeString(reader, 4),
-                Comment = SafeString(reader, 5)
+                Comment = SafeString(reader, 5),
+                TypeName = SafeString(reader, 6)
             };
         }
 
@@ -289,6 +290,7 @@ namespace SpecStudioParser.CadLib
 
             var joins = new List<string>();
             var categoryExpr = "''";
+            var typeNameExpr = "''";
             var commentExpr = "''";
             var commentJoin = string.Empty;
 
@@ -321,6 +323,18 @@ namespace SpecStudioParser.CadLib
                 }
             }
 
+            var typeTable = FindParameterTypeTable(schema, paramDefs);
+            if (!string.IsNullOrWhiteSpace(typeTable) && schema[paramDefs].Contains("idType"))
+            {
+                var typeId = FindColumn(schema, typeTable!, "idType", required: false);
+                var typeName = FindBestColumn(schema, typeTable!, "Name", "Caption", "DisplayName", "Title");
+                if (!string.IsNullOrWhiteSpace(typeId) && !string.IsNullOrWhiteSpace(typeName))
+                {
+                    joins.Add($"LEFT JOIN {quote(typeTable!)} pt ON pt.{quote(typeId)} = pd.{quote(pdType)}");
+                    typeNameExpr = $"{coalesce}(pt.{quote(typeName!)}, '')";
+                }
+            }
+
             if (schema.ContainsKey(parametersStr) && schema[parametersStr].Contains("idParamDef") && schema[parametersStr].Contains("Comment"))
             {
                 var psParam = FindColumn(schema, parametersStr, "idParamDef", required: false);
@@ -341,11 +355,38 @@ SELECT
     {coalesce}(pd.{quote(pdCaption)}, '') AS display_name,
     {coalesce}(pd.{quote(pdType)}, 0) AS type_id,
     {categoryExpr} AS category_name,
-    {commentExpr} AS parameter_comment
+    {commentExpr} AS parameter_comment,
+    {typeNameExpr} AS type_name
 FROM {quote(paramDefs)} pd
 {string.Join(Environment.NewLine, joins)}
 {commentJoin}
 ORDER BY category_name, display_name, system_name;";
+        }
+
+        private static string? FindParameterTypeTable(Dictionary<string, HashSet<string>> schema, string paramDefs)
+        {
+            var preferred = new[] { "ParamTypes", "ParamType", "ParameterTypes", "ParameterType", "Types" };
+            foreach (var name in preferred)
+            {
+                var table = schema.Keys.FirstOrDefault(t => string.Equals(t, name, StringComparison.OrdinalIgnoreCase));
+                if (table != null && schema[table].Contains("idType")) return table;
+            }
+
+            return schema.Keys.FirstOrDefault(t =>
+                !string.Equals(t, paramDefs, StringComparison.OrdinalIgnoreCase) &&
+                schema[t].Contains("idType") &&
+                (schema[t].Contains("Name") || schema[t].Contains("Caption") || schema[t].Contains("DisplayName") || schema[t].Contains("Title")));
+        }
+
+        private static string? FindBestColumn(Dictionary<string, HashSet<string>> schema, string table, params string[] logicalNames)
+        {
+            if (!schema.TryGetValue(table, out var columns)) return null;
+            foreach (var logicalName in logicalNames)
+            {
+                var column = columns.FirstOrDefault(c => string.Equals(c, logicalName, StringComparison.OrdinalIgnoreCase));
+                if (column != null) return column;
+            }
+            return null;
         }
 
         private static string FindTable(Dictionary<string, HashSet<string>> schema, string logicalName, bool required)
