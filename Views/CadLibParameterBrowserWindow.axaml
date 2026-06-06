@@ -1,0 +1,56 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:cadlib="using:SpecStudioParser.CadLib"
+        x:Class="SpecStudioParser.Views.CadLibParameterBrowserWindow"
+        x:DataType="cadlib:CadLibParameterBrowserViewModel"
+        Title="Параметры CADLib БД"
+        Width="1040"
+        Height="670"
+        Background="{StaticResource AppBackgroundBrush}"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12" Background="{StaticResource AppBackgroundBrush}">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+            <Border Grid.Column="0" Width="3" Background="{StaticResource AccentBrush}" Margin="0,3,8,3"/>
+            <TextBlock Grid.Column="1" Text="Параметры CADLib" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="220,160,*" Margin="0,0,0,10">
+            <ComboBox Grid.Column="0" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" Margin="0,0,10,0" ToolTip.Tip="Фильтр по категории"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Types}" SelectedItem="{Binding SelectedType}" Margin="0,0,10,0" ToolTip.Tip="Фильтр по типу"/>
+            <TextBox Grid.Column="2" Text="{Binding SearchText, Mode=TwoWay}" Watermark="Поиск параметров"/>
+        </Grid>
+
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding Parameters}"
+                  SelectedItem="{Binding SelectedParameter, Mode=TwoWay}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True"
+                  GridLinesVisibility="All"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  Background="{StaticResource PanelBrush}"
+                  Foreground="{StaticResource TextBrush}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Категория" Binding="{Binding CategoryName}" Width="180"/>
+                <DataGridTextColumn Header="Системное имя" Binding="{Binding SystemName}" Width="220"/>
+                <DataGridTextColumn Header="Отображаемое имя" Binding="{Binding DisplayName}" Width="260"/>
+                <DataGridTextColumn Header="Тип" Binding="{Binding TypeDisplayName}" Width="90"/>
+                <DataGridTextColumn Header="Комментарий" Binding="{Binding Comment}" Width="*"/>
+                <DataGridTextColumn Header="idParamDef" Binding="{Binding IdParamDef}" Width="90"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="{Binding ConnectionInfo}" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding Status}" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Classes="neutralButton" Content="Системное" Command="{Binding CopySystemNameCommand}" ToolTip.Tip="Копировать системное имя"/>
+                <Button Classes="neutralButton" Content="Отображаемое" Command="{Binding CopyDisplayNameCommand}" ToolTip.Tip="Копировать отображаемое имя"/>
+                <Button Classes="neutralButton" Content="ID" Command="{Binding CopyIdCommand}" ToolTip.Tip="Копировать idParamDef"/>
+                <Button Classes="neutralButton" Content="Закрыть" Command="{Binding CloseCommand}"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

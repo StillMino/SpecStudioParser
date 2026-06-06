@@ -5,6 +5,7 @@ using HostMgd.ApplicationServices;
 using Teigha.Runtime;
 using SpecStudioParser.Views;
 using SpecStudioParser.ViewModels;
+using SpecStudioParser.CadLib;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform; // Для работы с IPlatformHandle
@@ -129,6 +130,137 @@ namespace SpecStudioParser.Commands
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n[SpecStudio Error]: Ошибка фонового сканирования: {ex.Message}\n");
+            }
+        }
+
+        [CommandMethod("SPEC_DB_CONNECT", CommandFlags.Session)]
+        public static void ConnectCadLibDatabase()
+        {
+            try
+            {
+                EnsureAvaloniaInitialized();
+                IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        var connectionWindow = new CadLibConnectionWindow();
+
+                        if (nanoCadHwnd != IntPtr.Zero)
+                        {
+                            connectionWindow.Opened += (_, _) => AttachToNanoCadWindow(connectionWindow, nanoCadHwnd);
+                        }
+
+                        connectionWindow.Closed += (_, _) =>
+                        {
+                            try
+                            {
+                                if (connectionWindow.Result == null)
+                                {
+                                    LogToNanoCadConsole("\n[SpecStudio]: Подключение к CADLib БД отменено.\n");
+                                    return;
+                                }
+
+                                LogToNanoCadConsole($"\n[SpecStudio]: CADLib БД подключена. Параметров: {CadLibParameterCache.Current.Parameters.Count}.\n");
+                                ShowCadLibParameterBrowser(nanoCadHwnd);
+                            }
+                            catch (System.Exception closedEx)
+                            {
+                                LogToNanoCadConsole($"\n[SpecStudio CADLib Error]: {closedEx.Message}\n");
+                            }
+                        };
+
+                        ShowWindowWithOptionalOwner(connectionWindow);
+                    }
+                    catch (System.Exception innerEx)
+                    {
+                        LogToNanoCadConsole($"\n[SpecStudio CADLib Error]: {innerEx.Message}\n");
+                    }
+                });
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[SpecStudio CADLib Error]: Ошибка запуска подключения: {ex.Message}\n");
+            }
+        }
+
+        [CommandMethod("SPEC_PARAM_PICK", CommandFlags.Session)]
+        public static void ShowCadLibParameterPicker()
+        {
+            try
+            {
+                EnsureAvaloniaInitialized();
+                IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        var pickerWindow = new CadLibParameterPickerWindow();
+
+                        if (nanoCadHwnd != IntPtr.Zero)
+                        {
+                            pickerWindow.Opened += (_, _) => AttachToNanoCadWindow(pickerWindow, nanoCadHwnd);
+                        }
+
+                        pickerWindow.Closed += (_, _) =>
+                        {
+                            if (pickerWindow.SelectedParameter != null)
+                            {
+                                LogToNanoCadConsole($"\n[SpecStudio]: Выбран CADLib параметр: {pickerWindow.SelectedParameter.DisplayName} / {pickerWindow.SelectedParameter.SystemName}\n");
+                            }
+                        };
+
+                        ShowWindowWithOptionalOwner(pickerWindow);
+                    }
+                    catch (System.Exception innerEx)
+                    {
+                        LogToNanoCadConsole($"\n[SpecStudio CADLib Picker Error]: {innerEx.Message}\n");
+                    }
+                });
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[SpecStudio CADLib Picker Error]: Ошибка запуска выбора параметра: {ex.Message}\n");
+            }
+        }
+
+        private static void ShowCadLibParameterBrowser(IntPtr nanoCadHwnd)
+        {
+            var browserWindow = new CadLibParameterBrowserWindow();
+
+            if (nanoCadHwnd != IntPtr.Zero)
+            {
+                browserWindow.Opened += (_, _) => AttachToNanoCadWindow(browserWindow, nanoCadHwnd);
+            }
+
+            ShowWindowWithOptionalOwner(browserWindow);
+        }
+
+        private static void ShowWindowWithOptionalOwner(Window window)
+        {
+            if (_currentWindow != null)
+                window.Show(_currentWindow);
+            else
+                window.Show();
+        }
+
+        private static void EnsureAvaloniaInitialized()
+        {
+            if (!_isAvaloniaInitialized)
+            {
+                BuildAvaloniaApp().SetupWithoutStarting();
+                _isAvaloniaInitialized = true;
+            }
+        }
+
+        private static void AttachToNanoCadWindow(Window window, IntPtr nanoCadHwnd)
+        {
+            var platformHandle = window.TryGetPlatformHandle();
+            if (platformHandle != null && platformHandle.Handle != IntPtr.Zero)
+            {
+                NativeWin32.SetWindowLongPtr(platformHandle.Handle, NativeWin32.GWLP_HWNDPARENT, nanoCadHwnd);
             }
         }
 
