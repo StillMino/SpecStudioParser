@@ -114,7 +114,10 @@ namespace SpecStudioParser.Models
         public void AddRootFilterCondition()
         {
             EnsureRootFilterItems();
-            var condition = new FilterConditionItem();
+            var condition = new FilterConditionItem
+            {
+                JoinWithNext = GetLastRootItemJoinWithNext()
+            };
             FilterConditions.Add(condition);
             RootFilterItems.Add(FilterRootItem.FromCondition(condition));
             RebuildFilterFormula();
@@ -124,8 +127,25 @@ namespace SpecStudioParser.Models
         {
             EnsureRootFilterItems();
             var group = RootFilterGroup.AddGroup();
+            group.JoinWithNext = GetLastRootItemJoinWithNext();
             RootFilterItems.Add(FilterRootItem.FromGroup(group));
             RebuildFilterFormula();
+        }
+
+        private string GetLastRootItemJoinWithNext()
+        {
+            var lastItem = RootFilterItems.LastOrDefault();
+            if (lastItem?.Condition != null)
+            {
+                return lastItem.Condition.JoinWithNext;
+            }
+
+            if (lastItem?.Group != null)
+            {
+                return lastItem.Group.JoinWithNext;
+            }
+
+            return "and";
         }
 
         public void RemoveRootFilterItem(FilterRootItem? item)

@@ -85,7 +85,10 @@ namespace SpecStudioParser.Models
         public FilterConditionItem AddCondition()
         {
             EnsureItems();
-            var condition = new FilterConditionItem();
+            var condition = new FilterConditionItem
+            {
+                JoinWithNext = GetLastItemJoinWithNext()
+            };
             Items.Add(FilterGroupItem.FromCondition(condition));
             return condition;
         }
@@ -93,10 +96,29 @@ namespace SpecStudioParser.Models
         public FilterConditionGroup AddGroup()
         {
             EnsureItems();
-            var group = new FilterConditionGroup();
+            var group = new FilterConditionGroup
+            {
+                JoinWithNext = GetLastItemJoinWithNext()
+            };
             group.AddCondition();
             Items.Add(FilterGroupItem.FromGroup(group));
             return group;
+        }
+
+        private string GetLastItemJoinWithNext()
+        {
+            var lastItem = Items.LastOrDefault();
+            if (lastItem?.Condition != null)
+            {
+                return lastItem.Condition.JoinWithNext;
+            }
+
+            if (lastItem?.Group != null)
+            {
+                return lastItem.Group.JoinWithNext;
+            }
+
+            return "and";
         }
 
         public bool RemoveCondition(FilterConditionItem? condition)
