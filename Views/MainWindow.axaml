@@ -11,22 +11,22 @@
 
 	<Grid RowDefinitions="*, Auto" Background="{StaticResource AppBackgroundBrush}">
 
-		<Grid Grid.Row="0" Margin="20" RowDefinitions="Auto, *, Auto" IsVisible="{Binding IsProfileNotLoaded}">
+		<Grid Grid.Row="0" Margin="20" RowDefinitions="Auto, *" IsVisible="{Binding IsProfileNotLoaded}">
 
-			<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,15">
-				<Grid ColumnDefinitions="*, Auto, Auto">
-					<StackPanel Grid.Column="0">
-						<TextBlock Text="Корневая папка профилей XML спецификаций:" FontWeight="Bold" FontSize="11" Foreground="{StaticResource TextBrush}"/>
-						<TextBox Text="{Binding RootProfilesPath, Mode=TwoWay}" Watermark="Путь к папке XML-профилей" Margin="0,4,0,0"/>
-						<TextBlock Text="Выберите папку профилей через проводник или введите путь вручную и нажмите 'Применить путь'. Если папки нет, она будет создана." TextWrapping="Wrap" Margin="0,4,0,0" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
+			<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+				<Grid ColumnDefinitions="Auto, *, Auto, Auto">
+					<StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" Spacing="6">
+						<Path Data="M10 4H2C.9 4 0 4.9 0 6v12c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2H12l-2-2z" Fill="{StaticResource AccentBrush}" Width="16" Height="16" Stretch="Uniform"/>
+						<TextBlock Text="Папка профилей" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
 					</StackPanel>
-					<Button Grid.Column="1" Classes="neutralButton" Click="ChooseProfileFolderClick" VerticalAlignment="Center" Margin="10,0,0,0" ToolTip.Tip="Выбрать папку профилей через проводник">
+					<TextBox Grid.Column="1" Text="{Binding RootProfilesPath, Mode=TwoWay}" Watermark="Путь к папке XML-профилей" VerticalContentAlignment="Center"/>
+					<Button Grid.Column="2" Classes="neutralButton" Click="ChooseProfileFolderClick" VerticalAlignment="Center" Margin="10,0,0,0" ToolTip.Tip="Выбрать папку профилей через проводник">
 						<StackPanel Orientation="Horizontal" Spacing="6">
 							<Path Data="M10 4H2C.9 4 0 4.9 0 6v12c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2H12l-2-2z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
-							<TextBlock Text="Папка" VerticalAlignment="Center"/>
+							<TextBlock Text="Обзор" VerticalAlignment="Center"/>
 						</StackPanel>
 					</Button>
-					<Button Grid.Column="2" Classes="accentButton" Click="ApplyProfileFolderClick" VerticalAlignment="Center" Margin="8,0,0,0" ToolTip.Tip="Применить путь из поля ввода">
+					<Button Grid.Column="3" Classes="accentButton" Click="ApplyProfileFolderClick" VerticalAlignment="Center" Margin="8,0,0,0" ToolTip.Tip="Применить путь из поля ввода. Если папки нет, она будет создана.">
 						<StackPanel Orientation="Horizontal" Spacing="6">
 							<Path Data="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
 							<TextBlock Text="Применить" VerticalAlignment="Center"/>
@@ -35,26 +35,28 @@
 				</Grid>
 			</Border>
 
-			<Grid Grid.Row="1" ColumnDefinitions="*, 300" Margin="0,0,0,15">
+			<Grid Grid.Row="1" ColumnDefinitions="*, 280">
 				<Border Grid.Column="0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Background="{StaticResource PanelBrush}">
-					<Grid RowDefinitions="Auto, Auto, Auto, *">
+					<Grid RowDefinitions="Auto, Auto, *">
 						<Border Grid.Row="0" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="0,0,0,1" Padding="8">
-							<TextBlock Text="Доступные конфигурации спецификаций в папке:" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+							<Grid ColumnDefinitions="*, Auto">
+								<TextBlock Grid.Column="0" Text="XML-профили" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+								<TextBlock Grid.Column="1" Text="Выберите профиль и нажмите Открыть" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+							</Grid>
 						</Border>
 
-						<Border Grid.Row="1" Background="{StaticResource PanelBrush}" Padding="10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-							<TextBlock Text="Если список ниже пуст, XML-профили ещё не сохранены в указанной папке. Создайте новый профиль или импортируйте существующий XML Model Studio." TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}"/>
-						</Border>
+						<Grid Grid.Row="1" ColumnDefinitions="*, Auto" Margin="10">
+							<TextBox Name="ProfileSearchBox" Grid.Column="0" Watermark="Поиск профиля..." TextChanged="ProfileSearchTextChanged"/>
+							<TextBlock Grid.Column="1" Text="Нет профиля? Создайте или импортируйте XML." Margin="10,0,0,0" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
+						</Grid>
 
-						<TextBox Name="ProfileSearchBox" Grid.Row="2" Watermark="Поиск профиля..." Margin="10" TextChanged="ProfileSearchTextChanged"/>
-
-						<ListBox Grid.Row="3" ItemsSource="{Binding AvailableXmlFiles}" SelectedItem="{Binding SelectedXmlFile}" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}">
+						<ListBox Grid.Row="2" ItemsSource="{Binding AvailableXmlFiles}" SelectedItem="{Binding SelectedXmlFile}" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,4">
 							<ListBox.ItemTemplate>
 								<DataTemplate x:DataType="system:String">
-									<Border Padding="4">
+									<Border Padding="6,4">
 										<StackPanel Orientation="Horizontal">
 											<Path Data="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M13,9V3.5L18.5,9H13Z" Fill="{StaticResource AccentBrush}" Width="16" Height="16" Margin="0,0,8,0"/>
-											<TextBlock Text="{Binding}" VerticalAlignment="Center" FontSize="13" Foreground="{StaticResource TextBrush}"/>
+											<TextBlock Text="{Binding}" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
 										</StackPanel>
 									</Border>
 								</DataTemplate>
@@ -63,29 +65,31 @@
 					</Grid>
 				</Border>
 
-				<StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="10">
-					<Button Classes="accentButton commandButton" Command="{Binding LoadSelectedXmlCommand}" FontWeight="Bold" ToolTip.Tip="Открыть выбранный XML-профиль">
-						<StackPanel Orientation="Horizontal" Spacing="8">
-							<Path Data="M8 5v14l11-7z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
-							<TextBlock Text="Открыть" VerticalAlignment="Center"/>
-						</StackPanel>
-					</Button>
-					<Button Classes="neutralButton commandButton" Command="{Binding CreateNewProfileCommand}" ToolTip.Tip="Создать новый XML-профиль">
-						<StackPanel Orientation="Horizontal" Spacing="8">
-							<Path Data="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
-							<TextBlock Text="Создать" VerticalAlignment="Center"/>
-						</StackPanel>
-					</Button>
-					<Button Classes="neutralButton commandButton" Click="ImportXmlClick" ToolTip.Tip="Импортировать внешний XML Model Studio">
-						<StackPanel Orientation="Horizontal" Spacing="8">
-							<Path Data="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7 7-7z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
-							<TextBlock Text="Импорт" VerticalAlignment="Center"/>
-						</StackPanel>
-					</Button>
-					<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,10,0,0">
-						<TextBlock Text="После создания нового профиля откроется рабочий экран. Для записи XML используйте кнопку сохранения в верхней панели." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-					</Border>
-				</StackPanel>
+				<Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="12" Margin="12,0,0,0">
+					<StackPanel Spacing="10">
+						<TextBlock Text="Действия" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+						<Button Classes="accentButton commandButton" Command="{Binding LoadSelectedXmlCommand}" FontWeight="Bold" ToolTip.Tip="Открыть выбранный XML-профиль">
+							<StackPanel Orientation="Horizontal" Spacing="8">
+								<Path Data="M8 5v14l11-7z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
+								<TextBlock Text="Открыть" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+						<Button Classes="neutralButton commandButton" Command="{Binding CreateNewProfileCommand}" ToolTip.Tip="Создать новый XML-профиль в выбранной папке">
+							<StackPanel Orientation="Horizontal" Spacing="8">
+								<Path Data="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
+								<TextBlock Text="Создать" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+						<Button Classes="neutralButton commandButton" Click="ImportXmlClick" ToolTip.Tip="Импортировать внешний XML Model Studio">
+							<StackPanel Orientation="Horizontal" Spacing="8">
+								<Path Data="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7 7-7z" Fill="{StaticResource AccentBrush}" Width="14" Height="14" Stretch="Uniform"/>
+								<TextBlock Text="Импорт" VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+						<Separator Margin="0,4"/>
+						<TextBlock Text="Профиль откроется в рабочем экране. Сохранение XML доступно в верхней панели." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
+					</StackPanel>
+				</Border>
 			</Grid>
 		</Grid>
 
