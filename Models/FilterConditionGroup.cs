@@ -143,6 +143,48 @@ namespace SpecStudioParser.Models
             return null;
         }
 
+        public FilterConditionGroup? FindParentOfItem(FilterGroupItem? targetItem)
+        {
+            if (targetItem == null) return null;
+            EnsureItems();
+
+            if (Items.Contains(targetItem))
+            {
+                return this;
+            }
+
+            foreach (var childGroup in Groups.ToList())
+            {
+                var parent = childGroup.FindParentOfItem(targetItem);
+                if (parent != null)
+                {
+                    return parent;
+                }
+            }
+
+            return null;
+        }
+
+        public bool MoveItem(FilterGroupItem? item, int direction)
+        {
+            if (item == null) return false;
+
+            var parent = FindParentOfItem(item);
+            if (parent == null) return false;
+
+            parent.EnsureItems();
+            var oldIndex = parent.Items.IndexOf(item);
+            var newIndex = oldIndex + direction;
+
+            if (oldIndex < 0 || newIndex < 0 || newIndex >= parent.Items.Count)
+            {
+                return false;
+            }
+
+            parent.Items.Move(oldIndex, newIndex);
+            return true;
+        }
+
         public bool DissolveGroup(FilterConditionGroup? group)
         {
             if (group == null) return false;
