@@ -69,6 +69,9 @@
 					</StackPanel>
 					<TextBox Grid.Column="1" Text="{Binding SelectedXmlFile}" Watermark="Имя_файла.xml" VerticalAlignment="Center" Margin="5,0,15,0"/>
 					<StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+						<Button Command="{Binding ScanAllCommand}" Width="32" Height="28" Padding="4" ToolTip.Tip="Получить данные с чертежа">
+							<Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Fill="#1565C0" Width="16" Height="16" Stretch="Uniform"/>
+						</Button>
 						<Button Content="Сохранить изменения" Command="{Binding SaveCurrentProfileCommand}" Background="#00897B" Foreground="White" FontWeight="Bold"/>
 						<Button Content="Настройки структуры данных" Command="{Binding OpenSettingsWindowCommand}" Background="#78909C" Foreground="White"/>
 					</StackPanel>
