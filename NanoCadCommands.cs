@@ -6,6 +6,7 @@ using Teigha.Runtime;
 using SpecStudioParser.Views;
 using SpecStudioParser.ViewModels;
 using SpecStudioParser.CadLib;
+using SpecStudioParser.DesignTools;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform; // Для работы с IPlatformHandle
@@ -22,6 +23,7 @@ namespace SpecStudioParser.Commands
         private static MainWindow? _currentWindow;
         private static MainWindowViewModel? _currentViewModel;
         private static bool _isAvaloniaInitialized = false;
+        private static readonly DesignToolsPaletteService _designToolsPaletteService = new();
 
         public static AppBuilder BuildAvaloniaApp()
         {
@@ -100,6 +102,21 @@ namespace SpecStudioParser.Commands
             catch (System.Exception ex)
             {
                 LogToNanoCadConsole($"\n[SpecStudio Error]: Критическая ошибка инициализации окна: {ex.Message}\n");
+            }
+        }
+
+        [CommandMethod("DESIGN_TOOLS_SHOW", CommandFlags.Session)]
+        public static void ShowDesignTools()
+        {
+            try
+            {
+                EnsureAvaloniaInitialized();
+                _designToolsPaletteService.Show();
+                LogToNanoCadConsole("\n[DesignTools]: Панель инструментов проектировщика открыта.\n");
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[DesignTools Error]: Ошибка запуска панели: {ex.Message}\n");
             }
         }
 
