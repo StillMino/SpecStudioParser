@@ -123,20 +123,23 @@
 															</Grid>
 														</Border>
 
-														<Border IsVisible="{Binding IsGroup}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,6,0,0" Background="{StaticResource AccentSoftBrush}">
+														<Border IsVisible="{Binding IsGroup}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,6,0,0" Background="{StaticResource PanelBrush}">
 															<StackPanel Spacing="6">
-																<StackPanel Orientation="Horizontal" Spacing="8">
-																	<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveRootFilterItemUpClick" ToolTip.Tip="Переместить выше"><PathIcon Data="{StaticResource IconUp}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
-																	<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveRootFilterItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
-																	<TextBlock Text="Группа" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
-																	<ComboBox Width="90" ItemsSource="{Binding Group.AvailableJoinOperators}" SelectedItem="{Binding Group.JoinWithNext, Mode=TwoWay}" ToolTip.Tip="Связь со следующим корневым элементом; у последней группы не используется"/>
-																	<Button Classes="neutralButton" DataContext="{Binding Group}" Click="AddConditionToGroupClick" Content="+ Условие" Padding="6,2"/>
-																	<Button Classes="dangerButton" Click="RemoveRootFilterItemClick" Content="Удалить" Padding="6,2"/>
-																</StackPanel>
+																<Grid ColumnDefinitions="4, *">
+																	<Border Grid.Column="0" Background="{StaticResource AccentBrush}" CornerRadius="2" Margin="0,2,0,2"/>
+																	<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0">
+																		<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveRootFilterItemUpClick" ToolTip.Tip="Переместить выше"><PathIcon Data="{StaticResource IconUp}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
+																		<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveRootFilterItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
+																		<TextBlock Text="Группа" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+																		<ComboBox Width="90" ItemsSource="{Binding Group.AvailableJoinOperators}" SelectedItem="{Binding Group.JoinWithNext, Mode=TwoWay}" ToolTip.Tip="Связь со следующим корневым элементом; у последней группы не используется"/>
+																		<Button Classes="neutralButton" DataContext="{Binding Group}" Click="AddConditionToGroupClick" Content="+ Условие" Padding="6,2"/>
+																		<Button Classes="dangerButton" Click="RemoveRootFilterItemClick" Content="Удалить" Padding="6,2"/>
+																	</StackPanel>
+																</Grid>
 																<ItemsControl ItemsSource="{Binding Group.Conditions}">
 																	<ItemsControl.ItemTemplate>
 																		<DataTemplate x:DataType="m:FilterConditionItem">
-																			<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3" Padding="6" Margin="0,3">
+																			<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3" Padding="6" Margin="12,3,0,3">
 																				<Grid ColumnDefinitions="*, 100, *, 80, Auto">
 																					<ComboBox Grid.Column="0" ItemsSource="{Binding AvailableAttributes}" SelectedItem="{Binding Attribute, Mode=TwoWay}"/>
 																					<ComboBox Grid.Column="1" ItemsSource="{Binding AvailableOperators}" SelectedItem="{Binding Operator, Mode=TwoWay}" Margin="4,0"/>
