@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.Generic;
@@ -119,26 +120,31 @@ namespace SpecStudioParser.CadLib
 
             try
             {
-                var databases = await _service.GetDatabasesAsync(BuildSettings()).ConfigureAwait(false);
-                Databases.Clear();
+                var settings = BuildSettings();
+                var databases = await Task.Run(() => _service.GetDatabasesAsync(settings)).Unwrap();
 
-                foreach (var database in databases)
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    Databases.Add(database);
-                }
+                    Databases.Clear();
 
-                SelectedDatabase = Databases.FirstOrDefault();
-                Status = Databases.Count == 0
-                    ? "Сервер доступен, но список баз данных пуст."
-                    : $"Загружено баз данных: {Databases.Count}.";
+                    foreach (var database in databases)
+                    {
+                        Databases.Add(database);
+                    }
+
+                    SelectedDatabase = Databases.FirstOrDefault();
+                    Status = Databases.Count == 0
+                        ? "Сервер доступен, но список баз данных пуст."
+                        : $"Загружено баз данных: {Databases.Count}.";
+                });
             }
             catch (Exception ex)
             {
-                Status = $"Ошибка подключения: {ex.Message}";
+                await Dispatcher.UIThread.InvokeAsync(() => Status = $"Ошибка подключения: {ex.Message}");
             }
             finally
             {
-                IsBusy = false;
+                await Dispatcher.UIThread.InvokeAsync(() => IsBusy = false);
             }
         }
 
@@ -157,19 +163,22 @@ namespace SpecStudioParser.CadLib
             {
                 var settings = BuildSettings();
                 settings.DatabaseName = SelectedDatabase.Name;
-                var parameters = await _service.ConnectAndLoadParametersAsync(settings).ConfigureAwait(false);
-                CadLibParameterCache.Current.Replace(settings, parameters);
+                var parameters = await Task.Run(() => _service.ConnectAndLoadParametersAsync(settings)).Unwrap();
 
-                Status = $"Подключено. Загружено параметров: {parameters.Count}.";
-                RequestClose?.Invoke(new CadLibConnectionResult { Settings = settings, Parameters = parameters });
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    CadLibParameterCache.Current.Replace(settings, parameters);
+                    Status = $"Подключено. Загружено параметров: {parameters.Count}.";
+                    RequestClose?.Invoke(new CadLibConnectionResult { Settings = settings, Parameters = parameters });
+                });
             }
             catch (Exception ex)
             {
-                Status = $"Ошибка чтения CADLib БД: {ex.Message}";
+                await Dispatcher.UIThread.InvokeAsync(() => Status = $"Ошибка чтения CADLib БД: {ex.Message}");
             }
             finally
             {
-                IsBusy = false;
+                await Dispatcher.UIThread.InvokeAsync(() => IsBusy = false);
             }
         }
 
@@ -206,7 +215,14 @@ namespace SpecStudioParser.CadLib
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
+            }
         }
     }
 
@@ -309,7 +325,14 @@ namespace SpecStudioParser.CadLib
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
+            }
         }
     }
 }
