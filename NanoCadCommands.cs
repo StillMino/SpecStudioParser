@@ -138,12 +138,7 @@ namespace SpecStudioParser.Commands
         {
             try
             {
-                if (!_isAvaloniaInitialized)
-                {
-                    BuildAvaloniaApp().SetupWithoutStarting();
-                    _isAvaloniaInitialized = true;
-                }
-
+                EnsureAvaloniaInitialized();
                 IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
 
                 Dispatcher.UIThread.Post(() =>
@@ -176,10 +171,7 @@ namespace SpecStudioParser.Commands
                             }
                         };
 
-                        if (_currentWindow != null)
-                            connectionWindow.Show(_currentWindow);
-                        else
-                            connectionWindow.Show();
+                        ShowWindowWithOptionalOwner(connectionWindow);
                     }
                     catch (System.Exception innerEx)
                     {
@@ -193,6 +185,47 @@ namespace SpecStudioParser.Commands
             }
         }
 
+        [CommandMethod("SPEC_PARAM_PICK", CommandFlags.Session)]
+        public static void ShowCadLibParameterPicker()
+        {
+            try
+            {
+                EnsureAvaloniaInitialized();
+                IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        var pickerWindow = new CadLibParameterPickerWindow();
+
+                        if (nanoCadHwnd != IntPtr.Zero)
+                        {
+                            pickerWindow.Opened += (_, _) => AttachToNanoCadWindow(pickerWindow, nanoCadHwnd);
+                        }
+
+                        pickerWindow.Closed += (_, _) =>
+                        {
+                            if (pickerWindow.SelectedParameter != null)
+                            {
+                                LogToNanoCadConsole($"\n[SpecStudio]: Выбран CADLib параметр: {pickerWindow.SelectedParameter.DisplayName} / {pickerWindow.SelectedParameter.SystemName}\n");
+                            }
+                        };
+
+                        ShowWindowWithOptionalOwner(pickerWindow);
+                    }
+                    catch (System.Exception innerEx)
+                    {
+                        LogToNanoCadConsole($"\n[SpecStudio CADLib Picker Error]: {innerEx.Message}\n");
+                    }
+                });
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[SpecStudio CADLib Picker Error]: Ошибка запуска выбора параметра: {ex.Message}\n");
+            }
+        }
+
         private static void ShowCadLibParameterBrowser(IntPtr nanoCadHwnd)
         {
             var browserWindow = new CadLibParameterBrowserWindow();
@@ -202,10 +235,24 @@ namespace SpecStudioParser.Commands
                 browserWindow.Opened += (_, _) => AttachToNanoCadWindow(browserWindow, nanoCadHwnd);
             }
 
+            ShowWindowWithOptionalOwner(browserWindow);
+        }
+
+        private static void ShowWindowWithOptionalOwner(Window window)
+        {
             if (_currentWindow != null)
-                browserWindow.Show(_currentWindow);
+                window.Show(_currentWindow);
             else
-                browserWindow.Show();
+                window.Show();
+        }
+
+        private static void EnsureAvaloniaInitialized()
+        {
+            if (!_isAvaloniaInitialized)
+            {
+                BuildAvaloniaApp().SetupWithoutStarting();
+                _isAvaloniaInitialized = true;
+            }
         }
 
         private static void AttachToNanoCadWindow(Window window, IntPtr nanoCadHwnd)
