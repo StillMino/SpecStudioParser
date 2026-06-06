@@ -26,7 +26,7 @@
 
 			<Grid Grid.Row="1" ColumnDefinitions="*, 300" Margin="0,0,0,15">
 				<Border Grid.Column="0" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4" Background="White">
-					<Grid RowDefinitions="Auto, Auto, *">
+					<Grid RowDefinitions="Auto, Auto, Auto, *">
 						<Border Grid.Row="0" Background="#EAEAEA" Padding="8">
 							<TextBlock Text="Доступные конфигурации спецификаций в папке:" FontWeight="Bold"/>
 						</Border>
@@ -35,7 +35,9 @@
 							<TextBlock Text="Если список ниже пуст, XML-профили ещё не сохранены в указанной папке. Создайте новый профиль или импортируйте существующий XML Model Studio." TextWrapping="Wrap" FontSize="12" Foreground="#475569"/>
 						</Border>
 
-						<ListBox Grid.Row="2" ItemsSource="{Binding AvailableXmlFiles}" SelectedItem="{Binding SelectedXmlFile}">
+						<TextBox Name="ProfileSearchBox" Grid.Row="2" Watermark="Поиск профиля..." Margin="10" TextChanged="ProfileSearchTextChanged"/>
+
+						<ListBox Grid.Row="3" ItemsSource="{Binding AvailableXmlFiles}" SelectedItem="{Binding SelectedXmlFile}">
 							<ListBox.ItemTemplate>
 								<DataTemplate x:DataType="system:String">
 									<Border Padding="4">
