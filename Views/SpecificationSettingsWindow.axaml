@@ -156,6 +156,8 @@
 																							<TextBlock Text="Подгруппа" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
 																							<ComboBox Width="90" ItemsSource="{Binding Group.AvailableJoinOperators}" SelectedItem="{Binding Group.JoinWithNext, Mode=TwoWay}" ToolTip.Tip="Связь со следующим элементом внутри родительской группы"/>
 																							<Button Classes="neutralButton" DataContext="{Binding Group}" Click="AddConditionToGroupClick" Content="+ Условие" Padding="6,2"/>
+																							<Button Classes="neutralButton" DataContext="{Binding Group}" Click="PromoteNestedFilterGroupClick" Content="Поднять" Padding="6,2" ToolTip.Tip="Поднять подгруппу на корневой уровень"/>
+																							<Button Classes="neutralButton" DataContext="{Binding Group}" Click="DissolveNestedFilterGroupClick" Content="Расформировать" Padding="6,2" ToolTip.Tip="Удалить оболочку подгруппы, оставив её условия в родительской группе"/>
 																							<Button Classes="dangerButton" DataContext="{Binding Group}" Click="RemoveNestedFilterGroupClick" Content="Удалить" Padding="6,2"/>
 																						</StackPanel>
 																						<ItemsControl ItemsSource="{Binding Group.Items}">
