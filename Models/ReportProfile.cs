@@ -79,6 +79,7 @@ namespace SpecStudioParser.Models
 
                 _rootFilterGroup = value ?? new FilterConditionGroup();
                 _rootFilterGroup.PropertyChanged += RootFilterGroupChanged;
+                _rootFilterGroup.EnsureItems();
                 OnPropertyChanged();
                 RebuildFilterFormula();
             }
@@ -95,6 +96,7 @@ namespace SpecStudioParser.Models
 
         public void EnsureRootFilterItems()
         {
+            RootFilterGroup.EnsureItems();
             if (RootFilterItems.Count > 0) return;
 
             foreach (var condition in FilterConditions)
@@ -104,6 +106,7 @@ namespace SpecStudioParser.Models
 
             foreach (var group in RootFilterGroup.Groups)
             {
+                group.EnsureItems();
                 RootFilterItems.Add(FilterRootItem.FromGroup(group));
             }
         }
@@ -120,9 +123,7 @@ namespace SpecStudioParser.Models
         public void AddChildFilterGroup()
         {
             EnsureRootFilterItems();
-            var group = new FilterConditionGroup();
-            group.Conditions.Add(new FilterConditionItem());
-            RootFilterGroup.Groups.Add(group);
+            var group = RootFilterGroup.AddGroup();
             RootFilterItems.Add(FilterRootItem.FromGroup(group));
             RebuildFilterFormula();
         }
@@ -138,7 +139,7 @@ namespace SpecStudioParser.Models
 
             if (item.Group != null)
             {
-                RootFilterGroup.Groups.Remove(item.Group);
+                RootFilterGroup.RemoveGroup(item.Group);
             }
 
             RootFilterItems.Remove(item);
@@ -150,13 +151,7 @@ namespace SpecStudioParser.Models
             if (condition == null) return;
 
             FilterConditions.Remove(condition);
-            foreach (var group in RootFilterGroup.Groups)
-            {
-                if (group.Conditions.Remove(condition))
-                {
-                    break;
-                }
-            }
+            RootFilterGroup.RemoveCondition(condition);
 
             var rootItem = RootFilterItems.FirstOrDefault(item => item.Condition == condition);
             if (rootItem != null)
@@ -205,7 +200,7 @@ namespace SpecStudioParser.Models
 
         private bool HasEditableFilterItems()
         {
-            return RootFilterItems.Count > 0 || FilterConditions.Count > 0 || RootFilterGroup.Groups.Count > 0 || RootFilterGroup.Conditions.Count > 0;
+            return RootFilterItems.Count > 0 || FilterConditions.Count > 0 || RootFilterGroup.Groups.Count > 0 || RootFilterGroup.Conditions.Count > 0 || RootFilterGroup.Items.Count > 0;
         }
 
         private void RebuildFilterFormula()
