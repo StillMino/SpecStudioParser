@@ -47,7 +47,10 @@ namespace SpecStudioParser.DesignTools
                 DataContext = _viewModel
             };
 
-            _paletteSet = new PaletteSet("Инструменты проектировщика");
+            _paletteSet = new PaletteSet("Инструменты проектировщика")
+            {
+                KeepFocus = false
+            };
             _paletteSet.Add("Функции", _window);
         }
 
