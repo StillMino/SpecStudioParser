@@ -29,6 +29,7 @@ namespace SpecStudioParser.Models
         private string _filterFormula = "";
         private int _aggregated = 1;
         private FilterConditionGroup _rootFilterGroup = new();
+        private bool _suppressFilterRebuild;
 
         public DatasetConfig()
         {
@@ -240,40 +241,54 @@ namespace SpecStudioParser.Models
                 JoinWithNext = GetRootItemJoinWithNext(groupedRootItems.Last())
             };
 
-            for (var i = groupedRootItems.Count - 1; i >= 0; i--)
+            try
             {
-                var item = groupedRootItems[i];
-                RootFilterItems.Remove(item);
+                _suppressFilterRebuild = true;
 
-                if (item.Condition != null)
+                for (var i = groupedRootItems.Count - 1; i >= 0; i--)
                 {
-                    FilterConditions.Remove(item.Condition);
-                    RootFilterGroup.RemoveCondition(item.Condition);
+                    var item = groupedRootItems[i];
+                    RootFilterItems.Remove(item);
+
+                    if (item.Condition != null)
+                    {
+                        FilterConditions.Remove(item.Condition);
+                        RootFilterGroup.RemoveCondition(item.Condition);
+                    }
+
+                    if (item.Group != null)
+                    {
+                        RootFilterGroup.RemoveGroup(item.Group);
+                    }
                 }
 
-                if (item.Group != null)
+                foreach (var item in groupedRootItems)
                 {
-                    RootFilterGroup.RemoveGroup(item.Group);
+                    item.IsSelected = false;
+
+                    if (item.Condition != null)
+                    {
+                        newGroup.Items.Add(FilterGroupItem.FromCondition(item.Condition));
+                    }
+
+                    if (item.Group != null)
+                    {
+                        newGroup.Items.Add(FilterGroupItem.FromGroup(item.Group));
+                    }
+                }
+
+                RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(newGroup));
+
+                if (!RootFilterGroup.Items.Any(item => item.Group == newGroup))
+                {
+                    RootFilterGroup.Items.Add(FilterGroupItem.FromGroup(newGroup));
                 }
             }
-
-            foreach (var item in groupedRootItems)
+            finally
             {
-                item.IsSelected = false;
-
-                if (item.Condition != null)
-                {
-                    newGroup.Items.Add(FilterGroupItem.FromCondition(item.Condition));
-                }
-
-                if (item.Group != null)
-                {
-                    newGroup.Items.Add(FilterGroupItem.FromGroup(item.Group));
-                }
+                _suppressFilterRebuild = false;
             }
 
-            RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(newGroup));
-            RootFilterGroup.Items.Insert(insertIndex, FilterGroupItem.FromGroup(newGroup));
             RebuildFilterFormula();
         }
 
@@ -344,6 +359,7 @@ namespace SpecStudioParser.Models
 
         private void RootFilterItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            if (_suppressFilterRebuild) return;
             RebuildFilterFormula();
         }
 
@@ -365,16 +381,19 @@ namespace SpecStudioParser.Models
                 }
             }
 
+            if (_suppressFilterRebuild) return;
             RebuildFilterFormula();
         }
 
         private void FilterConditionChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (_suppressFilterRebuild) return;
             RebuildFilterFormula();
         }
 
         private void RootFilterGroupChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (_suppressFilterRebuild) return;
             RebuildFilterFormula();
         }
 
