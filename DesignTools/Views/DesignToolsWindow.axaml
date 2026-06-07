@@ -9,128 +9,73 @@
         Height="640"
         MinWidth="340"
         MinHeight="480"
+        CanResize="False"
+        ShowInTaskbar="False"
+        SystemDecorations="None"
         Background="{StaticResource AppBackgroundBrush}">
 
 	<Window.Resources>
 		<conv:GeometryPathConverter x:Key="GeometryPathConverter"/>
 	</Window.Resources>
 
-	<Grid RowDefinitions="Auto, *, Auto" Background="{StaticResource AppBackgroundBrush}">
+	<Grid RowDefinitions="Auto, Auto, Auto, *, Auto" Background="{StaticResource AppBackgroundBrush}">
 		<Border Grid.Row="0"
 		        Background="{StaticResource PanelBrush}"
 		        BorderBrush="{StaticResource BorderBrush}"
 		        BorderThickness="0,0,0,1"
 		        Padding="8">
 			<Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
-				<TextBlock Grid.Column="0"
-				           Grid.Row="0"
-				           Text="Инструменты проектировщика"
-				           FontSize="15"
-				           FontWeight="Bold"
-				           Foreground="{StaticResource TextBrush}"/>
-
-				<Button Grid.Column="1"
-				        Grid.Row="0"
-				        Classes="neutralButton"
-				        Command="{Binding RefreshContextCommand}"
-				        Padding="6,2"
-				        ToolTip.Tip="Обновить сведения об активном документе nanoCAD">
+				<TextBlock Grid.Column="0" Grid.Row="0" Text="Инструменты проектировщика" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+				<Button Grid.Column="1" Grid.Row="0" Classes="neutralButton" Command="{Binding RefreshContextCommand}" Padding="6,2" ToolTip.Tip="Обновить сведения об активном документе nanoCAD">
 					<TextBlock Text="↻" FontSize="13"/>
 				</Button>
-
-				<TextBlock Grid.Column="0"
-				           Grid.ColumnSpan="2"
-				           Grid.Row="1"
-				           Text="{Binding DocumentStatus}"
-				           Margin="0,4,0,0"
-				           TextWrapping="NoWrap"
-				           TextTrimming="CharacterEllipsis"
-				           FontSize="11"
-				           Foreground="{StaticResource SecondaryTextBrush}"/>
+				<TextBlock Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Text="{Binding DocumentStatus}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
 			</Grid>
 		</Border>
 
-		<ScrollViewer Grid.Row="1" Margin="6">
+		<Border Grid.Row="1" Padding="6,5,6,2" Background="{StaticResource AppBackgroundBrush}">
+			<WrapPanel Orientation="Horizontal">
+				<Button Content="Все" Command="{Binding SelectFilterCommand}" CommandParameter="all" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Показать все команды"/>
+				<Button Content="2D" Command="{Binding SelectFilterCommand}" CommandParameter="drafting" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Инструменты 2D-проектирования"/>
+				<Button Content="Диагностика" Command="{Binding SelectFilterCommand}" CommandParameter="diagnostics" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Служебные диагностические команды"/>
+				<Button Content="3D" Command="{Binding SelectFilterCommand}" CommandParameter="model" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Инструменты модели"/>
+				<Button Content="Spec" Command="{Binding SelectFilterCommand}" CommandParameter="specifier" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Связь со спецификатором"/>
+			</WrapPanel>
+		</Border>
+
+		<Border Grid.Row="2" Padding="6,2,6,5" Background="{StaticResource AppBackgroundBrush}">
+			<TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+			         Watermark="Поиск команды"
+			         FontSize="12"
+			         MinHeight="28"
+			         ToolTip.Tip="Поиск по названию, описанию, id и имени nanoCAD-команды"/>
+		</Border>
+
+		<ScrollViewer Grid.Row="3" Margin="6,0,6,6">
 			<ItemsControl ItemsSource="{Binding Blocks}">
 				<ItemsControl.ItemTemplate>
 					<DataTemplate x:DataType="vm:DesignToolBlockViewModel">
-						<Border Background="{StaticResource PanelBrush}"
-						        BorderBrush="{StaticResource BorderBrush}"
-						        BorderThickness="1"
-						        CornerRadius="4"
-						        Padding="6"
-						        Margin="0,0,0,6">
+						<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,0,0,6">
 							<Grid RowDefinitions="Auto, Auto">
 								<Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,5">
-									<TextBlock Grid.Column="0"
-									           Text="{Binding Name}"
-									           FontSize="12"
-									           FontWeight="Bold"
-									           Foreground="{StaticResource TextBrush}"
-									           ToolTip.Tip="{Binding Description}"/>
-
-									<CheckBox Grid.Column="1"
-									          IsChecked="{Binding IsEnabled}"
-									          VerticalAlignment="Center"
-									          ToolTip.Tip="Включить или выключить блок функций"/>
+									<TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextBrush}" ToolTip.Tip="{Binding Description}"/>
+									<CheckBox Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" ToolTip.Tip="Включить или выключить блок функций"/>
 								</Grid>
-
 								<ItemsControl Grid.Row="1" ItemsSource="{Binding Features}">
 									<ItemsControl.ItemTemplate>
 										<DataTemplate x:DataType="vm:DesignToolFeatureViewModel">
-											<Border BorderBrush="{StaticResource BorderBrush}"
-											        BorderThickness="0,0,0,1"
-											        Padding="0,3">
+											<Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,3">
 												<Grid ColumnDefinitions="Auto, *, Auto, Auto" RowDefinitions="Auto">
-													<Button Grid.Column="0"
-													        Command="{Binding RunCommand}"
-													        IsEnabled="{Binding IsEnabled}"
-													        Width="30"
-													        Height="30"
-													        Padding="3"
-													        Margin="0,0,6,0"
-													        Background="{StaticResource AccentSoftBrush}"
-													        ToolTip.Tip="{Binding Description}">
+													<Button Grid.Column="0" Command="{Binding RunCommand}" IsEnabled="{Binding IsEnabled}" Width="30" Height="30" Padding="3" Margin="0,0,6,0" Background="{StaticResource AccentSoftBrush}" ToolTip.Tip="{Binding Description}">
 														<Viewbox Width="22" Height="22" Stretch="Uniform">
-															<Path Data="{Binding IconGeometry, Converter={StaticResource GeometryPathConverter}}"
-															      Stroke="{StaticResource TextBrush}"
-															      StrokeThickness="1.3"
-															      StrokeLineCap="Round"
-															      StrokeJoin="Round"
-															      Fill="Transparent"/>
+															<Path Data="{Binding IconGeometry, Converter={StaticResource GeometryPathConverter}}" Stroke="{StaticResource TextBrush}" StrokeThickness="1.3" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent"/>
 														</Viewbox>
 													</Button>
-
-													<TextBlock Grid.Column="1"
-													           Text="{Binding Name}"
-													           VerticalAlignment="Center"
-													           TextWrapping="NoWrap"
-													           TextTrimming="CharacterEllipsis"
-													           FontSize="12"
-													           FontWeight="SemiBold"
-													           Foreground="{StaticResource TextBrush}"
-													           ToolTip.Tip="{Binding Description}"/>
-
-													<Border Grid.Column="2"
-													        Background="{StaticResource AccentSoftBrush}"
-													        CornerRadius="3"
-													        Padding="4,1"
-													        Margin="6,0,0,0"
-													        VerticalAlignment="Center">
+													<TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" ToolTip.Tip="{Binding Description}"/>
+													<Border Grid.Column="2" Background="{StaticResource AccentSoftBrush}" CornerRadius="3" Padding="4,1" Margin="6,0,0,0" VerticalAlignment="Center">
 														<TextBlock Text="{Binding ContextLabel}" FontSize="10" Foreground="{StaticResource TextBrush}"/>
 													</Border>
-
-													<TextBlock Grid.Column="3"
-													           Text="{Binding Status}"
-													           Width="70"
-													           Margin="6,0,0,0"
-													           VerticalAlignment="Center"
-													           TextAlignment="Right"
-													           TextWrapping="NoWrap"
-													           TextTrimming="CharacterEllipsis"
-													           FontSize="10"
-													           Foreground="{StaticResource SecondaryTextBrush}"
-													           ToolTip.Tip="{Binding Status}"/>
+													<TextBlock Grid.Column="3" Text="{Binding Status}" Width="70" Margin="6,0,0,0" VerticalAlignment="Center" TextAlignment="Right" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" ToolTip.Tip="{Binding Status}"/>
 												</Grid>
 											</Border>
 										</DataTemplate>
@@ -143,16 +88,8 @@
 			</ItemsControl>
 		</ScrollViewer>
 
-		<Border Grid.Row="2"
-		        Background="{StaticResource PanelBrush}"
-		        BorderBrush="{StaticResource BorderBrush}"
-		        BorderThickness="0,1,0,0"
-		        Padding="7">
-			<TextBlock Text="{Binding Status}"
-			           TextWrapping="NoWrap"
-			           TextTrimming="CharacterEllipsis"
-			           FontSize="11"
-			           Foreground="{StaticResource TextBrush}"/>
+		<Border Grid.Row="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="7">
+			<TextBlock Text="{Binding Status}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{StaticResource TextBrush}"/>
 		</Border>
 	</Grid>
 </Window>
