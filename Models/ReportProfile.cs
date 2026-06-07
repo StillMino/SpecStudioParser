@@ -29,6 +29,7 @@ namespace SpecStudioParser.Models
         private string _filterFormula = "";
         private int _aggregated = 1;
         private FilterConditionGroup _rootFilterGroup = new();
+        private bool _suppressFilterRebuild;
 
         public DatasetConfig()
         {
@@ -199,6 +200,98 @@ namespace SpecStudioParser.Models
             }
         }
 
+        public void GroupSelectedRootFilterItems()
+        {
+            EnsureRootFilterItems();
+
+            var selectedItems = RootFilterItems
+                .Where(item => item.IsSelected)
+                .ToList();
+
+            if (selectedItems.Count < 2)
+            {
+                return;
+            }
+
+            var selectedIndexes = selectedItems
+                .Select(item => RootFilterItems.IndexOf(item))
+                .OrderBy(index => index)
+                .ToList();
+
+            if (selectedIndexes.Any(index => index < 0))
+            {
+                return;
+            }
+
+            for (var i = 1; i < selectedIndexes.Count; i++)
+            {
+                if (selectedIndexes[i] != selectedIndexes[i - 1] + 1)
+                {
+                    return;
+                }
+            }
+
+            var insertIndex = selectedIndexes[0];
+            var groupedRootItems = selectedIndexes
+                .Select(index => RootFilterItems[index])
+                .ToList();
+
+            var newGroup = new FilterConditionGroup
+            {
+                JoinWithNext = GetRootItemJoinWithNext(groupedRootItems.Last())
+            };
+
+            try
+            {
+                _suppressFilterRebuild = true;
+
+                for (var i = groupedRootItems.Count - 1; i >= 0; i--)
+                {
+                    var item = groupedRootItems[i];
+                    RootFilterItems.Remove(item);
+
+                    if (item.Condition != null)
+                    {
+                        FilterConditions.Remove(item.Condition);
+                        RootFilterGroup.RemoveCondition(item.Condition);
+                    }
+
+                    if (item.Group != null)
+                    {
+                        RootFilterGroup.RemoveGroup(item.Group);
+                    }
+                }
+
+                foreach (var item in groupedRootItems)
+                {
+                    item.IsSelected = false;
+
+                    if (item.Condition != null)
+                    {
+                        newGroup.Items.Add(FilterGroupItem.FromCondition(item.Condition));
+                    }
+
+                    if (item.Group != null)
+                    {
+                        newGroup.Items.Add(FilterGroupItem.FromGroup(item.Group));
+                    }
+                }
+
+                RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(newGroup));
+
+                if (!RootFilterGroup.Items.Any(item => item.Group == newGroup))
+                {
+                    RootFilterGroup.Items.Add(FilterGroupItem.FromGroup(newGroup));
+                }
+            }
+            finally
+            {
+                _suppressFilterRebuild = false;
+            }
+
+            RebuildFilterFormula();
+        }
+
         private string GetLastRootItemJoinWithNext()
         {
             var lastItem = RootFilterItems.LastOrDefault();
@@ -210,6 +303,21 @@ namespace SpecStudioParser.Models
             if (lastItem?.Group != null)
             {
                 return lastItem.Group.JoinWithNext;
+            }
+
+            return "and";
+        }
+
+        private static string GetRootItemJoinWithNext(FilterRootItem item)
+        {
+            if (item.Condition != null)
+            {
+                return item.Condition.JoinWithNext;
+            }
+
+            if (item.Group != null)
+            {
+                return item.Group.JoinWithNext;
             }
 
             return "and";
@@ -251,6 +359,7 @@ namespace SpecStudioParser.Models
 
         private void RootFilterItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            if (_suppressFilterRebuild) return;
             RebuildFilterFormula();
         }
 
@@ -272,16 +381,19 @@ namespace SpecStudioParser.Models
                 }
             }
 
+            if (_suppressFilterRebuild) return;
             RebuildFilterFormula();
         }
 
         private void FilterConditionChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (_suppressFilterRebuild) return;
             RebuildFilterFormula();
         }
 
         private void RootFilterGroupChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (_suppressFilterRebuild) return;
             RebuildFilterFormula();
         }
 
@@ -305,8 +417,10 @@ namespace SpecStudioParser.Models
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public class FilterRootItem
+    public class FilterRootItem : INotifyPropertyChanged
     {
+        private bool _isSelected;
+
         private FilterRootItem(FilterConditionItem? condition, FilterConditionGroup? group)
         {
             Condition = condition;
@@ -318,8 +432,25 @@ namespace SpecStudioParser.Models
         public bool IsCondition => Condition != null;
         public bool IsGroup => Group != null;
 
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public static FilterRootItem FromCondition(FilterConditionItem condition) => new(condition, null);
         public static FilterRootItem FromGroup(FilterConditionGroup group) => new(null, group);
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     public class ReportColumnConfig : INotifyPropertyChanged
