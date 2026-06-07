@@ -4,9 +4,12 @@ using CommunityToolkit.Mvvm.Input;
 using SpecStudioParser.DesignTools.Commands;
 using SpecStudioParser.DesignTools.Services;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using CadApp = HostMgd.ApplicationServices.Application;
@@ -182,10 +185,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "leaders",
                 "Выноски",
-                "Выравнивание и распределение MultiCAD-выносок и стандартных мультивыносок. Для режима 'Точка' после запуска нужно указать точку в чертеже.",
+                "Выравнивание и распределение MultiCAD-выносок и стандартных мультивыносок. MultiCAD-выноски нужно выбрать до запуска команды.",
                 FilterDrafting,
                 LeadersIcon,
-                new[] { "Авто", "MultiCAD", "Мультивыноски" },
+                new[] { "MultiCAD", "Мультивыноски" },
                 new[] { "Выровнять", "Распределить" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Первая", "Точка" },
@@ -318,9 +321,9 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 ReferenceMode = ParseReferenceMode(card.SelectedReference)
             };
 
-            if (state.LeaderSource == DesignToolsLeaderSource.MultiCad || state.LeaderSource == DesignToolsLeaderSource.Auto)
+            if (state.LeaderSource == DesignToolsLeaderSource.MultiCad)
             {
-                RunMultiCadAwareLeaderToolInPaletteContext(card, state);
+                RunMultiCadLeaderToolInPaletteContext(card, state);
                 return;
             }
 
@@ -356,19 +359,25 @@ namespace SpecStudioParser.DesignTools.ViewModels
             SendNanoCadCommand("DT_RUN_DIAGNOSTICS_TOOL");
         }
 
-        private void RunMultiCadAwareLeaderToolInPaletteContext(DesignToolCardViewModel card, DesignToolsCommandState state)
+        private void RunMultiCadLeaderToolInPaletteContext(DesignToolCardViewModel card, DesignToolsCommandState state)
         {
             try
             {
-                // MultiCAD SelectionSet.CurrentSelection is modeless-palette sensitive and can be lost after SendStringToExecute.
-                // Keep explicit MultiCAD and Auto leader operations in the palette context so Auto can see MultiCAD selection.
-                SetCardStatus(card, "Выполняется команда выносок.");
+                // MultiCAD SelectionSet.CurrentSelection is the only confirmed reliable source for MultiCAD leaders.
+                if (!HasCurrentMultiCadSelection())
+                {
+                    SetCardStatus(card, "Для MultiCAD-выносок выберите объекты до запуска команды.");
+                    WriteToNanoCad("\n[DesignTools]: Для MultiCAD-выносок выберите объекты до запуска команды.\n");
+                    return;
+                }
+
+                SetCardStatus(card, "Выполняется MultiCAD-команда.");
                 var message = _directCommandRunner.RunLeaders(state);
                 SetCardStatus(card, message);
             }
             catch (Exception ex)
             {
-                SetCardStatus(card, $"Ошибка команды выносок: {ex.Message}");
+                SetCardStatus(card, $"Ошибка MultiCAD-команды: {ex.Message}");
             }
         }
 
@@ -402,12 +411,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
         private static DesignToolsLeaderSource ParseLeaderSource(string value)
         {
-            return value switch
-            {
-                "MultiCAD" => DesignToolsLeaderSource.MultiCad,
-                "Мультивыноски" => DesignToolsLeaderSource.TeighaMLeader,
-                _ => DesignToolsLeaderSource.Auto
-            };
+            return value == "MultiCAD" ? DesignToolsLeaderSource.MultiCad : DesignToolsLeaderSource.TeighaMLeader;
         }
 
         private static DesignToolsOperation ParseOperation(string value)
@@ -439,6 +443,68 @@ namespace SpecStudioParser.DesignTools.ViewModels
             Status = "Контекст nanoCAD обновлен.";
         }
 
+        private static bool HasCurrentMultiCadSelection()
+        {
+            try
+            {
+                var objectManagerType = ResolveLoadedType("Multicad.DatabaseServices.McObjectManager");
+                if (objectManagerType == null)
+                {
+                    return false;
+                }
+
+                var selectionSet = objectManagerType.GetProperty("SelectionSet", BindingFlags.Static | BindingFlags.Public)?.GetValue(null);
+                var selectionSetType = selectionSet?.GetType() ?? objectManagerType.GetNestedType("SelectionSet", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+                object? currentSelection = null;
+                if (selectionSet != null)
+                {
+                    currentSelection = selectionSet.GetType().GetProperty("CurrentSelection", BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public)?.GetValue(selectionSet);
+                }
+
+                if (currentSelection == null && selectionSetType != null)
+                {
+                    currentSelection = selectionSetType.GetProperty("CurrentSelection", BindingFlags.Static | BindingFlags.Public)?.GetValue(null);
+                }
+
+                if (currentSelection is IEnumerable enumerable)
+                {
+                    foreach (var item in enumerable)
+                    {
+                        if (item != null)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
+
+        private static Type? ResolveLoadedType(string fullName)
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    var type = assembly.GetType(fullName, false, true);
+                    if (type != null)
+                    {
+                        return type;
+                    }
+                }
+                catch (FileLoadException) { }
+                catch (BadImageFormatException) { }
+                catch (ReflectionTypeLoadException) { }
+            }
+
+            return null;
+        }
+
         private static void SendNanoCadCommand(string commandName)
         {
             try
@@ -455,6 +521,11 @@ namespace SpecStudioParser.DesignTools.ViewModels
             {
                 try { CadApp.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"\n[DesignTools]: Не удалось передать команду {commandName}: {ex.Message}\n"); } catch { }
             }
+        }
+
+        private static void WriteToNanoCad(string message)
+        {
+            try { CadApp.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage(message); } catch { }
         }
     }
 }
