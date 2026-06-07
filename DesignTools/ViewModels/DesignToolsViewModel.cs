@@ -318,9 +318,9 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 ReferenceMode = ParseReferenceMode(card.SelectedReference)
             };
 
-            if (state.LeaderSource == DesignToolsLeaderSource.MultiCad)
+            if (state.LeaderSource == DesignToolsLeaderSource.MultiCad || state.LeaderSource == DesignToolsLeaderSource.Auto)
             {
-                RunMultiCadLeaderToolInPaletteContext(card, state);
+                RunMultiCadAwareLeaderToolInPaletteContext(card, state);
                 return;
             }
 
@@ -356,19 +356,19 @@ namespace SpecStudioParser.DesignTools.ViewModels
             SendNanoCadCommand("DT_RUN_DIAGNOSTICS_TOOL");
         }
 
-        private void RunMultiCadLeaderToolInPaletteContext(DesignToolCardViewModel card, DesignToolsCommandState state)
+        private void RunMultiCadAwareLeaderToolInPaletteContext(DesignToolCardViewModel card, DesignToolsCommandState state)
         {
             try
             {
                 // MultiCAD SelectionSet.CurrentSelection is modeless-palette sensitive and can be lost after SendStringToExecute.
-                // Keep explicit MultiCAD leader operations in the palette context; Teigha/nanoCAD operations still use command context.
-                SetCardStatus(card, "Выполняется MultiCAD-команда.");
+                // Keep explicit MultiCAD and Auto leader operations in the palette context so Auto can see MultiCAD selection.
+                SetCardStatus(card, "Выполняется команда выносок.");
                 var message = _directCommandRunner.RunLeaders(state);
                 SetCardStatus(card, message);
             }
             catch (Exception ex)
             {
-                SetCardStatus(card, $"Ошибка MultiCAD-команды: {ex.Message}");
+                SetCardStatus(card, $"Ошибка команды выносок: {ex.Message}");
             }
         }
 
