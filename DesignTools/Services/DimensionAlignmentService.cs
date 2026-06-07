@@ -30,9 +30,127 @@ namespace SpecStudioParser.DesignTools.Services
             return ProcessSelectedDimensions(axis, DimensionOperation.Align);
         }
 
+        public DimensionAlignmentResult AlignSelectedDimensionsToPoint(LeaderAlignmentAxis axis)
+        {
+            var doc = CadApp.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+            {
+                return new DimensionAlignmentResult { Message = "Нет активного документа nanoCAD." };
+            }
+
+            var editor = doc.Editor;
+            var selection = GetDbSelection(editor);
+            if (selection == null || selection.Length == 0)
+            {
+                return new DimensionAlignmentResult { Message = "Не выбраны размеры для обработки." };
+            }
+
+            if (!TryGetReferencePoint(editor, axis, out var referencePoint))
+            {
+                return new DimensionAlignmentResult { SelectedCount = selection.Length, Message = "Указание точки отменено." };
+            }
+
+            using (doc.LockDocument())
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
+            {
+                var targets = new List<DimensionAlignmentTarget>();
+                foreach (var id in selection)
+                {
+                    var obj = tr.GetObject(id, OpenMode.ForWrite, false);
+                    if (TryCreateDimensionTextTarget(obj, out var target))
+                    {
+                        targets.Add(target);
+                    }
+                }
+
+                if (targets.Count == 0)
+                {
+                    tr.Abort();
+                    return new DimensionAlignmentResult
+                    {
+                        SelectedCount = selection.Length,
+                        CandidateCount = 0,
+                        Message = "Среди выбранных объектов не найдено размеров с доступной позицией текста."
+                    };
+                }
+
+                AlignTargetsToPoint(targets, axis, referencePoint);
+                tr.Commit();
+                editor.UpdateScreen();
+
+                var axisName = axis == LeaderAlignmentAxis.Horizontal ? "по горизонтали" : "по вертикали";
+                return new DimensionAlignmentResult
+                {
+                    SelectedCount = selection.Length,
+                    CandidateCount = targets.Count,
+                    ProcessedCount = targets.Count,
+                    Message = $"Размеры: выравнивание текста {axisName} по указанной точке выполнено. Обработано объектов: {targets.Count}."
+                };
+            }
+        }
+
         public DimensionAlignmentResult DistributeSelectedDimensions(LeaderAlignmentAxis axis)
         {
             return ProcessSelectedDimensions(axis, DimensionOperation.Distribute);
+        }
+
+        public DimensionAlignmentResult ResetSelectedDimensionTextPositions()
+        {
+            var doc = CadApp.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+            {
+                return new DimensionAlignmentResult { Message = "Нет активного документа nanoCAD." };
+            }
+
+            var editor = doc.Editor;
+            var selection = GetDbSelection(editor);
+            if (selection == null || selection.Length == 0)
+            {
+                return new DimensionAlignmentResult { Message = "Не выбраны размеры для обработки." };
+            }
+
+            using (doc.LockDocument())
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
+            {
+                var processed = 0;
+                foreach (var id in selection)
+                {
+                    var obj = tr.GetObject(id, OpenMode.ForWrite, false);
+                    if (!IsDimensionCandidate(obj))
+                    {
+                        continue;
+                    }
+
+                    if (TrySetDefaultTextPosition(obj, true))
+                    {
+                        TryRecomputeDimensionBlock(obj);
+                        MarkObjectModified(obj);
+                        processed++;
+                    }
+                }
+
+                if (processed == 0)
+                {
+                    tr.Abort();
+                    return new DimensionAlignmentResult
+                    {
+                        SelectedCount = selection.Length,
+                        CandidateCount = 0,
+                        Message = "Среди выбранных объектов не найдено размеров с доступным свойством UsingDefaultTextPosition."
+                    };
+                }
+
+                tr.Commit();
+                editor.UpdateScreen();
+
+                return new DimensionAlignmentResult
+                {
+                    SelectedCount = selection.Length,
+                    CandidateCount = processed,
+                    ProcessedCount = processed,
+                    Message = $"Размеры: текст возвращен в стандартное положение. Обработано объектов: {processed}."
+                };
+            }
         }
 
         private static DimensionAlignmentResult ProcessSelectedDimensions(LeaderAlignmentAxis axis, DimensionOperation operation)
@@ -116,6 +234,21 @@ namespace SpecStudioParser.DesignTools.Services
                 : null;
         }
 
+        private static bool TryGetReferencePoint(Editor editor, LeaderAlignmentAxis axis, out AlignmentPoint point)
+        {
+            point = default;
+            var axisText = axis == LeaderAlignmentAxis.Horizontal ? "Y" : "X";
+            var options = new PromptPointOptions($"\nУкажите точку, по координате {axisText} которой нужно выровнять текст размеров: ");
+            var result = editor.GetPoint(options);
+            if (result.Status != PromptStatus.OK)
+            {
+                return false;
+            }
+
+            point = new AlignmentPoint(result.Value.X, result.Value.Y, result.Value.Z);
+            return true;
+        }
+
         private static bool TryCreateDimensionTextTarget(object obj, out DimensionAlignmentTarget target)
         {
             target = default!;
@@ -139,8 +272,9 @@ namespace SpecStudioParser.DesignTools.Services
 
             target = new DimensionAlignmentTarget(point, alignedPoint =>
             {
-                TryDisableDefaultTextPosition(obj);
+                TrySetDefaultTextPosition(obj, false);
                 property.SetValue(obj, CreatePointValue(property.PropertyType, alignedPoint));
+                TryRecomputeDimensionBlock(obj);
                 MarkObjectModified(obj);
             });
             return true;
@@ -178,6 +312,19 @@ namespace SpecStudioParser.DesignTools.Services
             }
         }
 
+        private static void AlignTargetsToPoint(IReadOnlyList<DimensionAlignmentTarget> targets, LeaderAlignmentAxis axis, AlignmentPoint referencePoint)
+        {
+            foreach (var target in targets)
+            {
+                var current = target.Point;
+                var aligned = axis == LeaderAlignmentAxis.Horizontal
+                    ? new AlignmentPoint(current.X, referencePoint.Y, current.Z)
+                    : new AlignmentPoint(referencePoint.X, current.Y, current.Z);
+
+                target.Apply(aligned);
+            }
+        }
+
         private static void DistributeTargets(IReadOnlyList<DimensionAlignmentTarget> targets, LeaderAlignmentAxis axis)
         {
             var ordered = axis == LeaderAlignmentAxis.Horizontal
@@ -201,17 +348,30 @@ namespace SpecStudioParser.DesignTools.Services
             }
         }
 
-        private static void TryDisableDefaultTextPosition(object obj)
+        private static bool TrySetDefaultTextPosition(object obj, bool useDefault)
         {
             var property = obj.GetType().GetProperty("UsingDefaultTextPosition", BindingFlags.Instance | BindingFlags.Public);
             if (property == null || !property.CanWrite || property.PropertyType != typeof(bool))
             {
-                return;
+                return false;
             }
 
             try
             {
-                property.SetValue(obj, false);
+                property.SetValue(obj, useDefault);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void TryRecomputeDimensionBlock(object obj)
+        {
+            try
+            {
+                obj.GetType().GetMethod("RecomputeDimensionBlock", BindingFlags.Instance | BindingFlags.Public, Type.EmptyTypes)?.Invoke(obj, Array.Empty<object>());
             }
             catch
             {
