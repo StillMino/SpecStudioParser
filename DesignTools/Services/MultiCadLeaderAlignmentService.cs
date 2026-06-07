@@ -26,11 +26,9 @@ namespace SpecStudioParser.DesignTools.Services
     }
 
     /// <summary>
-    /// Сервис выравнивания выносок.
+    /// Сервис выравнивания выносок и мультивыносок.
     /// Сначала пытается использовать уже загруженный MultiCAD.NET API, затем переходит
-    /// к резервному HostMgd/Teigha-пути. Важно: сервис не выполняет явную загрузку
-    /// MultiCAD-сборок через Type.GetType("..., assembly"), потому что часть SDK-модулей
-    /// nanoCAD не является одиночными .NET-сборками и может давать FileLoadException.
+    /// к резервному HostMgd/Teigha-пути. Явная загрузка MultiCAD-сборок не выполняется.
     /// </summary>
     public sealed class MultiCadLeaderAlignmentService
     {
@@ -45,23 +43,49 @@ namespace SpecStudioParser.DesignTools.Services
             "McAnnotation",
             "McSpecLeader",
             "MLeader",
+            "MultiLeader",
             "Leader",
             "Callout",
-            "Выноска"
+            "Выноска",
+            "Мультивыноска"
         };
 
         private static readonly string[] AnchorPointProperties =
         {
+            "TextLocation",
+            "BlockPosition",
             "Origin",
             "TextPosition",
             "TextPos",
             "PntText",
             "Start",
             "End",
-            "TextLocation",
-            "BlockPosition",
             "Location",
             "Position"
+        };
+
+        private static readonly string[] MLeaderMethodPairs =
+        {
+            "TextLocation",
+            "BlockPosition",
+            "ContentLocation",
+            "DoglegPoint"
+        };
+
+        private static readonly string[] NestedContentProperties =
+        {
+            "MText",
+            "Text",
+            "Annotation",
+            "Content"
+        };
+
+        private static readonly string[] NestedPointProperties =
+        {
+            "Location",
+            "TextLocation",
+            "Position",
+            "InsertionPoint"
         };
 
         public LeaderAlignmentResult AlignSelectedLeaders(LeaderAlignmentAxis axis)
@@ -131,7 +155,7 @@ namespace SpecStudioParser.DesignTools.Services
                         {
                             SelectedCount = selectionIds.Count,
                             CandidateCount = targets.Count,
-                            Message = "Для выравнивания нужно минимум две распознанные MultiCAD-выноски."
+                            Message = "Для выравнивания нужно минимум две распознанные MultiCAD-выноски или мультивыноски."
                         };
                     }
 
@@ -145,7 +169,7 @@ namespace SpecStudioParser.DesignTools.Services
                         SelectedCount = selectionIds.Count,
                         CandidateCount = targets.Count,
                         AlignedCount = targets.Count - 1,
-                        Message = $"MultiCAD-выравнивание {axisName} выполнено. Обработано выносок: {targets.Count}."
+                        Message = $"MultiCAD-выравнивание {axisName} выполнено. Обработано объектов: {targets.Count}."
                     };
                 }
                 catch
@@ -217,7 +241,7 @@ namespace SpecStudioParser.DesignTools.Services
                     {
                         SelectedCount = selection.Length,
                         CandidateCount = targets.Count,
-                        Message = "Для выравнивания нужно минимум две распознанные выноски."
+                        Message = "Для выравнивания нужно минимум две распознанные выноски или мультивыноски."
                     };
                 }
 
@@ -231,7 +255,7 @@ namespace SpecStudioParser.DesignTools.Services
                     SelectedCount = selection.Length,
                     CandidateCount = targets.Count,
                     AlignedCount = targets.Count - 1,
-                    Message = $"Выравнивание {axisName} выполнено. Обработано выносок: {targets.Count}."
+                    Message = $"Выравнивание {axisName} выполнено. Обработано объектов: {targets.Count}."
                 };
             }
         }
@@ -401,8 +425,28 @@ namespace SpecStudioParser.DesignTools.Services
                 rxName.Contains(marker, StringComparison.OrdinalIgnoreCase));
         }
 
+        private static bool IsMultileaderCandidate(object obj)
+        {
+            var type = obj.GetType();
+            var typeName = type.Name;
+            var fullName = type.FullName ?? string.Empty;
+            var rxName = obj is Entity entity ? entity.GetRXClass()?.Name ?? string.Empty : string.Empty;
+
+            return typeName.Contains("MLeader", StringComparison.OrdinalIgnoreCase) ||
+                   fullName.Contains("MLeader", StringComparison.OrdinalIgnoreCase) ||
+                   typeName.Contains("MultiLeader", StringComparison.OrdinalIgnoreCase) ||
+                   fullName.Contains("MultiLeader", StringComparison.OrdinalIgnoreCase) ||
+                   rxName.Contains("MLeader", StringComparison.OrdinalIgnoreCase) ||
+                   rxName.Contains("MULTILEADER", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool TryCreateTarget(object obj, out LeaderAlignmentTarget target)
         {
+            if (IsMultileaderCandidate(obj) && TryCreateMultileaderTarget(obj, out target))
+            {
+                return true;
+            }
+
             foreach (var propertyName in AnchorPointProperties)
             {
                 var property = obj.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
@@ -413,13 +457,133 @@ namespace SpecStudioParser.DesignTools.Services
 
                 if (TryGetPoint(property.GetValue(obj), out var point))
                 {
-                    target = new LeaderAlignmentTarget(obj, property, property.PropertyType, point);
+                    var targetObject = obj;
+                    target = new LeaderAlignmentTarget(point, alignedPoint =>
+                    {
+                        property.SetValue(targetObject, CreatePointValue(property.PropertyType, alignedPoint));
+                        MarkObjectModified(targetObject);
+                    });
                     return true;
                 }
             }
 
             target = default!;
             return false;
+        }
+
+        private static bool TryCreateMultileaderTarget(object obj, out LeaderAlignmentTarget target)
+        {
+            foreach (var propertyName in new[] { "TextLocation", "BlockPosition", "TextPosition", "Location", "Position" })
+            {
+                var property = obj.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
+                if (property != null && property.CanRead && property.CanWrite && TryGetPoint(property.GetValue(obj), out var point))
+                {
+                    var targetObject = obj;
+                    target = new LeaderAlignmentTarget(point, alignedPoint =>
+                    {
+                        property.SetValue(targetObject, CreatePointValue(property.PropertyType, alignedPoint));
+                        MarkObjectModified(targetObject);
+                    });
+                    return true;
+                }
+            }
+
+            foreach (var methodBaseName in MLeaderMethodPairs)
+            {
+                if (TryCreateMethodPointTarget(obj, methodBaseName, out target))
+                {
+                    return true;
+                }
+            }
+
+            foreach (var nestedPropertyName in NestedContentProperties)
+            {
+                var nestedProperty = obj.GetType().GetProperty(nestedPropertyName, BindingFlags.Instance | BindingFlags.Public);
+                if (nestedProperty == null || !nestedProperty.CanRead)
+                {
+                    continue;
+                }
+
+                var nestedValue = nestedProperty.GetValue(obj);
+                if (nestedValue == null)
+                {
+                    continue;
+                }
+
+                foreach (var nestedPointName in NestedPointProperties)
+                {
+                    var pointProperty = nestedValue.GetType().GetProperty(nestedPointName, BindingFlags.Instance | BindingFlags.Public);
+                    if (pointProperty == null || !pointProperty.CanRead || !pointProperty.CanWrite)
+                    {
+                        continue;
+                    }
+
+                    if (!TryGetPoint(pointProperty.GetValue(nestedValue), out var point))
+                    {
+                        continue;
+                    }
+
+                    var targetObject = obj;
+                    var contentObject = nestedValue;
+                    target = new LeaderAlignmentTarget(point, alignedPoint =>
+                    {
+                        pointProperty.SetValue(contentObject, CreatePointValue(pointProperty.PropertyType, alignedPoint));
+
+                        if (nestedProperty.CanWrite)
+                        {
+                            nestedProperty.SetValue(targetObject, contentObject);
+                        }
+
+                        MarkObjectModified(targetObject);
+                    });
+                    return true;
+                }
+            }
+
+            target = default!;
+            return false;
+        }
+
+        private static bool TryCreateMethodPointTarget(object obj, string baseName, out LeaderAlignmentTarget target)
+        {
+            var type = obj.GetType();
+            var getMethod = type.GetMethod("Get" + baseName, BindingFlags.Instance | BindingFlags.Public, Type.EmptyTypes);
+            var setMethod = type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .FirstOrDefault(m => m.Name == "Set" + baseName && m.GetParameters().Length == 1);
+
+            if (getMethod == null || setMethod == null)
+            {
+                target = default!;
+                return false;
+            }
+
+            var value = getMethod.Invoke(obj, Array.Empty<object>());
+            if (!TryGetPoint(value, out var point))
+            {
+                target = default!;
+                return false;
+            }
+
+            var parameterType = setMethod.GetParameters()[0].ParameterType;
+            var targetObject = obj;
+            target = new LeaderAlignmentTarget(point, alignedPoint =>
+            {
+                setMethod.Invoke(targetObject, new[] { CreatePointValue(parameterType, alignedPoint) });
+                MarkObjectModified(targetObject);
+            });
+            return true;
+        }
+
+        private static void MarkObjectModified(object obj)
+        {
+            try
+            {
+                obj.GetType().GetMethod("RecordGraphicsModified", BindingFlags.Instance | BindingFlags.Public, new[] { typeof(bool) })
+                    ?.Invoke(obj, new object[] { true });
+            }
+            catch
+            {
+            }
         }
 
         private static bool TryGetPoint(object? value, out AlignmentPoint point)
@@ -493,23 +657,19 @@ namespace SpecStudioParser.DesignTools.Services
 
         private readonly struct LeaderAlignmentTarget
         {
-            private readonly object _target;
-            private readonly PropertyInfo _property;
-            private readonly Type _pointType;
+            private readonly Action<AlignmentPoint> _apply;
 
             public AlignmentPoint Point { get; }
 
-            public LeaderAlignmentTarget(object target, PropertyInfo property, Type pointType, AlignmentPoint point)
+            public LeaderAlignmentTarget(AlignmentPoint point, Action<AlignmentPoint> apply)
             {
-                _target = target;
-                _property = property;
-                _pointType = pointType;
                 Point = point;
+                _apply = apply;
             }
 
             public void Apply(AlignmentPoint point)
             {
-                _property.SetValue(_target, CreatePointValue(_pointType, point));
+                _apply(point);
             }
         }
     }
