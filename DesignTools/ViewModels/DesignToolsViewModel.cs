@@ -70,9 +70,12 @@ namespace SpecStudioParser.DesignTools.ViewModels
         private const string MLeaderVerticalIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5 M10,4 L10,21";
         private const string DistributeHorizontalIcon = "M4,8 L20,8 M6,5 L6,11 M12,5 L12,11 M18,5 L18,11";
         private const string DistributeVerticalIcon = "M8,4 L8,20 M5,6 L11,6 M5,12 L11,12 M5,18 L11,18";
+        private const string DimensionHorizontalIcon = "M4,7 H20 M6,5 L4,7 L6,9 M18,5 L20,7 L18,9 M8,15 H16 M12,12 V18";
+        private const string DimensionVerticalIcon = "M7,4 V20 M5,6 L7,4 L9,6 M5,18 L7,20 L9,18 M15,8 V16 M12,12 H18";
         private const string DiagnosticsIcon = "M5,5 L19,5 L19,19 L5,19 Z M8,9 L16,9 M8,12 L16,12 M8,15 L13,15";
 
         private readonly MultiCadLeaderAlignmentService _leaderAlignmentService = new();
+        private readonly DimensionAlignmentService _dimensionAlignmentService = new();
         private readonly SelectionDiagnosticsService _selectionDiagnosticsService = new();
 
         [ObservableProperty] private string _status = "Инструменты проектировщика готовы к работе.";
@@ -93,7 +96,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
         private DesignToolBlockViewModel CreateDraftingBlock()
         {
-            var block = new DesignToolBlockViewModel("2d-drafting", "2D-проектирование", "Быстрые команды для работы с чертежом и выделением объектов.");
+            var block = new DesignToolBlockViewModel("2d-drafting", "2D-проектирование", "Быстрые команды для работы с чертежом, выносками и размерами.");
             AddFeature(block, "2d-multicad-leaders-align-horizontal", "MultiCAD-выноски: горизонтально", "Выравнивает универсальные, групповые и другие MultiCAD-выноски по Y первой выбранной выноски.", "DT_ALIGN_MCAD_LEADERS_H", McadHorizontalIcon, ExecuteAlignMultiCadLeadersHorizontal);
             AddFeature(block, "2d-multicad-leaders-align-vertical", "MultiCAD-выноски: вертикально", "Выравнивает универсальные, групповые и другие MultiCAD-выноски по X первой выбранной выноски.", "DT_ALIGN_MCAD_LEADERS_V", McadVerticalIcon, ExecuteAlignMultiCadLeadersVertical);
             AddFeature(block, "2d-teigha-mleaders-align-horizontal", "Мультивыноски: горизонтально", "Выравнивает стандартные Teigha/nanoCAD мультивыноски по Y первой выбранной мультивыноски.", "DT_ALIGN_MLEADERS_H", MLeaderHorizontalIcon, ExecuteAlignTeighaMLeadersHorizontal);
@@ -102,6 +105,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
             AddFeature(block, "2d-multicad-leaders-distribute-vertical", "MultiCAD-выноски: распределить вертикально", "Равномерно распределяет MultiCAD-выноски между крайними выносками по Y.", "DT_DISTR_MCAD_LEADERS_V", DistributeVerticalIcon, ExecuteDistributeMultiCadLeadersVertical);
             AddFeature(block, "2d-teigha-mleaders-distribute-horizontal", "Мультивыноски: распределить горизонтально", "Равномерно распределяет Teigha-мультивыноски между крайними мультивыносками по X.", "DT_DISTR_MLEADERS_H", DistributeHorizontalIcon, ExecuteDistributeTeighaMLeadersHorizontal);
             AddFeature(block, "2d-teigha-mleaders-distribute-vertical", "Мультивыноски: распределить вертикально", "Равномерно распределяет Teigha-мультивыноски между крайними мультивыносками по Y.", "DT_DISTR_MLEADERS_V", DistributeVerticalIcon, ExecuteDistributeTeighaMLeadersVertical);
+            AddFeature(block, "2d-dimensions-align-horizontal", "Размеры: текст горизонтально", "Выравнивает позиции текста выбранных размеров по Y первого распознанного размера.", "DT_ALIGN_DIMS_H", DimensionHorizontalIcon, ExecuteAlignDimensionsHorizontal);
+            AddFeature(block, "2d-dimensions-align-vertical", "Размеры: текст вертикально", "Выравнивает позиции текста выбранных размеров по X первого распознанного размера.", "DT_ALIGN_DIMS_V", DimensionVerticalIcon, ExecuteAlignDimensionsVertical);
+            AddFeature(block, "2d-dimensions-distribute-horizontal", "Размеры: текст распределить X", "Равномерно распределяет позиции текста выбранных размеров между крайними по X.", "DT_DISTR_DIMS_H", DistributeHorizontalIcon, ExecuteDistributeDimensionsHorizontal);
+            AddFeature(block, "2d-dimensions-distribute-vertical", "Размеры: текст распределить Y", "Равномерно распределяет позиции текста выбранных размеров между крайними по Y.", "DT_DISTR_DIMS_V", DistributeVerticalIcon, ExecuteDistributeDimensionsVertical);
             block.Features.Add(new DesignToolFeatureViewModel("2d-selection-info", "Сведения о выделении", "Показывает базовую информацию о текущем выделении nanoCAD.", DesignToolAccessLevel.Free, DesignToolContext.Drafting2D, ExecuteSelectionInfo));
             block.Features.Add(new DesignToolFeatureViewModel("2d-select-layer", "Выделить по слою", "Будущая функция массового выделения объектов на том же слое.", DesignToolAccessLevel.Free, DesignToolContext.Drafting2D, ExecuteStub));
             return block;
@@ -142,6 +149,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
         private void ExecuteDistributeMultiCadLeadersVertical(DesignToolFeatureViewModel f) => ExecuteLeaderDistribution(f, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.MultiCad);
         private void ExecuteDistributeTeighaMLeadersHorizontal(DesignToolFeatureViewModel f) => ExecuteLeaderDistribution(f, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.TeighaMLeader);
         private void ExecuteDistributeTeighaMLeadersVertical(DesignToolFeatureViewModel f) => ExecuteLeaderDistribution(f, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.TeighaMLeader);
+        private void ExecuteAlignDimensionsHorizontal(DesignToolFeatureViewModel f) => ExecuteDimensionAlignment(f, LeaderAlignmentAxis.Horizontal);
+        private void ExecuteAlignDimensionsVertical(DesignToolFeatureViewModel f) => ExecuteDimensionAlignment(f, LeaderAlignmentAxis.Vertical);
+        private void ExecuteDistributeDimensionsHorizontal(DesignToolFeatureViewModel f) => ExecuteDimensionDistribution(f, LeaderAlignmentAxis.Horizontal);
+        private void ExecuteDistributeDimensionsVertical(DesignToolFeatureViewModel f) => ExecuteDimensionDistribution(f, LeaderAlignmentAxis.Vertical);
 
         private void ExecuteLeaderAlignment(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis, LeaderAlignmentSource source)
         {
@@ -161,6 +172,26 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 SetFeatureStatus(feature, result.Message); WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
             }
             catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка распределения выносок: {ex.Message}"); }
+        }
+
+        private void ExecuteDimensionAlignment(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis)
+        {
+            try
+            {
+                var result = _dimensionAlignmentService.AlignSelectedDimensions(axis);
+                SetFeatureStatus(feature, result.Message); WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
+            }
+            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка выравнивания размеров: {ex.Message}"); }
+        }
+
+        private void ExecuteDimensionDistribution(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis)
+        {
+            try
+            {
+                var result = _dimensionAlignmentService.DistributeSelectedDimensions(axis);
+                SetFeatureStatus(feature, result.Message); WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
+            }
+            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка распределения размеров: {ex.Message}"); }
         }
 
         private void ExecuteSelectionDiagnostics(DesignToolFeatureViewModel feature)
