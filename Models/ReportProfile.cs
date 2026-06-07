@@ -344,11 +344,14 @@ namespace SpecStudioParser.Models
                 }
             }
 
-            var legacyConditionCount = RootFilterGroup.Conditions.Count;
-            var legacyGroupCount = RootFilterGroup.Groups.Count;
-            if (RootFilterItems.Count > 0 && (legacyConditionCount > 0 || legacyGroupCount > 0))
+            if (!RootFilterGroup.Conditions.SequenceEqual(rootConditions))
             {
-                issues.Add($"В legacy-коллекциях RootFilterGroup есть дубли: Conditions={legacyConditionCount}, Groups={legacyGroupCount}.");
+                issues.Add($"RootFilterGroup.Conditions не соответствует корневым условиям: Conditions={RootFilterGroup.Conditions.Count}, RootFilterItems conditions={rootConditions.Count}.");
+            }
+
+            if (!RootFilterGroup.Groups.SequenceEqual(rootGroups))
+            {
+                issues.Add($"RootFilterGroup.Groups не соответствует корневым группам: Groups={RootFilterGroup.Groups.Count}, RootFilterItems groups={rootGroups.Count}.");
             }
 
             var duplicateConditions = rootConditions

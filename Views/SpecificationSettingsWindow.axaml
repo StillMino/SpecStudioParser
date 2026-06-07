@@ -208,11 +208,18 @@
 											<Button Classes="neutralButton" Click="AddRootConditionClick" HorizontalAlignment="Left" Content="+ Условие"/>
 											<Button Classes="neutralButton" Click="AddFilterGroupClick" HorizontalAlignment="Left" Content="+ Группа"/>
 											<Button Classes="neutralButton" Click="GroupSelectedRootFilterItemsClick" HorizontalAlignment="Left" Content="Сгруппировать выбранные корневые" ToolTip.Tip="Группирует только соседние выбранные корневые элементы"/>
+											<Button Classes="neutralButton" Click="RunFilterDiagnosticsClick" HorizontalAlignment="Left" Content="Проверить фильтры" ToolTip.Tip="Проверить и при возможности синхронизировать внутреннюю структуру фильтров"/>
 										</StackPanel>
 										<Border Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="4" Padding="6">
 											<StackPanel Spacing="3">
 												<TextBlock Text="Итоговая формула" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
 												<TextBlock Text="{Binding SelectedDataset.FilterFormula}" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource TextBrush}"/>
+											</StackPanel>
+										</Border>
+										<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6">
+											<StackPanel Spacing="3">
+												<TextBlock Text="Диагностика фильтров" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}"/>
+												<TextBlock Text="{Binding SelectedDataset.FilterDiagnosticsText}" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource TextBrush}"/>
 											</StackPanel>
 										</Border>
 									</StackPanel>
