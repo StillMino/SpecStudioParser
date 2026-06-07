@@ -4,7 +4,9 @@ using HostMgd.ApplicationServices;
 using SpecStudioParser.DesignTools.Commands;
 using SpecStudioParser.DesignTools.Services;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows.Input;
 using CadApp = HostMgd.ApplicationServices.Application;
 
@@ -64,6 +66,12 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
     public partial class DesignToolsViewModel : ObservableObject
     {
+        private const string FilterAll = "all";
+        private const string FilterDrafting = "drafting";
+        private const string FilterDiagnostics = "diagnostics";
+        private const string FilterModel = "model";
+        private const string FilterSpecifier = "specifier";
+
         private const string McadHorizontalIcon = "M5,18 L10,13 L17,13 M14,7 L21,7 M14,10 L21,10 M3,20 L5,18 L6,20 M6,16 L20,16";
         private const string McadVerticalIcon = "M5,18 L10,13 L17,13 M14,7 L21,7 M14,10 L21,10 M3,20 L5,18 L6,20 M10,4 L10,21";
         private const string MLeaderHorizontalIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5 M6,16 L21,16";
@@ -74,21 +82,103 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
         private readonly MultiCadLeaderAlignmentService _leaderAlignmentService = new();
         private readonly SelectionDiagnosticsService _selectionDiagnosticsService = new();
+        private readonly List<DesignToolBlockViewModel> _allBlocks = new();
 
         [ObservableProperty] private string _status = "Инструменты проектировщика готовы к работе.";
         [ObservableProperty] private string _documentStatus = "Документ nanoCAD не проверен.";
+        [ObservableProperty] private string _searchText = string.Empty;
+        [ObservableProperty] private string _activeFilter = FilterAll;
+        [ObservableProperty] private string _activeFilterLabel = "Все";
 
         public ObservableCollection<DesignToolBlockViewModel> Blocks { get; } = new();
         public ICommand RefreshContextCommand { get; }
+        public ICommand SelectFilterCommand { get; }
 
         public DesignToolsViewModel()
         {
             RefreshContextCommand = new RelayCommand(RefreshContext);
-            Blocks.Add(CreateDraftingBlock());
-            Blocks.Add(CreateDiagnosticsBlock());
-            Blocks.Add(CreateModelBlock());
-            Blocks.Add(CreateSpecifierBridgeBlock());
+            SelectFilterCommand = new RelayCommand<string>(SelectFilter);
+
+            _allBlocks.Add(CreateDraftingBlock());
+            _allBlocks.Add(CreateDiagnosticsBlock());
+            _allBlocks.Add(CreateModelBlock());
+            _allBlocks.Add(CreateSpecifierBridgeBlock());
+
+            ApplyFilter();
             RefreshContext();
+        }
+
+        partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+        private void SelectFilter(string? filter)
+        {
+            ActiveFilter = string.IsNullOrWhiteSpace(filter) ? FilterAll : filter;
+            ActiveFilterLabel = ActiveFilter switch
+            {
+                FilterDrafting => "2D",
+                FilterDiagnostics => "Диагностика",
+                FilterModel => "3D",
+                FilterSpecifier => "Spec",
+                _ => "Все"
+            };
+            ApplyFilter();
+        }
+
+        private void ApplyFilter()
+        {
+            Blocks.Clear();
+            var search = SearchText?.Trim() ?? string.Empty;
+            var hasSearch = !string.IsNullOrWhiteSpace(search);
+
+            foreach (var block in _allBlocks.Where(BlockMatchesActiveFilter))
+            {
+                if (!hasSearch)
+                {
+                    Blocks.Add(block);
+                    continue;
+                }
+
+                var filteredBlock = new DesignToolBlockViewModel(block.Id, block.Name, block.Description) { IsEnabled = block.IsEnabled };
+                foreach (var feature in block.Features.Where(feature => FeatureMatchesSearch(feature, search)))
+                {
+                    filteredBlock.Features.Add(feature);
+                }
+
+                if (filteredBlock.Features.Count > 0)
+                {
+                    Blocks.Add(filteredBlock);
+                }
+            }
+
+            if (Blocks.Count == 0)
+            {
+                Status = "Команды по текущему фильтру не найдены.";
+            }
+        }
+
+        private bool BlockMatchesActiveFilter(DesignToolBlockViewModel block)
+        {
+            return ActiveFilter switch
+            {
+                FilterDrafting => block.Id == "2d-drafting",
+                FilterDiagnostics => block.Id == "diagnostics",
+                FilterModel => block.Id == "3d-model-tools",
+                FilterSpecifier => block.Id == "specifier-bridge",
+                _ => true
+            };
+        }
+
+        private static bool FeatureMatchesSearch(DesignToolFeatureViewModel feature, string search)
+        {
+            return Contains(feature.Name, search) ||
+                   Contains(feature.Description, search) ||
+                   Contains(feature.Id, search) ||
+                   Contains(feature.NanoCadCommandName, search);
+        }
+
+        private static bool Contains(string value, string search)
+        {
+            return !string.IsNullOrWhiteSpace(value) && value.Contains(search, StringComparison.OrdinalIgnoreCase);
         }
 
         private DesignToolBlockViewModel CreateDraftingBlock()
