@@ -176,7 +176,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 var doc = CadApp.DocumentManager.MdiActiveDocument;
                 if (doc == null) { SetFeatureStatus(feature, "Нет активного документа nanoCAD."); return; }
                 var selection = doc.Editor.SelectImplied();
-                if (selection.Status != PromptStatus.OK || selection.Value == null) { SetFeatureStatus(feature, "Нет текущего выделения."); doc.Editor.WriteMessage("\n[DesignTools]: Нет текущего выделения.\n"); return; }
+                if (selection.Status != HostMgd.EditorInput.PromptStatus.OK || selection.Value == null) { SetFeatureStatus(feature, "Нет текущего выделения."); doc.Editor.WriteMessage("\n[DesignTools]: Нет текущего выделения.\n"); return; }
                 var count = selection.Value.GetObjectIds().Length;
                 SetFeatureStatus(feature, $"Выделено объектов: {count}."); doc.Editor.WriteMessage($"\n[DesignTools]: Выделено объектов: {count}.\n");
             }
