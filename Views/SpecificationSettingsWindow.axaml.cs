@@ -166,6 +166,27 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private async void PickAttributeForConditionClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || button.DataContext is not FilterConditionItem condition)
+            {
+                return;
+            }
+
+            var result = await CadLibParameterPickerService.PickSingleAsync(
+                this,
+                "Выбор CADLib параметра для условия",
+                "Выберите один параметр. Он заменит атрибут только в текущем условии.");
+
+            var selected = result?.SingleParameter;
+            if (selected == null || string.IsNullOrWhiteSpace(selected.SystemName))
+            {
+                return;
+            }
+
+            condition.Attribute = selected.SystemName;
+        }
+
         private async Task<IReadOnlyList<CadLibParameterInfo>> PickFilterParametersAsync(string title)
         {
             var result = await CadLibParameterPickerService.PickMultipleAsync(
@@ -202,18 +223,11 @@ namespace SpecStudioParser.Views
 
         private static FilterConditionItem CreateConditionFromParameter(CadLibParameterInfo parameter, string joinWithNext)
         {
-            var condition = new FilterConditionItem
+            return new FilterConditionItem
             {
                 Attribute = parameter.SystemName,
                 JoinWithNext = joinWithNext
             };
-
-            if (!condition.AvailableAttributes.Contains(parameter.SystemName))
-            {
-                condition.AvailableAttributes.Add(parameter.SystemName);
-            }
-
-            return condition;
         }
 
         private static bool HasSystemName(CadLibParameterInfo parameter)
