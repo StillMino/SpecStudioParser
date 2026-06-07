@@ -112,20 +112,36 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 "Быстрые команды для работы с чертежом и выделением объектов.");
 
             block.Features.Add(new DesignToolFeatureViewModel(
-                "2d-leaders-align-horizontal",
-                "Выровнять выноски по горизонтали",
-                "Выравнивает текстовые точки выбранных выносок по Y первой выбранной выноски.",
+                "2d-multicad-leaders-align-horizontal",
+                "MultiCAD-выноски: горизонтально",
+                "Выравнивает универсальные, групповые и другие MultiCAD-выноски по Y первой выбранной выноски.",
                 DesignToolAccessLevel.Free,
                 DesignToolContext.Drafting2D,
-                ExecuteAlignLeadersHorizontal));
+                ExecuteAlignMultiCadLeadersHorizontal));
 
             block.Features.Add(new DesignToolFeatureViewModel(
-                "2d-leaders-align-vertical",
-                "Выровнять выноски по вертикали",
-                "Выравнивает текстовые точки выбранных выносок по X первой выбранной выноски.",
+                "2d-multicad-leaders-align-vertical",
+                "MultiCAD-выноски: вертикально",
+                "Выравнивает универсальные, групповые и другие MultiCAD-выноски по X первой выбранной выноски.",
                 DesignToolAccessLevel.Free,
                 DesignToolContext.Drafting2D,
-                ExecuteAlignLeadersVertical));
+                ExecuteAlignMultiCadLeadersVertical));
+
+            block.Features.Add(new DesignToolFeatureViewModel(
+                "2d-teigha-mleaders-align-horizontal",
+                "Мультивыноски: горизонтально",
+                "Выравнивает стандартные Teigha/nanoCAD мультивыноски по Y первой выбранной мультивыноски.",
+                DesignToolAccessLevel.Free,
+                DesignToolContext.Drafting2D,
+                ExecuteAlignTeighaMLeadersHorizontal));
+
+            block.Features.Add(new DesignToolFeatureViewModel(
+                "2d-teigha-mleaders-align-vertical",
+                "Мультивыноски: вертикально",
+                "Выравнивает стандартные Teigha/nanoCAD мультивыноски по X первой выбранной мультивыноски.",
+                DesignToolAccessLevel.Free,
+                DesignToolContext.Drafting2D,
+                ExecuteAlignTeighaMLeadersVertical));
 
             block.Features.Add(new DesignToolFeatureViewModel(
                 "2d-selection-info",
@@ -190,21 +206,37 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return block;
         }
 
-        private void ExecuteAlignLeadersHorizontal(DesignToolFeatureViewModel feature)
+        private void ExecuteAlignMultiCadLeadersHorizontal(DesignToolFeatureViewModel feature)
         {
-            ExecuteLeaderAlignment(feature, LeaderAlignmentAxis.Horizontal);
+            ExecuteLeaderAlignment(feature, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.MultiCad);
         }
 
-        private void ExecuteAlignLeadersVertical(DesignToolFeatureViewModel feature)
+        private void ExecuteAlignMultiCadLeadersVertical(DesignToolFeatureViewModel feature)
         {
-            ExecuteLeaderAlignment(feature, LeaderAlignmentAxis.Vertical);
+            ExecuteLeaderAlignment(feature, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.MultiCad);
         }
 
-        private void ExecuteLeaderAlignment(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis)
+        private void ExecuteAlignTeighaMLeadersHorizontal(DesignToolFeatureViewModel feature)
+        {
+            ExecuteLeaderAlignment(feature, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.TeighaMLeader);
+        }
+
+        private void ExecuteAlignTeighaMLeadersVertical(DesignToolFeatureViewModel feature)
+        {
+            ExecuteLeaderAlignment(feature, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.TeighaMLeader);
+        }
+
+        private void ExecuteLeaderAlignment(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis, LeaderAlignmentSource source)
         {
             try
             {
-                var result = _leaderAlignmentService.AlignSelectedLeaders(axis);
+                var result = source switch
+                {
+                    LeaderAlignmentSource.MultiCad => _leaderAlignmentService.AlignSelectedMultiCadLeaders(axis),
+                    LeaderAlignmentSource.TeighaMLeader => _leaderAlignmentService.AlignSelectedTeighaMLeaders(axis),
+                    _ => _leaderAlignmentService.AlignSelectedLeaders(axis)
+                };
+
                 SetFeatureStatus(feature, result.Message);
                 WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
             }
@@ -274,5 +306,12 @@ namespace SpecStudioParser.DesignTools.ViewModels
             {
             }
         }
+    }
+
+    internal enum LeaderAlignmentSource
+    {
+        Auto,
+        MultiCad,
+        TeighaMLeader
     }
 }
