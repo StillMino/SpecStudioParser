@@ -33,6 +33,12 @@ namespace SpecStudioParser.DesignTools.Services
             TeighaMLeaderOnly
         }
 
+        private enum LeaderOperation
+        {
+            Align,
+            Distribute
+        }
+
         private static readonly string[] LeaderTypeMarkers =
         {
             "McNote", "McNotePosition", "McNoteChain", "McNoteComb", "McNoteLinearMark",
@@ -51,13 +57,13 @@ namespace SpecStudioParser.DesignTools.Services
 
         public LeaderAlignmentResult AlignSelectedLeaders(LeaderAlignmentAxis axis)
         {
-            var multiCadResult = TryAlignSelectedMultiCadLeaders(axis);
+            var multiCadResult = TryProcessSelectedMultiCadLeaders(axis, LeaderOperation.Align);
             if (multiCadResult != null && multiCadResult.CandidateCount > 0)
             {
                 return multiCadResult;
             }
 
-            var fallbackResult = AlignSelectedDbLeaders(axis, DbTargetMode.AllSupported);
+            var fallbackResult = ProcessSelectedDbLeaders(axis, DbTargetMode.AllSupported, LeaderOperation.Align);
             if (fallbackResult.CandidateCount > 0 || multiCadResult == null)
             {
                 return fallbackResult;
@@ -68,7 +74,7 @@ namespace SpecStudioParser.DesignTools.Services
 
         public LeaderAlignmentResult AlignSelectedMultiCadLeaders(LeaderAlignmentAxis axis)
         {
-            var result = TryAlignSelectedMultiCadLeaders(axis);
+            var result = TryProcessSelectedMultiCadLeaders(axis, LeaderOperation.Align);
             return result ?? new LeaderAlignmentResult
             {
                 Message = "MultiCAD API недоступен в текущем сеансе nanoCAD."
@@ -77,10 +83,24 @@ namespace SpecStudioParser.DesignTools.Services
 
         public LeaderAlignmentResult AlignSelectedTeighaMLeaders(LeaderAlignmentAxis axis)
         {
-            return AlignSelectedDbLeaders(axis, DbTargetMode.TeighaMLeaderOnly);
+            return ProcessSelectedDbLeaders(axis, DbTargetMode.TeighaMLeaderOnly, LeaderOperation.Align);
         }
 
-        private static LeaderAlignmentResult? TryAlignSelectedMultiCadLeaders(LeaderAlignmentAxis axis)
+        public LeaderAlignmentResult DistributeSelectedMultiCadLeaders(LeaderAlignmentAxis axis)
+        {
+            var result = TryProcessSelectedMultiCadLeaders(axis, LeaderOperation.Distribute);
+            return result ?? new LeaderAlignmentResult
+            {
+                Message = "MultiCAD API недоступен в текущем сеансе nanoCAD."
+            };
+        }
+
+        public LeaderAlignmentResult DistributeSelectedTeighaMLeaders(LeaderAlignmentAxis axis)
+        {
+            return ProcessSelectedDbLeaders(axis, DbTargetMode.TeighaMLeaderOnly, LeaderOperation.Distribute);
+        }
+
+        private static LeaderAlignmentResult? TryProcessSelectedMultiCadLeaders(LeaderAlignmentAxis axis, LeaderOperation operation)
         {
             Type? objectManagerType;
             try
@@ -100,7 +120,7 @@ namespace SpecStudioParser.DesignTools.Services
                 var selectionIds = GetCurrentMultiCadSelection(objectManagerType);
                 if (selectionIds.Count == 0)
                 {
-                    return new LeaderAlignmentResult { Message = "Не выбраны MultiCAD-выноски для выравнивания." };
+                    return new LeaderAlignmentResult { Message = "Не выбраны MultiCAD-выноски для обработки." };
                 }
 
                 StartMultiCadTransaction(objectManagerType);
@@ -122,18 +142,18 @@ namespace SpecStudioParser.DesignTools.Services
                         }
                     }
 
-                    if (targets.Count < 2)
+                    if (!ValidateTargetCount(targets.Count, operation, "MultiCAD-выноски", out var validationMessage))
                     {
                         AbortMultiCadTransaction(objectManagerType);
                         return new LeaderAlignmentResult
                         {
                             SelectedCount = selectionIds.Count,
                             CandidateCount = targets.Count,
-                            Message = "Для выравнивания нужно минимум две распознанные MultiCAD-выноски."
+                            Message = validationMessage
                         };
                     }
 
-                    AlignTargets(targets, axis);
+                    ApplyOperation(targets, axis, operation);
                     EndMultiCadTransaction(objectManagerType);
                     UpdateMultiCadGraphics(objectManagerType);
 
@@ -141,8 +161,8 @@ namespace SpecStudioParser.DesignTools.Services
                     {
                         SelectedCount = selectionIds.Count,
                         CandidateCount = targets.Count,
-                        AlignedCount = targets.Count - 1,
-                        Message = BuildSuccessMessage(axis, targets.Count, "MultiCAD")
+                        AlignedCount = operation == LeaderOperation.Align ? targets.Count - 1 : targets.Count,
+                        Message = BuildSuccessMessage(axis, targets.Count, "MultiCAD", operation)
                     };
                 }
                 catch
@@ -155,11 +175,11 @@ namespace SpecStudioParser.DesignTools.Services
             catch (BadImageFormatException) { return null; }
             catch (Exception ex)
             {
-                return new LeaderAlignmentResult { Message = $"Ошибка MultiCAD-выравнивания: {ex.Message}" };
+                return new LeaderAlignmentResult { Message = $"Ошибка MultiCAD-обработки: {ex.Message}" };
             }
         }
 
-        private static LeaderAlignmentResult AlignSelectedDbLeaders(LeaderAlignmentAxis axis, DbTargetMode mode)
+        private static LeaderAlignmentResult ProcessSelectedDbLeaders(LeaderAlignmentAxis axis, DbTargetMode mode, LeaderOperation operation)
         {
             var doc = CadApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
@@ -171,7 +191,7 @@ namespace SpecStudioParser.DesignTools.Services
             var selection = GetDbSelection(editor);
             if (selection == null || selection.Length == 0)
             {
-                return new LeaderAlignmentResult { Message = "Не выбраны объекты для выравнивания." };
+                return new LeaderAlignmentResult { Message = "Не выбраны объекты для обработки." };
             }
 
             using (doc.LockDocument())
@@ -193,19 +213,19 @@ namespace SpecStudioParser.DesignTools.Services
                     }
                 }
 
-                if (targets.Count < 2)
+                var targetName = mode == DbTargetMode.TeighaMLeaderOnly ? "Teigha-мультивыноски" : "выноски или мультивыноски";
+                if (!ValidateTargetCount(targets.Count, operation, targetName, out var validationMessage))
                 {
                     tr.Abort();
-                    var targetName = mode == DbTargetMode.TeighaMLeaderOnly ? "Teigha-мультивыноски" : "выноски или мультивыноски";
                     return new LeaderAlignmentResult
                     {
                         SelectedCount = selection.Length,
                         CandidateCount = targets.Count,
-                        Message = $"Для выравнивания нужно минимум две распознанные {targetName}."
+                        Message = validationMessage
                     };
                 }
 
-                AlignTargets(targets, axis);
+                ApplyOperation(targets, axis, operation);
                 tr.Commit();
                 editor.UpdateScreen();
 
@@ -213,17 +233,43 @@ namespace SpecStudioParser.DesignTools.Services
                 {
                     SelectedCount = selection.Length,
                     CandidateCount = targets.Count,
-                    AlignedCount = targets.Count - 1,
-                    Message = BuildSuccessMessage(axis, targets.Count, mode == DbTargetMode.TeighaMLeaderOnly ? "Teigha" : "")
+                    AlignedCount = operation == LeaderOperation.Align ? targets.Count - 1 : targets.Count,
+                    Message = BuildSuccessMessage(axis, targets.Count, mode == DbTargetMode.TeighaMLeaderOnly ? "Teigha" : "", operation)
                 };
             }
         }
 
-        private static string BuildSuccessMessage(LeaderAlignmentAxis axis, int count, string source)
+        private static bool ValidateTargetCount(int count, LeaderOperation operation, string targetName, out string message)
+        {
+            var minimum = operation == LeaderOperation.Align ? 2 : 3;
+            if (count >= minimum)
+            {
+                message = string.Empty;
+                return true;
+            }
+
+            var operationName = operation == LeaderOperation.Align ? "выравнивания" : "распределения";
+            message = $"Для {operationName} нужно минимум {minimum} распознанные {targetName}. Найдено: {count}.";
+            return false;
+        }
+
+        private static string BuildSuccessMessage(LeaderAlignmentAxis axis, int count, string source, LeaderOperation operation)
         {
             var prefix = string.IsNullOrWhiteSpace(source) ? string.Empty : source + "-";
             var axisName = axis == LeaderAlignmentAxis.Horizontal ? "по горизонтали" : "по вертикали";
-            return $"{prefix}выравнивание {axisName} выполнено. Обработано объектов: {count}.";
+            var operationName = operation == LeaderOperation.Align ? "выравнивание" : "распределение";
+            return $"{prefix}{operationName} {axisName} выполнено. Обработано объектов: {count}.";
+        }
+
+        private static void ApplyOperation(IReadOnlyList<LeaderAlignmentTarget> targets, LeaderAlignmentAxis axis, LeaderOperation operation)
+        {
+            if (operation == LeaderOperation.Distribute)
+            {
+                DistributeTargets(targets, axis);
+                return;
+            }
+
+            AlignTargets(targets, axis);
         }
 
         private static void AlignTargets(IReadOnlyList<LeaderAlignmentTarget> targets, LeaderAlignmentAxis axis)
@@ -236,6 +282,29 @@ namespace SpecStudioParser.DesignTools.Services
                     ? new AlignmentPoint(current.X, basePoint.Y, current.Z)
                     : new AlignmentPoint(basePoint.X, current.Y, current.Z);
                 target.Apply(aligned);
+            }
+        }
+
+        private static void DistributeTargets(IReadOnlyList<LeaderAlignmentTarget> targets, LeaderAlignmentAxis axis)
+        {
+            var ordered = axis == LeaderAlignmentAxis.Horizontal
+                ? targets.OrderBy(t => t.Point.X).ToArray()
+                : targets.OrderBy(t => t.Point.Y).ToArray();
+
+            var first = ordered.First().Point;
+            var last = ordered.Last().Point;
+            var step = axis == LeaderAlignmentAxis.Horizontal
+                ? (last.X - first.X) / (ordered.Length - 1)
+                : (last.Y - first.Y) / (ordered.Length - 1);
+
+            for (var i = 0; i < ordered.Length; i++)
+            {
+                var current = ordered[i].Point;
+                var distributed = axis == LeaderAlignmentAxis.Horizontal
+                    ? new AlignmentPoint(first.X + step * i, current.Y, current.Z)
+                    : new AlignmentPoint(current.X, first.Y + step * i, current.Z);
+
+                ordered[i].Apply(distributed);
             }
         }
 
@@ -287,8 +356,6 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static bool TryCreateTeighaMLeaderContentTarget(MLeader mLeader, out LeaderAlignmentTarget target)
         {
-            // Не используем MoveMLeader: он переносит всю мультивыноску вместе с начальной точкой стрелки.
-            // Для выравнивания нужна только точка контента: текст или блок.
             if (TryCreatePropertyPointTarget(mLeader, "TextLocation", out target) ||
                 TryCreatePropertyPointTarget(mLeader, "BlockPosition", out target))
             {
