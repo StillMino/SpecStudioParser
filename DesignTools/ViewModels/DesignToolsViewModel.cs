@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HostMgd.ApplicationServices;
+using SpecStudioParser.DesignTools.Commands;
 using SpecStudioParser.DesignTools.Services;
 using System;
 using System.Collections.ObjectModel;
@@ -33,6 +34,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
         public string Id { get; }
         public string Name { get; }
         public string Description { get; }
+        public string IconPath { get; }
+        public string IconPngPath { get; }
+        public string IconGeometry { get; }
+        public string NanoCadCommandName { get; }
         public DesignToolAccessLevel AccessLevel { get; }
         public DesignToolContext Context { get; }
         public ICommand RunCommand { get; }
@@ -46,19 +51,43 @@ namespace SpecStudioParser.DesignTools.ViewModels
         };
 
         public DesignToolFeatureViewModel(
+            DesignToolCommandDescriptor descriptor,
+            DesignToolAccessLevel accessLevel,
+            DesignToolContext context,
+            string iconGeometry,
+            Action<DesignToolFeatureViewModel> execute)
+        {
+            Id = descriptor.Id;
+            Name = descriptor.Name;
+            Description = descriptor.Description;
+            IconPath = descriptor.IconPath;
+            IconPngPath = descriptor.IconPngPath;
+            NanoCadCommandName = descriptor.NanoCadCommandName;
+            AccessLevel = accessLevel;
+            Context = context;
+            IconGeometry = iconGeometry;
+            RunCommand = new RelayCommand(() => execute(this));
+        }
+
+        public DesignToolFeatureViewModel(
             string id,
             string name,
             string description,
             DesignToolAccessLevel accessLevel,
             DesignToolContext context,
             Action<DesignToolFeatureViewModel> execute)
+            : this(
+                new DesignToolCommandDescriptor
+                {
+                    Id = id,
+                    Name = name,
+                    Description = description
+                },
+                accessLevel,
+                context,
+                string.Empty,
+                execute)
         {
-            Id = id;
-            Name = name;
-            Description = description;
-            AccessLevel = accessLevel;
-            Context = context;
-            RunCommand = new RelayCommand(() => execute(this));
         }
     }
 
@@ -82,6 +111,11 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
     public partial class DesignToolsViewModel : ObservableObject
     {
+        private const string McadHorizontalIcon = "M5,18 L10,13 L17,13 M14,7 L21,7 M14,10 L21,10 M3,20 L5,18 L6,20 M6,16 L20,16";
+        private const string McadVerticalIcon = "M5,18 L10,13 L17,13 M14,7 L21,7 M14,10 L21,10 M3,20 L5,18 L6,20 M10,4 L10,21";
+        private const string MLeaderHorizontalIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5 M6,16 L21,16";
+        private const string MLeaderVerticalIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5 M10,4 L10,21";
+
         private readonly MultiCadLeaderAlignmentService _leaderAlignmentService = new();
 
         [ObservableProperty]
@@ -112,35 +146,59 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 "Быстрые команды для работы с чертежом и выделением объектов.");
 
             block.Features.Add(new DesignToolFeatureViewModel(
-                "2d-multicad-leaders-align-horizontal",
-                "MultiCAD-выноски: горизонтально",
-                "Выравнивает универсальные, групповые и другие MultiCAD-выноски по Y первой выбранной выноски.",
+                new DesignToolCommandDescriptor
+                {
+                    Id = "2d-multicad-leaders-align-horizontal",
+                    Name = "MultiCAD-выноски: горизонтально",
+                    Description = "Выравнивает универсальные, групповые и другие MultiCAD-выноски по Y первой выбранной выноски.",
+                    IconPath = "avares://SpecStudioParser/Assets/Icons/design-tools/align-multicad-horizontal.svg",
+                    NanoCadCommandName = "DT_ALIGN_MCAD_LEADERS_H"
+                },
                 DesignToolAccessLevel.Free,
                 DesignToolContext.Drafting2D,
+                McadHorizontalIcon,
                 ExecuteAlignMultiCadLeadersHorizontal));
 
             block.Features.Add(new DesignToolFeatureViewModel(
-                "2d-multicad-leaders-align-vertical",
-                "MultiCAD-выноски: вертикально",
-                "Выравнивает универсальные, групповые и другие MultiCAD-выноски по X первой выбранной выноски.",
+                new DesignToolCommandDescriptor
+                {
+                    Id = "2d-multicad-leaders-align-vertical",
+                    Name = "MultiCAD-выноски: вертикально",
+                    Description = "Выравнивает универсальные, групповые и другие MultiCAD-выноски по X первой выбранной выноски.",
+                    IconPath = "avares://SpecStudioParser/Assets/Icons/design-tools/align-multicad-vertical.svg",
+                    NanoCadCommandName = "DT_ALIGN_MCAD_LEADERS_V"
+                },
                 DesignToolAccessLevel.Free,
                 DesignToolContext.Drafting2D,
+                McadVerticalIcon,
                 ExecuteAlignMultiCadLeadersVertical));
 
             block.Features.Add(new DesignToolFeatureViewModel(
-                "2d-teigha-mleaders-align-horizontal",
-                "Мультивыноски: горизонтально",
-                "Выравнивает стандартные Teigha/nanoCAD мультивыноски по Y первой выбранной мультивыноски.",
+                new DesignToolCommandDescriptor
+                {
+                    Id = "2d-teigha-mleaders-align-horizontal",
+                    Name = "Мультивыноски: горизонтально",
+                    Description = "Выравнивает стандартные Teigha/nanoCAD мультивыноски по Y первой выбранной мультивыноски.",
+                    IconPath = "avares://SpecStudioParser/Assets/Icons/design-tools/align-mleader-horizontal.svg",
+                    NanoCadCommandName = "DT_ALIGN_MLEADERS_H"
+                },
                 DesignToolAccessLevel.Free,
                 DesignToolContext.Drafting2D,
+                MLeaderHorizontalIcon,
                 ExecuteAlignTeighaMLeadersHorizontal));
 
             block.Features.Add(new DesignToolFeatureViewModel(
-                "2d-teigha-mleaders-align-vertical",
-                "Мультивыноски: вертикально",
-                "Выравнивает стандартные Teigha/nanoCAD мультивыноски по X первой выбранной мультивыноски.",
+                new DesignToolCommandDescriptor
+                {
+                    Id = "2d-teigha-mleaders-align-vertical",
+                    Name = "Мультивыноски: вертикально",
+                    Description = "Выравнивает стандартные Teigha/nanoCAD мультивыноски по X первой выбранной мультивыноски.",
+                    IconPath = "avares://SpecStudioParser/Assets/Icons/design-tools/align-mleader-vertical.svg",
+                    NanoCadCommandName = "DT_ALIGN_MLEADERS_V"
+                },
                 DesignToolAccessLevel.Free,
                 DesignToolContext.Drafting2D,
+                MLeaderVerticalIcon,
                 ExecuteAlignTeighaMLeadersVertical));
 
             block.Features.Add(new DesignToolFeatureViewModel(
