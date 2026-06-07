@@ -58,47 +58,22 @@ namespace SpecStudioParser.DesignTools.Services
 
         private LeaderAlignmentResult ExecuteLeaderAlignment(DesignToolsLeaderSource source, LeaderAlignmentAxis axis)
         {
-            return source switch
-            {
-                DesignToolsLeaderSource.MultiCad => _leaderAlignmentService.AlignSelectedMultiCadLeaders(axis),
-                DesignToolsLeaderSource.TeighaMLeader => _leaderAlignmentService.AlignSelectedTeighaMLeaders(axis),
-                _ => _leaderAlignmentService.AlignSelectedLeaders(axis)
-            };
+            return source == DesignToolsLeaderSource.MultiCad
+                ? _leaderAlignmentService.AlignSelectedMultiCadLeaders(axis)
+                : _leaderAlignmentService.AlignSelectedTeighaMLeaders(axis);
         }
 
         private LeaderAlignmentResult ExecuteLeaderDistribution(DesignToolsLeaderSource source, LeaderAlignmentAxis axis)
         {
-            return source switch
-            {
-                DesignToolsLeaderSource.MultiCad => _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis),
-                DesignToolsLeaderSource.TeighaMLeader => _leaderAlignmentService.DistributeSelectedTeighaMLeaders(axis),
-                _ => TryAutoDistributeLeaders(axis)
-            };
-        }
-
-        private LeaderAlignmentResult TryAutoDistributeLeaders(LeaderAlignmentAxis axis)
-        {
-            var multiCadResult = _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis);
-            return multiCadResult.CandidateCount > 0
-                ? multiCadResult
+            return source == DesignToolsLeaderSource.MultiCad
+                ? _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis)
                 : _leaderAlignmentService.DistributeSelectedTeighaMLeaders(axis);
         }
 
         private LeaderAlignmentResult ExecuteLeaderPointAlignment(DesignToolsLeaderSource source, LeaderAlignmentAxis axis)
         {
-            if (source == DesignToolsLeaderSource.MultiCad)
-            {
-                return _leaderPointAlignmentService.AlignSelectedMultiCadLeadersToPoint(axis);
-            }
-
-            if (source == DesignToolsLeaderSource.TeighaMLeader)
-            {
-                return _leaderPointAlignmentService.AlignSelectedTeighaMLeadersToPoint(axis);
-            }
-
-            var multiCadResult = _leaderPointAlignmentService.AlignSelectedMultiCadLeadersToPoint(axis);
-            return multiCadResult.CandidateCount > 0 || multiCadResult.AlignedCount > 0
-                ? multiCadResult
+            return source == DesignToolsLeaderSource.MultiCad
+                ? _leaderPointAlignmentService.AlignSelectedMultiCadLeadersToPoint(axis)
                 : _leaderPointAlignmentService.AlignSelectedTeighaMLeadersToPoint(axis);
         }
 
