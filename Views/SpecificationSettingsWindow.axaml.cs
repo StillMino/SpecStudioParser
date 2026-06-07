@@ -4,6 +4,7 @@ using SpecStudioParser.CadLib;
 using SpecStudioParser.Models;
 using SpecStudioParser.Services;
 using SpecStudioParser.ViewModels;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -172,7 +173,7 @@ namespace SpecStudioParser.Views
                 title,
                 "Выберите один или несколько параметров. Для каждого выбранного параметра будет создано отдельное условие.");
 
-            return result?.SelectedParameters ?? [];
+            return result?.SelectedParameters ?? Array.Empty<CadLibParameterInfo>();
         }
 
         private static void AddRootConditions(DatasetConfig dataset, IReadOnlyList<CadLibParameterInfo> parameters)
