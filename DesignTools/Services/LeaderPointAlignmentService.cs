@@ -170,6 +170,7 @@ namespace SpecStudioParser.DesignTools.Services
                 return false;
             }
 
+            NanoCadEditorFocusService.PrepareForEditorInput();
             var axisText = axis == LeaderAlignmentAxis.Horizontal ? "Y" : "X";
             var options = new PromptPointOptions($"\nУкажите точку, по координате {axisText} которой нужно выровнять выбранные выноски: ");
             var result = doc.Editor.GetPoint(options);
@@ -184,12 +185,14 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static ObjectId[]? GetDbSelection(Editor editor)
         {
+            NanoCadEditorFocusService.PrepareForEditorInput();
             var implied = editor.SelectImplied();
             if (implied.Status == PromptStatus.OK && implied.Value != null && implied.Value.Count > 0)
             {
                 return implied.Value.GetObjectIds();
             }
 
+            NanoCadEditorFocusService.PrepareForEditorInput();
             var options = new PromptSelectionOptions { MessageForAdding = "\nВыберите мультивыноски для выравнивания по точке: " };
             var picked = editor.GetSelection(options);
             return picked.Status == PromptStatus.OK && picked.Value != null && picked.Value.Count > 0
