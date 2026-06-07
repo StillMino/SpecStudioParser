@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HostMgd.ApplicationServices;
@@ -7,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using CadApp = HostMgd.ApplicationServices.Application;
 
@@ -45,7 +47,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
             AccessLevel = accessLevel;
             Context = context;
             IconGeometry = iconGeometry;
-            RunCommand = new RelayCommand(() => execute(this));
+            RunCommand = new RelayCommand(async () => await DeferredCommandRunner.RunAsync(() => execute(this)));
         }
 
         public DesignToolFeatureViewModel(string id, string name, string description, DesignToolAccessLevel accessLevel, DesignToolContext context, Action<DesignToolFeatureViewModel> execute)
@@ -108,7 +110,17 @@ namespace SpecStudioParser.DesignTools.ViewModels
             SelectedOperation = Operations.FirstOrDefault() ?? string.Empty;
             SelectedAxis = Axes.FirstOrDefault() ?? string.Empty;
             SelectedReference = References.FirstOrDefault() ?? string.Empty;
-            RunCommand = new RelayCommand(() => execute(this));
+            RunCommand = new RelayCommand(async () => await DeferredCommandRunner.RunAsync(() => execute(this)));
+        }
+    }
+
+    internal static class DeferredCommandRunner
+    {
+        public static async Task RunAsync(Action action)
+        {
+            // Let Avalonia finish Button.PointerReleased / mouse capture cleanup before nanoCAD Editor.GetPoint/GetSelection starts.
+            await Task.Delay(150).ConfigureAwait(true);
+            await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Background);
         }
     }
 
