@@ -202,11 +202,18 @@ namespace SpecStudioParser.Views
 
         private static FilterConditionItem CreateConditionFromParameter(CadLibParameterInfo parameter, string joinWithNext)
         {
-            return new FilterConditionItem
+            var condition = new FilterConditionItem
             {
                 Attribute = parameter.SystemName,
                 JoinWithNext = joinWithNext
             };
+
+            if (!condition.AvailableAttributes.Contains(parameter.SystemName))
+            {
+                condition.AvailableAttributes.Add(parameter.SystemName);
+            }
+
+            return condition;
         }
 
         private static bool HasSystemName(CadLibParameterInfo parameter)
