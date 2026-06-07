@@ -96,7 +96,7 @@ namespace SpecStudioParser.DesignTools.Services
 
             try
             {
-                ShowWindow(handle, ShowWindowCommand.Restore);
+                // Do not call ShowWindow(SW_RESTORE): for a maximized nanoCAD window it changes the window size.
                 BringWindowToTop(handle);
 
                 var foreground = GetForegroundWindow();
@@ -191,13 +191,5 @@ namespace SpecStudioParser.DesignTools.Services
 
         [DllImport("user32.dll")]
         private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
-
-        [DllImport("user32.dll")]
-        private static extern bool ShowWindow(IntPtr hWnd, ShowWindowCommand nCmdShow);
-
-        private enum ShowWindowCommand
-        {
-            Restore = 9
-        }
     }
 }
