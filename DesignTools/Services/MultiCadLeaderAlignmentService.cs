@@ -3,7 +3,6 @@ using HostMgd.EditorInput;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -121,12 +120,7 @@ namespace SpecStudioParser.DesignTools.Services
                 var selectionIds = GetCurrentMultiCadSelection(objectManagerType);
                 if (selectionIds.Count == 0)
                 {
-                    selectionIds = GetPromptedMultiCadSelection(objectManagerType);
-                }
-
-                if (selectionIds.Count == 0)
-                {
-                    return new LeaderAlignmentResult { Message = "Не выбраны MultiCAD-выноски для обработки." };
+                    return new LeaderAlignmentResult { Message = "Для MultiCAD-выносок выберите объекты до запуска команды." };
                 }
 
                 StartMultiCadTransaction(objectManagerType);
@@ -528,133 +522,9 @@ namespace SpecStudioParser.DesignTools.Services
             return result;
         }
 
-        private static List<object> GetPromptedMultiCadSelection(Type objectManagerType)
-        {
-            var result = new List<object>();
-            var doc = CadApp.DocumentManager.MdiActiveDocument;
-            var editor = doc?.Editor;
-            if (doc == null || editor == null)
-            {
-                return result;
-            }
-
-            NanoCadEditorFocusService.PrepareForEditorInput();
-            var dbSelection = GetDbSelection(editor);
-            if (dbSelection == null || dbSelection.Length == 0)
-            {
-                return result;
-            }
-
-            using (doc.LockDocument())
-            using (var tr = doc.Database.TransactionManager.StartTransaction())
-            {
-                foreach (var id in dbSelection)
-                {
-                    try
-                    {
-                        var obj = tr.GetObject(id, OpenMode.ForRead, false);
-                        if (obj is Entity entity && TryCreateMcObjectIdFromEntity(entity, out var mcObjectId))
-                        {
-                            result.Add(mcObjectId);
-                        }
-                    }
-                    catch
-                    {
-                    }
-                }
-
-                tr.Commit();
-            }
-
-            return result;
-        }
-
-        private static bool TryCreateMcObjectIdFromEntity(Entity entity, out object mcObjectId)
-        {
-            mcObjectId = default!;
-            var mcObjectIdType = ResolveLoadedType("Multicad.McObjectId");
-            if (mcObjectIdType == null)
-            {
-                return false;
-            }
-
-            var handleText = entity.Handle.ToString();
-            var handleNumber = TryParseHandle(handleText);
-            foreach (var method in mcObjectIdType.GetMethods(BindingFlags.Static | BindingFlags.Public).Where(m => m.Name == "FromHandle" && m.GetParameters().Length >= 1))
-            {
-                if (TryInvokeHandleFactory(method, handleText, handleNumber, out mcObjectId))
-                {
-                    return true;
-                }
-            }
-
-            foreach (var constructor in mcObjectIdType.GetConstructors(BindingFlags.Instance | BindingFlags.Public))
-            {
-                if (constructor.GetParameters().Length == 1 && TryInvokeHandleFactory(constructor, handleText, handleNumber, out mcObjectId))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static long TryParseHandle(string handleText)
-        {
-            return long.TryParse(handleText, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var value) ? value : 0;
-        }
-
-        private static bool TryInvokeHandleFactory(MethodBase factory, string handleText, long handleNumber, out object value)
-        {
-            value = default!;
-            var parameterType = factory.GetParameters()[0].ParameterType;
-            object argument;
-            if (parameterType == typeof(string))
-            {
-                argument = handleText;
-            }
-            else if (parameterType == typeof(long))
-            {
-                argument = handleNumber;
-            }
-            else if (parameterType == typeof(ulong))
-            {
-                argument = unchecked((ulong)handleNumber);
-            }
-            else if (parameterType == typeof(int))
-            {
-                argument = unchecked((int)handleNumber);
-            }
-            else if (parameterType == typeof(uint))
-            {
-                argument = unchecked((uint)handleNumber);
-            }
-            else
-            {
-                return false;
-            }
-
-            try
-            {
-                value = factory is MethodInfo method
-                    ? method.Invoke(null, new[] { argument })!
-                    : ((ConstructorInfo)factory).Invoke(new[] { argument });
-                return value != null;
-            }
-            catch
-            {
-                value = default!;
-                return false;
-            }
-        }
-
         private static object? GetMultiCadObject(Type objectManagerType, object id)
         {
             var getObjectMethod = objectManagerType.GetMethods(BindingFlags.Static | BindingFlags.Public)
-                .FirstOrDefault(m => m.Name == "GetObject" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType.IsInstanceOfType(id));
-            if (getObjectMethod != null) return getObjectMethod.Invoke(null, new[] { id });
-
-            getObjectMethod = objectManagerType.GetMethods(BindingFlags.Static | BindingFlags.Public)
                 .FirstOrDefault(m => m.Name == "GetObject" && m.GetParameters().Length == 1);
             if (getObjectMethod != null) return getObjectMethod.Invoke(null, new[] { id });
             return id.GetType().GetMethod("GetObject", BindingFlags.Instance | BindingFlags.Public, Type.EmptyTypes)?.Invoke(id, Array.Empty<object>());
