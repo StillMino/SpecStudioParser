@@ -10,14 +10,18 @@ namespace SpecStudioParser.DesignTools.Services
         private readonly DimensionAlignmentService _dimensionAlignmentService = new();
         private readonly DimensionDiagnosticsService _dimensionDiagnosticsService = new();
         private readonly SelectionDiagnosticsService _selectionDiagnosticsService = new();
+        private readonly DesignToolsVectorShiftService _vectorShiftService = new();
 
         public string RunLeaders(DesignToolsCommandState state)
         {
-            var result = state.Operation == DesignToolsOperation.Distribute
-                ? ExecuteLeaderDistribution(state.LeaderSource, state.Axis)
-                : state.ReferenceMode == DesignToolsReferenceMode.Point
+            var result = state.Operation switch
+            {
+                DesignToolsOperation.Shift => _vectorShiftService.ShiftSelectedLeaders(state.LeaderSource),
+                DesignToolsOperation.Distribute => ExecuteLeaderDistribution(state.LeaderSource, state.Axis),
+                _ => state.ReferenceMode == DesignToolsReferenceMode.Point
                     ? ExecuteLeaderPointAlignment(state.LeaderSource, state.Axis)
-                    : ExecuteLeaderAlignment(state.LeaderSource, state.Axis);
+                    : ExecuteLeaderAlignment(state.LeaderSource, state.Axis)
+            };
 
             WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
             DesignToolsCommandStateService.PublishResult(DesignToolsToolKind.Leaders, result.Message);
@@ -29,6 +33,7 @@ namespace SpecStudioParser.DesignTools.Services
             var result = state.Operation switch
             {
                 DesignToolsOperation.Reset => _dimensionAlignmentService.ResetSelectedDimensionTextPositions(),
+                DesignToolsOperation.Shift => _vectorShiftService.ShiftSelectedDimensionTextPositions(),
                 DesignToolsOperation.Distribute => _dimensionAlignmentService.DistributeSelectedDimensions(state.Axis),
                 _ => state.ReferenceMode == DesignToolsReferenceMode.Point
                     ? _dimensionAlignmentService.AlignSelectedDimensionsToPoint(state.Axis)
