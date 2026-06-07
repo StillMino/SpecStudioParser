@@ -1,3 +1,4 @@
+using HostMgd.EditorInput;
 using System;
 using CadApp = HostMgd.ApplicationServices.Application;
 
@@ -13,6 +14,11 @@ namespace SpecStudioParser.DesignTools.Services
 
         public string RunLeaders(DesignToolsCommandState state)
         {
+            if (state.LeaderSource == DesignToolsLeaderSource.MultiCad || state.LeaderSource == DesignToolsLeaderSource.Auto)
+            {
+                EnsureLeaderSelectionForMultiCadAwareMode();
+            }
+
             var result = state.Operation == DesignToolsOperation.Distribute
                 ? ExecuteLeaderDistribution(state.LeaderSource, state.Axis)
                 : state.ReferenceMode == DesignToolsReferenceMode.Point
@@ -100,6 +106,32 @@ namespace SpecStudioParser.DesignTools.Services
             return multiCadResult.CandidateCount > 0 || multiCadResult.AlignedCount > 0
                 ? multiCadResult
                 : _leaderPointAlignmentService.AlignSelectedTeighaMLeadersToPoint(axis);
+        }
+
+        private static void EnsureLeaderSelectionForMultiCadAwareMode()
+        {
+            try
+            {
+                var doc = CadApp.DocumentManager.MdiActiveDocument;
+                var editor = doc?.Editor;
+                if (editor == null)
+                {
+                    return;
+                }
+
+                var implied = editor.SelectImplied();
+                if (implied.Status == PromptStatus.OK && implied.Value != null && implied.Value.Count > 0)
+                {
+                    return;
+                }
+
+                NanoCadEditorFocusService.PrepareForEditorInput();
+                var options = new PromptSelectionOptions { MessageForAdding = "\nВыберите выноски для обработки: " };
+                editor.GetSelection(options);
+            }
+            catch
+            {
+            }
         }
 
         private static void WriteToNanoCad(string message)
