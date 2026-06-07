@@ -181,13 +181,13 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "dimensions",
                 "Размеры",
-                "Управление положением текста размеров. Сейчас безопасно двигается только TextPosition; размерная геометрия не меняется.",
+                "Управление положением текста размеров. Режим 'Точка' выравнивает TextPosition по указанной точке; режим 'Сбросить' возвращает стандартное положение текста.",
                 FilterDrafting,
                 DimensionsIcon,
                 new[] { "Текст" },
-                new[] { "Выровнять", "Распределить" },
+                new[] { "Выровнять", "Распределить", "Сбросить" },
                 new[] { "Горизонтально", "Вертикально" },
-                new[] { "Первая" },
+                new[] { "Первая", "Точка" },
                 ExecuteDimensionTool);
         }
 
@@ -348,9 +348,14 @@ namespace SpecStudioParser.DesignTools.ViewModels
         private void ExecuteDimensionTool(DesignToolCardViewModel card)
         {
             var axis = ParseAxis(card.SelectedAxis);
-            var result = card.SelectedOperation == "Распределить"
-                ? _dimensionAlignmentService.DistributeSelectedDimensions(axis)
-                : _dimensionAlignmentService.AlignSelectedDimensions(axis);
+            var result = card.SelectedOperation switch
+            {
+                "Сбросить" => _dimensionAlignmentService.ResetSelectedDimensionTextPositions(),
+                "Распределить" => _dimensionAlignmentService.DistributeSelectedDimensions(axis),
+                _ => card.SelectedReference == "Точка"
+                    ? _dimensionAlignmentService.AlignSelectedDimensionsToPoint(axis)
+                    : _dimensionAlignmentService.AlignSelectedDimensions(axis)
+            };
 
             SetCardStatus(card, result.Message);
             WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
