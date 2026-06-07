@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Teigha.DatabaseServices;
-using Teigha.Geometry;
 using CadApp = HostMgd.ApplicationServices.Application;
 
 namespace SpecStudioParser.DesignTools.Services
@@ -97,7 +96,7 @@ namespace SpecStudioParser.DesignTools.Services
                             continue;
                         }
 
-                        if (TryCreateTarget(obj, out var target))
+                        if (TryCreateMultiCadTarget(obj, out var target))
                         {
                             targets.Add(target);
                         }
@@ -110,7 +109,7 @@ namespace SpecStudioParser.DesignTools.Services
                         {
                             SelectedCount = selectionIds.Count,
                             CandidateCount = targets.Count,
-                            Message = "Для выравнивания нужно минимум две распознанные MultiCAD-выноски или мультивыноски."
+                            Message = "Для выравнивания нужно минимум две распознанные MultiCAD-выноски."
                         };
                     }
 
@@ -168,7 +167,7 @@ namespace SpecStudioParser.DesignTools.Services
                         continue;
                     }
 
-                    if (TryCreateTarget(entity, out var target))
+                    if (TryCreateDbTarget(entity, out var target))
                     {
                         targets.Add(target);
                     }
@@ -219,14 +218,19 @@ namespace SpecStudioParser.DesignTools.Services
             }
         }
 
-        private static bool TryCreateTarget(object obj, out LeaderAlignmentTarget target)
+        private static bool TryCreateDbTarget(Entity entity, out LeaderAlignmentTarget target)
         {
-            if (obj is MLeader mLeader && TryCreateTeighaMLeaderTarget(mLeader, out target))
+            if (entity is MLeader mLeader && TryCreateTeighaMLeaderContentTarget(mLeader, out target))
             {
                 return true;
             }
 
-            if (IsMultileaderCandidate(obj) && TryCreateMultileaderTarget(obj, out target))
+            return TryCreateMultiCadTarget(entity, out target);
+        }
+
+        private static bool TryCreateMultiCadTarget(object obj, out LeaderAlignmentTarget target)
+        {
+            if (IsMultileaderCandidate(obj) && TryCreateReflectionMultileaderTarget(obj, out target))
             {
                 return true;
             }
@@ -243,14 +247,18 @@ namespace SpecStudioParser.DesignTools.Services
             return false;
         }
 
-        private static bool TryCreateTeighaMLeaderTarget(MLeader mLeader, out LeaderAlignmentTarget target)
+        private static bool TryCreateTeighaMLeaderContentTarget(MLeader mLeader, out LeaderAlignmentTarget target)
         {
-            if (TryGetTeighaMLeaderAnchor(mLeader, out var anchor) && TryCreateTeighaMLeaderMoveTarget(mLeader, anchor, out target))
+            // Не используем MoveMLeader: он переносит всю мультивыноску вместе с начальной точкой стрелки.
+            // Для выравнивания нужна только точка контента: текст или блок.
+            if (TryCreatePropertyPointTarget(mLeader, "TextLocation", out target) ||
+                TryCreatePropertyPointTarget(mLeader, "BlockPosition", out target))
             {
                 return true;
             }
 
-            if (TryCreatePropertyPointTarget(mLeader, "TextLocation", out target) || TryCreatePropertyPointTarget(mLeader, "BlockPosition", out target))
+            if (TryCreateNestedContentPointTarget(mLeader, "MText", "Location", out target) ||
+                TryCreateNestedContentPointTarget(mLeader, "MText", "InsertionPoint", out target))
             {
                 return true;
             }
@@ -259,68 +267,7 @@ namespace SpecStudioParser.DesignTools.Services
             return false;
         }
 
-        private static bool TryGetTeighaMLeaderAnchor(MLeader mLeader, out AlignmentPoint anchor)
-        {
-            if (TryGetPointByProperty(mLeader, "TextLocation", out anchor) || TryGetPointByProperty(mLeader, "BlockPosition", out anchor))
-            {
-                return true;
-            }
-
-            try
-            {
-                var extents = mLeader.GetContentGeomExtents();
-                anchor = new AlignmentPoint(
-                    (extents.MinPoint.X + extents.MaxPoint.X) / 2.0,
-                    (extents.MinPoint.Y + extents.MaxPoint.Y) / 2.0,
-                    (extents.MinPoint.Z + extents.MaxPoint.Z) / 2.0);
-                return true;
-            }
-            catch
-            {
-                anchor = default;
-                return false;
-            }
-        }
-
-        private static bool TryCreateTeighaMLeaderMoveTarget(MLeader mLeader, AlignmentPoint anchor, out LeaderAlignmentTarget target)
-        {
-            var moveMethod = typeof(MLeader).GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                .FirstOrDefault(m => m.Name == "MoveMLeader" && m.GetParameters().Length == 2);
-
-            if (moveMethod == null)
-            {
-                target = default!;
-                return false;
-            }
-
-            var parameters = moveMethod.GetParameters();
-            var moveTypeValues = parameters[1].ParameterType.IsEnum
-                ? Enum.GetValues(parameters[1].ParameterType).Cast<object>().ToArray()
-                : new[] { Activator.CreateInstance(parameters[1].ParameterType)! };
-
-            target = new LeaderAlignmentTarget(anchor, alignedPoint =>
-            {
-                var delta = new Vector3d(alignedPoint.X - anchor.X, alignedPoint.Y - anchor.Y, alignedPoint.Z - anchor.Z);
-                Exception? lastError = null;
-
-                foreach (var moveType in moveTypeValues)
-                {
-                    try
-                    {
-                        moveMethod.Invoke(mLeader, new object[] { delta, moveType });
-                        mLeader.RecordGraphicsModified(true);
-                        return;
-                    }
-                    catch (TargetInvocationException ex) { lastError = ex.InnerException ?? ex; }
-                    catch (Exception ex) { lastError = ex; }
-                }
-
-                throw lastError ?? new InvalidOperationException("Не удалось выполнить MoveMLeader для мультивыноски.");
-            });
-            return true;
-        }
-
-        private static bool TryCreateMultileaderTarget(object obj, out LeaderAlignmentTarget target)
+        private static bool TryCreateReflectionMultileaderTarget(object obj, out LeaderAlignmentTarget target)
         {
             foreach (var propertyName in new[] { "TextLocation", "BlockPosition", "TextPosition", "Location", "Position" })
             {
@@ -376,6 +323,25 @@ namespace SpecStudioParser.DesignTools.Services
             return true;
         }
 
+        private static bool TryCreateNestedContentPointTarget(object owner, string contentPropertyName, string pointPropertyName, out LeaderAlignmentTarget target)
+        {
+            var nestedProperty = owner.GetType().GetProperty(contentPropertyName, BindingFlags.Instance | BindingFlags.Public);
+            if (nestedProperty == null || !nestedProperty.CanRead)
+            {
+                target = default!;
+                return false;
+            }
+
+            var nestedValue = nestedProperty.GetValue(owner);
+            if (nestedValue == null)
+            {
+                target = default!;
+                return false;
+            }
+
+            return TryCreateNestedPropertyPointTarget(owner, nestedProperty, nestedValue, pointPropertyName, out target);
+        }
+
         private static bool TryCreateNestedPropertyPointTarget(object owner, PropertyInfo nestedProperty, object nestedValue, string pointPropertyName, out LeaderAlignmentTarget target)
         {
             var pointProperty = nestedValue.GetType().GetProperty(pointPropertyName, BindingFlags.Instance | BindingFlags.Public);
@@ -424,17 +390,6 @@ namespace SpecStudioParser.DesignTools.Services
                 MarkObjectModified(obj);
             });
             return true;
-        }
-
-        private static bool TryGetPointByProperty(object obj, string propertyName, out AlignmentPoint point)
-        {
-            var property = obj.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
-            if (property == null || !property.CanRead)
-            {
-                point = default;
-                return false;
-            }
-            return TryGetPoint(property.GetValue(obj), out point);
         }
 
         private static List<object> GetCurrentMultiCadSelection(Type objectManagerType)
