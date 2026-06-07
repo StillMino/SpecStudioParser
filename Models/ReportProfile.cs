@@ -295,6 +295,8 @@ namespace SpecStudioParser.Models
 
                 FilterConditions.Clear();
                 RootFilterGroup.Items.Clear();
+                RootFilterGroup.Conditions.Clear();
+                RootFilterGroup.Groups.Clear();
 
                 foreach (var item in RootFilterItems)
                 {
