@@ -117,7 +117,7 @@
 																	<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveRootFilterItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
 																</StackPanel>
 																<ComboBox Grid.Column="2" ItemsSource="{Binding Condition.AvailableAttributes}" SelectedItem="{Binding Condition.Attribute, Mode=TwoWay}"/>
-					ат									<ComboBox Grid.Column="3" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
+																<ComboBox Grid.Column="3" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
 																<TextBox Grid.Column="4" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
 																<ComboBox Grid.Column="5" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом; у последнего элемента не используется"/>
 																<Button Grid.Column="6" Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="RemoveRootFilterItemClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
