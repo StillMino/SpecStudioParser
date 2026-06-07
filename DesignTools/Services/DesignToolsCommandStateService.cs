@@ -19,6 +19,7 @@ namespace SpecStudioParser.DesignTools.Services
     {
         Align,
         Distribute,
+        Shift,
         Reset,
         Check
     }
