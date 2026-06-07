@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -18,19 +19,23 @@ namespace SpecStudioParser.DesignTools.Services
             try
             {
                 var doc = CadApp.DocumentManager.MdiActiveDocument;
+                var docWindow = TryGetPropertyValue(doc, "Window");
+                var mainWindow = TryGetStaticPropertyValue(typeof(CadApp), "MainWindow");
+
                 TryActivate(doc);
-                TryActivate(TryGetPropertyValue(doc, "Window"));
-                TryActivate(TryGetPropertyValue(CadApp.DocumentManager, "MdiActiveDocument"));
-                TryActivate(TryGetStaticPropertyValue(typeof(CadApp), "MainWindow"));
-                TrySetForeground(TryGetPropertyValue(doc, "Window"));
-                TrySetForeground(TryGetStaticPropertyValue(typeof(CadApp), "MainWindow"));
+                TryActivate(docWindow);
+                TryActivate(mainWindow);
+
+                TryFocusHandle(TryGetWindowHandle(docWindow));
+                TryFocusHandle(TryGetWindowHandle(mainWindow));
+                TryFocusHandle(Process.GetCurrentProcess().MainWindowHandle);
             }
             catch
             {
             }
 
             // Give nanoCAD a short chance to process the focus change before starting an editor prompt.
-            Thread.Sleep(30);
+            Thread.Sleep(80);
         }
 
         private static void TryActivate(object? target)
@@ -82,18 +87,49 @@ namespace SpecStudioParser.DesignTools.Services
             }
         }
 
-        private static void TrySetForeground(object? target)
+        private static void TryFocusHandle(IntPtr handle)
         {
-            var handle = TryGetWindowHandle(target);
-            if (handle != IntPtr.Zero)
+            if (handle == IntPtr.Zero)
             {
-                try
+                return;
+            }
+
+            try
+            {
+                ShowWindow(handle, ShowWindowCommand.Restore);
+                BringWindowToTop(handle);
+
+                var foreground = GetForegroundWindow();
+                var currentThread = GetCurrentThreadId();
+                var foregroundThread = foreground == IntPtr.Zero ? 0 : GetWindowThreadProcessId(foreground, IntPtr.Zero);
+                var targetThread = GetWindowThreadProcessId(handle, IntPtr.Zero);
+
+                if (foregroundThread != 0 && foregroundThread != currentThread)
                 {
-                    SetForegroundWindow(handle);
+                    AttachThreadInput(currentThread, foregroundThread, true);
                 }
-                catch
+
+                if (targetThread != 0 && targetThread != currentThread)
                 {
+                    AttachThreadInput(currentThread, targetThread, true);
                 }
+
+                SetForegroundWindow(handle);
+                SetActiveWindow(handle);
+                SetFocus(handle);
+
+                if (targetThread != 0 && targetThread != currentThread)
+                {
+                    AttachThreadInput(currentThread, targetThread, false);
+                }
+
+                if (foregroundThread != 0 && foregroundThread != currentThread)
+                {
+                    AttachThreadInput(currentThread, foregroundThread, false);
+                }
+            }
+            catch
+            {
             }
         }
 
@@ -134,5 +170,34 @@ namespace SpecStudioParser.DesignTools.Services
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetActiveWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetFocus(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, ShowWindowCommand nCmdShow);
+
+        private enum ShowWindowCommand
+        {
+            Restore = 9
+        }
     }
 }
