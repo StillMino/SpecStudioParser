@@ -115,8 +115,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
         private const string McadVerticalIcon = "M5,18 L10,13 L17,13 M14,7 L21,7 M14,10 L21,10 M3,20 L5,18 L6,20 M10,4 L10,21";
         private const string MLeaderHorizontalIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5 M6,16 L21,16";
         private const string MLeaderVerticalIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5 M10,4 L10,21";
+        private const string DiagnosticsIcon = "M5,5 L19,5 L19,19 L5,19 Z M8,9 L16,9 M8,12 L16,12 M8,15 L13,15";
 
         private readonly MultiCadLeaderAlignmentService _leaderAlignmentService = new();
+        private readonly SelectionDiagnosticsService _selectionDiagnosticsService = new();
 
         [ObservableProperty]
         private string _status = "Инструменты проектировщика готовы к работе.";
@@ -132,6 +134,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
             RefreshContextCommand = new RelayCommand(RefreshContext);
 
             Blocks.Add(CreateDraftingBlock());
+            Blocks.Add(CreateDiagnosticsBlock());
             Blocks.Add(CreateModelBlock());
             Blocks.Add(CreateSpecifierBridgeBlock());
 
@@ -220,6 +223,29 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return block;
         }
 
+        private DesignToolBlockViewModel CreateDiagnosticsBlock()
+        {
+            var block = new DesignToolBlockViewModel(
+                "diagnostics",
+                "Диагностика",
+                "Служебные инструменты для определения реальных типов и свойств выбранных объектов.");
+
+            block.Features.Add(new DesignToolFeatureViewModel(
+                new DesignToolCommandDescriptor
+                {
+                    Id = "diagnostics-selected-objects",
+                    Name = "Диагностика выбранных объектов",
+                    Description = "Выводит в командную строку nanoCAD типы выбранных объектов, RXClass, слой, handle и найденные свойства точек.",
+                    NanoCadCommandName = "DT_DIAG_SELECTION"
+                },
+                DesignToolAccessLevel.Free,
+                DesignToolContext.Universal,
+                DiagnosticsIcon,
+                ExecuteSelectionDiagnostics));
+
+            return block;
+        }
+
         private DesignToolBlockViewModel CreateModelBlock()
         {
             var block = new DesignToolBlockViewModel(
@@ -301,6 +327,20 @@ namespace SpecStudioParser.DesignTools.ViewModels
             catch (Exception ex)
             {
                 SetFeatureStatus(feature, $"Ошибка выравнивания выносок: {ex.Message}");
+            }
+        }
+
+        private void ExecuteSelectionDiagnostics(DesignToolFeatureViewModel feature)
+        {
+            try
+            {
+                var result = _selectionDiagnosticsService.DiagnoseSelection();
+                SetFeatureStatus(feature, result.Summary);
+                WriteToNanoCad("\n" + result.Details + "\n");
+            }
+            catch (Exception ex)
+            {
+                SetFeatureStatus(feature, $"Ошибка диагностики: {ex.Message}");
             }
         }
 
