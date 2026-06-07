@@ -1,9 +1,13 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using SpecStudioParser.CadLib;
 using SpecStudioParser.Models;
 using SpecStudioParser.Services;
 using SpecStudioParser.ViewModels;
+using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SpecStudioParser.Views
 {
@@ -94,12 +98,20 @@ namespace SpecStudioParser.Views
             }
         }
 
-        private void AddRootConditionClick(object sender, RoutedEventArgs e)
+        private async void AddRootConditionClick(object sender, RoutedEventArgs e)
         {
-            if (DataContext is MainWindowViewModel viewModel && viewModel.SelectedDataset != null)
+            if (DataContext is not MainWindowViewModel viewModel || viewModel.SelectedDataset == null)
             {
-                viewModel.SelectedDataset.AddRootFilterCondition();
+                return;
             }
+
+            var parameters = await PickFilterParametersAsync("Выбор CADLib параметров для корневых условий");
+            if (parameters.Count == 0)
+            {
+                return;
+            }
+
+            AddRootConditions(viewModel.SelectedDataset, parameters);
         }
 
         private void AddFilterGroupClick(object sender, RoutedEventArgs e)
@@ -126,12 +138,23 @@ namespace SpecStudioParser.Views
             }
         }
 
-        private void AddConditionToGroupClick(object sender, RoutedEventArgs e)
+        private async void AddConditionToGroupClick(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.DataContext is FilterConditionGroup group)
+            if (sender is not Button button ||
+                button.DataContext is not FilterConditionGroup group ||
+                DataContext is not MainWindowViewModel viewModel ||
+                viewModel.SelectedDataset == null)
             {
-                group.AddCondition();
+                return;
             }
+
+            var parameters = await PickFilterParametersAsync("Выбор CADLib параметров для условий группы");
+            if (parameters.Count == 0)
+            {
+                return;
+            }
+
+            AddConditionsToGroup(viewModel.SelectedDataset, group, parameters);
         }
 
         private void AddNestedGroupToGroupClick(object sender, RoutedEventArgs e)
@@ -140,6 +163,86 @@ namespace SpecStudioParser.Views
             {
                 group.AddGroup();
             }
+        }
+
+        private async Task<IReadOnlyList<CadLibParameterInfo>> PickFilterParametersAsync(string title)
+        {
+            var result = await CadLibParameterPickerService.PickMultipleAsync(
+                this,
+                title,
+                "Выберите один или несколько параметров. Для каждого выбранного параметра будет создано отдельное условие.");
+
+            return result?.SelectedParameters ?? [];
+        }
+
+        private static void AddRootConditions(DatasetConfig dataset, IReadOnlyList<CadLibParameterInfo> parameters)
+        {
+            dataset.EnsureRootFilterItems();
+            foreach (var parameter in parameters.Where(HasSystemName))
+            {
+                var condition = CreateConditionFromParameter(parameter, GetLastRootItemJoinWithNext(dataset));
+                dataset.RootFilterItems.Add(FilterRootItem.FromCondition(condition));
+            }
+
+            dataset.RunFilterIntegrityDiagnostics();
+        }
+
+        private static void AddConditionsToGroup(DatasetConfig dataset, FilterConditionGroup group, IReadOnlyList<CadLibParameterInfo> parameters)
+        {
+            group.EnsureItems();
+            foreach (var parameter in parameters.Where(HasSystemName))
+            {
+                var condition = CreateConditionFromParameter(parameter, GetLastGroupItemJoinWithNext(group));
+                group.Items.Add(FilterGroupItem.FromCondition(condition));
+            }
+
+            dataset.RunFilterIntegrityDiagnostics();
+        }
+
+        private static FilterConditionItem CreateConditionFromParameter(CadLibParameterInfo parameter, string joinWithNext)
+        {
+            return new FilterConditionItem
+            {
+                Attribute = parameter.SystemName,
+                JoinWithNext = joinWithNext
+            };
+        }
+
+        private static bool HasSystemName(CadLibParameterInfo parameter)
+        {
+            return !string.IsNullOrWhiteSpace(parameter.SystemName);
+        }
+
+        private static string GetLastRootItemJoinWithNext(DatasetConfig dataset)
+        {
+            var lastItem = dataset.RootFilterItems.LastOrDefault();
+            if (lastItem?.Condition != null)
+            {
+                return lastItem.Condition.JoinWithNext;
+            }
+
+            if (lastItem?.Group != null)
+            {
+                return lastItem.Group.JoinWithNext;
+            }
+
+            return "and";
+        }
+
+        private static string GetLastGroupItemJoinWithNext(FilterConditionGroup group)
+        {
+            var lastItem = group.Items.LastOrDefault();
+            if (lastItem?.Condition != null)
+            {
+                return lastItem.Condition.JoinWithNext;
+            }
+
+            if (lastItem?.Group != null)
+            {
+                return lastItem.Group.JoinWithNext;
+            }
+
+            return "and";
         }
 
         private void RemoveFilterConditionClick(object sender, RoutedEventArgs e)
