@@ -138,6 +138,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
         private const string SpecifierIcon = "M6,4 H18 V20 H6 Z M8,8 H16 M8,12 H16 M8,16 H13";
 
         private readonly List<DesignToolCardViewModel> _allToolCards = new();
+        private readonly DesignToolsCommandRunner _directCommandRunner = new();
         private DesignToolCardViewModel? _leadersCard;
         private DesignToolCardViewModel? _dimensionsCard;
         private DesignToolCardViewModel? _diagnosticsCard;
@@ -308,15 +309,22 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
         private void ExecuteLeaderTool(DesignToolCardViewModel card)
         {
-            DesignToolsCommandStateService.SetPendingState(new DesignToolsCommandState
+            var state = new DesignToolsCommandState
             {
                 ToolKind = DesignToolsToolKind.Leaders,
                 LeaderSource = ParseLeaderSource(card.SelectedSource),
                 Operation = ParseOperation(card.SelectedOperation),
                 Axis = ParseAxis(card.SelectedAxis),
                 ReferenceMode = ParseReferenceMode(card.SelectedReference)
-            });
+            };
 
+            if (state.LeaderSource == DesignToolsLeaderSource.MultiCad)
+            {
+                RunMultiCadLeaderToolInPaletteContext(card, state);
+                return;
+            }
+
+            DesignToolsCommandStateService.SetPendingState(state);
             SetCardStatus(card, "Команда передана в nanoCAD.");
             SendNanoCadCommand("DT_RUN_LEADERS_TOOL");
         }
@@ -346,6 +354,22 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
             SetCardStatus(card, "Команда передана в nanoCAD.");
             SendNanoCadCommand("DT_RUN_DIAGNOSTICS_TOOL");
+        }
+
+        private void RunMultiCadLeaderToolInPaletteContext(DesignToolCardViewModel card, DesignToolsCommandState state)
+        {
+            try
+            {
+                // MultiCAD SelectionSet.CurrentSelection is modeless-palette sensitive and can be lost after SendStringToExecute.
+                // Keep explicit MultiCAD leader operations in the palette context; Teigha/nanoCAD operations still use command context.
+                SetCardStatus(card, "Выполняется MultiCAD-команда.");
+                var message = _directCommandRunner.RunLeaders(state);
+                SetCardStatus(card, message);
+            }
+            catch (Exception ex)
+            {
+                SetCardStatus(card, $"Ошибка MultiCAD-команды: {ex.Message}");
+            }
         }
 
         private void ExecuteStubTool(DesignToolCardViewModel card)
