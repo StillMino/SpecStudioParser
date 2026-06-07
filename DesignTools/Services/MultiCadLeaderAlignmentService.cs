@@ -27,6 +27,12 @@ namespace SpecStudioParser.DesignTools.Services
 
     public sealed class MultiCadLeaderAlignmentService
     {
+        private enum DbTargetMode
+        {
+            AllSupported,
+            TeighaMLeaderOnly
+        }
+
         private static readonly string[] LeaderTypeMarkers =
         {
             "McNote", "McNotePosition", "McNoteChain", "McNoteComb", "McNoteLinearMark",
@@ -51,13 +57,27 @@ namespace SpecStudioParser.DesignTools.Services
                 return multiCadResult;
             }
 
-            var fallbackResult = AlignSelectedDbLeadersFallback(axis);
+            var fallbackResult = AlignSelectedDbLeaders(axis, DbTargetMode.AllSupported);
             if (fallbackResult.CandidateCount > 0 || multiCadResult == null)
             {
                 return fallbackResult;
             }
 
             return multiCadResult;
+        }
+
+        public LeaderAlignmentResult AlignSelectedMultiCadLeaders(LeaderAlignmentAxis axis)
+        {
+            var result = TryAlignSelectedMultiCadLeaders(axis);
+            return result ?? new LeaderAlignmentResult
+            {
+                Message = "MultiCAD API недоступен в текущем сеансе nanoCAD."
+            };
+        }
+
+        public LeaderAlignmentResult AlignSelectedTeighaMLeaders(LeaderAlignmentAxis axis)
+        {
+            return AlignSelectedDbLeaders(axis, DbTargetMode.TeighaMLeaderOnly);
         }
 
         private static LeaderAlignmentResult? TryAlignSelectedMultiCadLeaders(LeaderAlignmentAxis axis)
@@ -80,7 +100,7 @@ namespace SpecStudioParser.DesignTools.Services
                 var selectionIds = GetCurrentMultiCadSelection(objectManagerType);
                 if (selectionIds.Count == 0)
                 {
-                    return new LeaderAlignmentResult { Message = "Не выбраны выноски для выравнивания." };
+                    return new LeaderAlignmentResult { Message = "Не выбраны MultiCAD-выноски для выравнивания." };
                 }
 
                 StartMultiCadTransaction(objectManagerType);
@@ -122,7 +142,7 @@ namespace SpecStudioParser.DesignTools.Services
                         SelectedCount = selectionIds.Count,
                         CandidateCount = targets.Count,
                         AlignedCount = targets.Count - 1,
-                        Message = BuildSuccessMessage(axis, targets.Count, true)
+                        Message = BuildSuccessMessage(axis, targets.Count, "MultiCAD")
                     };
                 }
                 catch
@@ -139,7 +159,7 @@ namespace SpecStudioParser.DesignTools.Services
             }
         }
 
-        private static LeaderAlignmentResult AlignSelectedDbLeadersFallback(LeaderAlignmentAxis axis)
+        private static LeaderAlignmentResult AlignSelectedDbLeaders(LeaderAlignmentAxis axis, DbTargetMode mode)
         {
             var doc = CadApp.DocumentManager.MdiActiveDocument;
             if (doc == null)
@@ -151,7 +171,7 @@ namespace SpecStudioParser.DesignTools.Services
             var selection = GetDbSelection(editor);
             if (selection == null || selection.Length == 0)
             {
-                return new LeaderAlignmentResult { Message = "Не выбраны выноски для выравнивания." };
+                return new LeaderAlignmentResult { Message = "Не выбраны объекты для выравнивания." };
             }
 
             using (doc.LockDocument())
@@ -162,12 +182,12 @@ namespace SpecStudioParser.DesignTools.Services
                 foreach (var id in selection)
                 {
                     var obj = tr.GetObject(id, OpenMode.ForWrite, false);
-                    if (obj is not Entity entity || !IsLeaderCandidate(entity))
+                    if (obj is not Entity entity)
                     {
                         continue;
                     }
 
-                    if (TryCreateDbTarget(entity, out var target))
+                    if (TryCreateDbTarget(entity, mode, out var target))
                     {
                         targets.Add(target);
                     }
@@ -176,11 +196,12 @@ namespace SpecStudioParser.DesignTools.Services
                 if (targets.Count < 2)
                 {
                     tr.Abort();
+                    var targetName = mode == DbTargetMode.TeighaMLeaderOnly ? "Teigha-мультивыноски" : "выноски или мультивыноски";
                     return new LeaderAlignmentResult
                     {
                         SelectedCount = selection.Length,
                         CandidateCount = targets.Count,
-                        Message = "Для выравнивания нужно минимум две распознанные выноски или мультивыноски."
+                        Message = $"Для выравнивания нужно минимум две распознанные {targetName}."
                     };
                 }
 
@@ -193,16 +214,16 @@ namespace SpecStudioParser.DesignTools.Services
                     SelectedCount = selection.Length,
                     CandidateCount = targets.Count,
                     AlignedCount = targets.Count - 1,
-                    Message = BuildSuccessMessage(axis, targets.Count, false)
+                    Message = BuildSuccessMessage(axis, targets.Count, mode == DbTargetMode.TeighaMLeaderOnly ? "Teigha" : "")
                 };
             }
         }
 
-        private static string BuildSuccessMessage(LeaderAlignmentAxis axis, int count, bool isMultiCad)
+        private static string BuildSuccessMessage(LeaderAlignmentAxis axis, int count, string source)
         {
-            var source = isMultiCad ? "MultiCAD-" : string.Empty;
+            var prefix = string.IsNullOrWhiteSpace(source) ? string.Empty : source + "-";
             var axisName = axis == LeaderAlignmentAxis.Horizontal ? "по горизонтали" : "по вертикали";
-            return $"{source}выравнивание {axisName} выполнено. Обработано объектов: {count}.";
+            return $"{prefix}выравнивание {axisName} выполнено. Обработано объектов: {count}.";
         }
 
         private static void AlignTargets(IReadOnlyList<LeaderAlignmentTarget> targets, LeaderAlignmentAxis axis)
@@ -218,11 +239,28 @@ namespace SpecStudioParser.DesignTools.Services
             }
         }
 
-        private static bool TryCreateDbTarget(Entity entity, out LeaderAlignmentTarget target)
+        private static bool TryCreateDbTarget(Entity entity, DbTargetMode mode, out LeaderAlignmentTarget target)
         {
-            if (entity is MLeader mLeader && TryCreateTeighaMLeaderContentTarget(mLeader, out target))
+            if (mode == DbTargetMode.TeighaMLeaderOnly)
+            {
+                if (entity is MLeader mLeader && TryCreateTeighaMLeaderContentTarget(mLeader, out target))
+                {
+                    return true;
+                }
+
+                target = default!;
+                return false;
+            }
+
+            if (entity is MLeader mLeaderAll && TryCreateTeighaMLeaderContentTarget(mLeaderAll, out target))
             {
                 return true;
+            }
+
+            if (!IsLeaderCandidate(entity))
+            {
+                target = default!;
+                return false;
             }
 
             return TryCreateMultiCadTarget(entity, out target);
