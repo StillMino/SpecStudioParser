@@ -1,4 +1,5 @@
 using SpecStudioParser.Services;
+using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -30,6 +31,7 @@ namespace SpecStudioParser.Models
         private int _aggregated = 1;
         private FilterConditionGroup _rootFilterGroup = new();
         private bool _suppressFilterRebuild;
+        private bool _syncingRootCollections;
 
         public DatasetConfig()
         {
@@ -81,6 +83,8 @@ namespace SpecStudioParser.Models
                 _rootFilterGroup = value ?? new FilterConditionGroup();
                 _rootFilterGroup.PropertyChanged += RootFilterGroupChanged;
                 _rootFilterGroup.EnsureItems();
+                EnsureRootFilterItems();
+                SyncRootCompatibilityCollections();
                 OnPropertyChanged();
                 RebuildFilterFormula();
             }
@@ -114,23 +118,27 @@ namespace SpecStudioParser.Models
 
         public void AddRootFilterCondition()
         {
-            EnsureRootFilterItems();
-            var condition = new FilterConditionItem
+            BatchUpdateRootFilters(() =>
             {
-                JoinWithNext = GetLastRootItemJoinWithNext()
-            };
-            FilterConditions.Add(condition);
-            RootFilterItems.Add(FilterRootItem.FromCondition(condition));
-            RebuildFilterFormula();
+                var condition = new FilterConditionItem
+                {
+                    JoinWithNext = GetLastRootItemJoinWithNext()
+                };
+                RootFilterItems.Add(FilterRootItem.FromCondition(condition));
+            });
         }
 
         public void AddChildFilterGroup()
         {
-            EnsureRootFilterItems();
-            var group = RootFilterGroup.AddGroup();
-            group.JoinWithNext = GetLastRootItemJoinWithNext();
-            RootFilterItems.Add(FilterRootItem.FromGroup(group));
-            RebuildFilterFormula();
+            BatchUpdateRootFilters(() =>
+            {
+                var group = new FilterConditionGroup
+                {
+                    JoinWithNext = GetLastRootItemJoinWithNext()
+                };
+                group.AddCondition();
+                RootFilterItems.Add(FilterRootItem.FromGroup(group));
+            });
         }
 
         public void DissolveNestedFilterGroup(FilterConditionGroup? group)
@@ -153,33 +161,24 @@ namespace SpecStudioParser.Models
             }
 
             var rootParentItem = RootFilterItems.FirstOrDefault(item => item.Group == parent);
-            if (rootParentItem == null)
+            if (rootParentItem == null || !parent.RemoveGroup(group))
             {
                 return;
             }
 
-            if (!parent.RemoveGroup(group))
+            BatchUpdateRootFilters(() =>
             {
-                return;
-            }
+                var insertIndex = RootFilterItems.IndexOf(rootParentItem) + 1;
+                if (insertIndex < 0 || insertIndex > RootFilterItems.Count)
+                {
+                    insertIndex = RootFilterItems.Count;
+                }
 
-            var insertIndex = RootFilterItems.IndexOf(rootParentItem) + 1;
-            if (insertIndex < 0 || insertIndex > RootFilterItems.Count)
-            {
-                insertIndex = RootFilterItems.Count;
-            }
-
-            if (!RootFilterItems.Any(item => item.Group == group))
-            {
-                RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(group));
-            }
-
-            if (!RootFilterGroup.Items.Any(item => item.Group == group))
-            {
-                RootFilterGroup.Items.Add(FilterGroupItem.FromGroup(group));
-            }
-
-            RebuildFilterFormula();
+                if (!RootFilterItems.Any(item => item.Group == group))
+                {
+                    RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(group));
+                }
+            });
         }
 
         public void MoveNestedFilterGroupItem(FilterGroupItem? item, int direction)
@@ -241,48 +240,41 @@ namespace SpecStudioParser.Models
                 JoinWithNext = GetRootItemJoinWithNext(groupedRootItems.Last())
             };
 
-            try
+            foreach (var item in groupedRootItems)
             {
-                _suppressFilterRebuild = true;
+                item.IsSelected = false;
 
-                for (var i = groupedRootItems.Count - 1; i >= 0; i--)
+                if (item.Condition != null)
                 {
-                    var item = groupedRootItems[i];
-                    RootFilterItems.Remove(item);
-
-                    if (item.Condition != null)
-                    {
-                        FilterConditions.Remove(item.Condition);
-                        RootFilterGroup.RemoveCondition(item.Condition);
-                    }
-
-                    if (item.Group != null)
-                    {
-                        RootFilterGroup.RemoveGroup(item.Group);
-                    }
+                    newGroup.Items.Add(FilterGroupItem.FromCondition(item.Condition));
                 }
 
-                foreach (var item in groupedRootItems)
+                if (item.Group != null)
                 {
-                    item.IsSelected = false;
+                    item.Group.EnsureItems();
+                    newGroup.Items.Add(FilterGroupItem.FromGroup(item.Group));
+                }
+            }
 
-                    if (item.Condition != null)
-                    {
-                        newGroup.Items.Add(FilterGroupItem.FromCondition(item.Condition));
-                    }
-
-                    if (item.Group != null)
-                    {
-                        newGroup.Items.Add(FilterGroupItem.FromGroup(item.Group));
-                    }
+            BatchUpdateRootFilters(() =>
+            {
+                for (var i = groupedRootItems.Count - 1; i >= 0; i--)
+                {
+                    RootFilterItems.Remove(groupedRootItems[i]);
                 }
 
                 RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(newGroup));
+            });
+        }
 
-                if (!RootFilterGroup.Items.Any(item => item.Group == newGroup))
-                {
-                    RootFilterGroup.Items.Add(FilterGroupItem.FromGroup(newGroup));
-                }
+        private void BatchUpdateRootFilters(Action update)
+        {
+            try
+            {
+                _suppressFilterRebuild = true;
+                EnsureRootFilterItems();
+                update();
+                SyncRootCompatibilityCollections();
             }
             finally
             {
@@ -290,6 +282,40 @@ namespace SpecStudioParser.Models
             }
 
             RebuildFilterFormula();
+        }
+
+        private void SyncRootCompatibilityCollections()
+        {
+            if (_syncingRootCollections) return;
+
+            try
+            {
+                _syncingRootCollections = true;
+                _suppressFilterRebuild = true;
+
+                FilterConditions.Clear();
+                RootFilterGroup.Items.Clear();
+
+                foreach (var item in RootFilterItems)
+                {
+                    if (item.Condition != null)
+                    {
+                        FilterConditions.Add(item.Condition);
+                        RootFilterGroup.Items.Add(FilterGroupItem.FromCondition(item.Condition));
+                    }
+
+                    if (item.Group != null)
+                    {
+                        item.Group.EnsureItems();
+                        RootFilterGroup.Items.Add(FilterGroupItem.FromGroup(item.Group));
+                    }
+                }
+            }
+            finally
+            {
+                _syncingRootCollections = false;
+                _suppressFilterRebuild = false;
+            }
         }
 
         private string GetLastRootItemJoinWithNext()
@@ -327,39 +353,30 @@ namespace SpecStudioParser.Models
         {
             if (item == null) return;
 
-            if (item.Condition != null)
-            {
-                FilterConditions.Remove(item.Condition);
-            }
-
-            if (item.Group != null)
-            {
-                RootFilterGroup.RemoveGroup(item.Group);
-            }
-
-            RootFilterItems.Remove(item);
-            RebuildFilterFormula();
+            BatchUpdateRootFilters(() => RootFilterItems.Remove(item));
         }
 
         public void RemoveFilterCondition(FilterConditionItem? condition)
         {
             if (condition == null) return;
 
-            FilterConditions.Remove(condition);
-            RootFilterGroup.RemoveCondition(condition);
-
-            var rootItem = RootFilterItems.FirstOrDefault(item => item.Condition == condition);
-            if (rootItem != null)
+            BatchUpdateRootFilters(() =>
             {
-                RootFilterItems.Remove(rootItem);
-            }
+                var rootItem = RootFilterItems.FirstOrDefault(item => item.Condition == condition);
+                if (rootItem != null)
+                {
+                    RootFilterItems.Remove(rootItem);
+                    return;
+                }
 
-            RebuildFilterFormula();
+                RootFilterGroup.RemoveCondition(condition);
+            });
         }
 
         private void RootFilterItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            if (_suppressFilterRebuild) return;
+            if (_suppressFilterRebuild || _syncingRootCollections) return;
+            SyncRootCompatibilityCollections();
             RebuildFilterFormula();
         }
 
@@ -381,7 +398,7 @@ namespace SpecStudioParser.Models
                 }
             }
 
-            if (_suppressFilterRebuild) return;
+            if (_suppressFilterRebuild || _syncingRootCollections) return;
             RebuildFilterFormula();
         }
 
@@ -393,7 +410,7 @@ namespace SpecStudioParser.Models
 
         private void RootFilterGroupChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (_suppressFilterRebuild) return;
+            if (_suppressFilterRebuild || _syncingRootCollections) return;
             RebuildFilterFormula();
         }
 
