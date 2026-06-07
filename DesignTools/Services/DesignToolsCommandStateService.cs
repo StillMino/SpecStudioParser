@@ -11,7 +11,6 @@ namespace SpecStudioParser.DesignTools.Services
 
     public enum DesignToolsLeaderSource
     {
-        Auto,
         MultiCad,
         TeighaMLeader
     }
@@ -39,7 +38,7 @@ namespace SpecStudioParser.DesignTools.Services
     public sealed class DesignToolsCommandState
     {
         public DesignToolsToolKind ToolKind { get; init; }
-        public DesignToolsLeaderSource LeaderSource { get; init; } = DesignToolsLeaderSource.Auto;
+        public DesignToolsLeaderSource LeaderSource { get; init; } = DesignToolsLeaderSource.TeighaMLeader;
         public DesignToolsOperation Operation { get; init; } = DesignToolsOperation.Align;
         public LeaderAlignmentAxis Axis { get; init; } = LeaderAlignmentAxis.Horizontal;
         public DesignToolsReferenceMode ReferenceMode { get; init; } = DesignToolsReferenceMode.First;
