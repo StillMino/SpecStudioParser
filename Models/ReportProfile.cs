@@ -1,5 +1,6 @@
 using SpecStudioParser.Services;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -28,6 +29,7 @@ namespace SpecStudioParser.Models
     {
         private string _caption = "Новый набор данных";
         private string _filterFormula = "";
+        private string _filterDiagnosticsText = "";
         private int _aggregated = 1;
         private FilterConditionGroup _rootFilterGroup = new();
         private bool _suppressFilterRebuild;
@@ -59,6 +61,19 @@ namespace SpecStudioParser.Models
                 if (_filterFormula != normalized)
                 {
                     _filterFormula = normalized;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string FilterDiagnosticsText
+        {
+            get => _filterDiagnosticsText;
+            private set
+            {
+                if (_filterDiagnosticsText != value)
+                {
+                    _filterDiagnosticsText = value;
                     OnPropertyChanged();
                 }
             }
@@ -265,6 +280,106 @@ namespace SpecStudioParser.Models
 
                 RootFilterItems.Insert(insertIndex, FilterRootItem.FromGroup(newGroup));
             });
+        }
+
+        public void RunFilterIntegrityDiagnostics()
+        {
+            var before = CollectRootFilterIntegrityIssues();
+            var migratedLegacyState = RootFilterItems.Count == 0 && HasEditableFilterItems();
+
+            if (migratedLegacyState)
+            {
+                EnsureRootFilterItems();
+            }
+
+            if (before.Any() || migratedLegacyState)
+            {
+                SyncRootCompatibilityCollections();
+            }
+
+            var after = CollectRootFilterIntegrityIssues();
+            if (!after.Any())
+            {
+                FilterDiagnosticsText = before.Any() || migratedLegacyState
+                    ? $"OK: структура фильтров синхронизирована. Исправлено расхождений: {before.Count}."
+                    : $"OK: структура фильтров согласована. Корневых элементов: {RootFilterItems.Count}.";
+                return;
+            }
+
+            FilterDiagnosticsText = "Найдены расхождения структуры фильтров:\n- " + string.Join("\n- ", after);
+        }
+
+        public IReadOnlyList<string> CollectRootFilterIntegrityIssues()
+        {
+            var issues = new List<string>();
+            RootFilterGroup.EnsureItems();
+
+            var rootConditions = RootFilterItems
+                .Where(item => item.Condition != null)
+                .Select(item => item.Condition!)
+                .ToList();
+            var rootGroups = RootFilterItems
+                .Where(item => item.Group != null)
+                .Select(item => item.Group!)
+                .ToList();
+
+            if (!FilterConditions.SequenceEqual(rootConditions))
+            {
+                issues.Add($"FilterConditions не соответствует корневым условиям: FilterConditions={FilterConditions.Count}, RootFilterItems conditions={rootConditions.Count}.");
+            }
+
+            if (RootFilterGroup.Items.Count != RootFilterItems.Count)
+            {
+                issues.Add($"RootFilterGroup.Items не соответствует RootFilterItems по количеству: Items={RootFilterGroup.Items.Count}, RootFilterItems={RootFilterItems.Count}.");
+            }
+            else
+            {
+                for (var i = 0; i < RootFilterItems.Count; i++)
+                {
+                    if (!MatchesRootItem(RootFilterItems[i], RootFilterGroup.Items[i]))
+                    {
+                        issues.Add($"RootFilterGroup.Items[{i}] не соответствует RootFilterItems[{i}].");
+                        break;
+                    }
+                }
+            }
+
+            var legacyConditionCount = RootFilterGroup.Conditions.Count;
+            var legacyGroupCount = RootFilterGroup.Groups.Count;
+            if (RootFilterItems.Count > 0 && (legacyConditionCount > 0 || legacyGroupCount > 0))
+            {
+                issues.Add($"В legacy-коллекциях RootFilterGroup есть дубли: Conditions={legacyConditionCount}, Groups={legacyGroupCount}.");
+            }
+
+            var duplicateConditions = rootConditions
+                .GroupBy(condition => condition)
+                .Where(group => group.Count() > 1)
+                .Count();
+            var duplicateGroups = rootGroups
+                .GroupBy(group => group)
+                .Where(group => group.Count() > 1)
+                .Count();
+            if (duplicateConditions > 0 || duplicateGroups > 0)
+            {
+                issues.Add($"В RootFilterItems есть повторяющиеся ссылки: conditions={duplicateConditions}, groups={duplicateGroups}.");
+            }
+
+            return issues;
+        }
+
+        private static bool MatchesRootItem(FilterRootItem rootItem, FilterGroupItem groupItem)
+        {
+            if (rootItem.Condition != null)
+            {
+                return ReferenceEquals(rootItem.Condition, groupItem.Condition);
+            }
+
+            if (rootItem.Group != null)
+            {
+                return ReferenceEquals(rootItem.Group, groupItem.Group);
+            }
+
+            return false;
         }
 
         private void BatchUpdateRootFilters(Action update)
