@@ -64,6 +64,54 @@ namespace SpecStudioParser.DesignTools.ViewModels
         public DesignToolBlockViewModel(string id, string name, string description) { Id = id; Name = name; Description = description; }
     }
 
+    public partial class DesignToolCardViewModel : ObservableObject
+    {
+        [ObservableProperty] private string _status = "Готово";
+        [ObservableProperty] private string _selectedSource = string.Empty;
+        [ObservableProperty] private string _selectedOperation = string.Empty;
+        [ObservableProperty] private string _selectedAxis = string.Empty;
+        [ObservableProperty] private string _selectedReference = string.Empty;
+
+        public string Id { get; }
+        public string Title { get; }
+        public string Description { get; }
+        public string Category { get; }
+        public string IconGeometry { get; }
+        public ObservableCollection<string> Sources { get; } = new();
+        public ObservableCollection<string> Operations { get; } = new();
+        public ObservableCollection<string> Axes { get; } = new();
+        public ObservableCollection<string> References { get; } = new();
+        public ICommand RunCommand { get; }
+
+        public DesignToolCardViewModel(
+            string id,
+            string title,
+            string description,
+            string category,
+            string iconGeometry,
+            IEnumerable<string> sources,
+            IEnumerable<string> operations,
+            IEnumerable<string> axes,
+            IEnumerable<string> references,
+            Action<DesignToolCardViewModel> execute)
+        {
+            Id = id;
+            Title = title;
+            Description = description;
+            Category = category;
+            IconGeometry = iconGeometry;
+            foreach (var source in sources) Sources.Add(source);
+            foreach (var operation in operations) Operations.Add(operation);
+            foreach (var axis in axes) Axes.Add(axis);
+            foreach (var reference in references) References.Add(reference);
+            SelectedSource = Sources.FirstOrDefault() ?? string.Empty;
+            SelectedOperation = Operations.FirstOrDefault() ?? string.Empty;
+            SelectedAxis = Axes.FirstOrDefault() ?? string.Empty;
+            SelectedReference = References.FirstOrDefault() ?? string.Empty;
+            RunCommand = new RelayCommand(() => execute(this));
+        }
+    }
+
     public partial class DesignToolsViewModel : ObservableObject
     {
         private const string FilterAll = "all";
@@ -72,24 +120,18 @@ namespace SpecStudioParser.DesignTools.ViewModels
         private const string FilterModel = "model";
         private const string FilterSpecifier = "specifier";
 
-        private const string McadHorizontalIcon = "M5,18 L10,13 L17,13 M14,7 L21,7 M14,10 L21,10 M3,20 L5,18 L6,20 M6,16 L20,16";
-        private const string McadVerticalIcon = "M5,18 L10,13 L17,13 M14,7 L21,7 M14,10 L21,10 M3,20 L5,18 L6,20 M10,4 L10,21";
-        private const string MLeaderHorizontalIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5 M6,16 L21,16";
-        private const string MLeaderVerticalIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5 M10,4 L10,21";
-        private const string DistributeHorizontalIcon = "M4,8 L20,8 M6,5 L6,11 M12,5 L12,11 M18,5 L18,11";
-        private const string DistributeVerticalIcon = "M8,4 L8,20 M5,6 L11,6 M5,12 L11,12 M5,18 L11,18";
-        private const string DimensionHorizontalIcon = "M4,7 H20 M6,5 L4,7 L6,9 M18,5 L20,7 L18,9 M8,15 H16 M12,12 V18";
-        private const string DimensionVerticalIcon = "M7,4 V20 M5,6 L7,4 L9,6 M5,18 L7,20 L9,18 M15,8 V16 M12,12 H18";
+        private const string LeadersIcon = "M4,18 L9,14 L13,14 L18,10 M3,20 L4,18 L6,19 M14,5 L21,5 L21,10 L14,10 Z M15.5,7.5 L19.5,7.5";
+        private const string DimensionsIcon = "M4,7 H20 M6,5 L4,7 L6,9 M18,5 L20,7 L18,9 M8,15 H16 M12,12 V18";
         private const string DiagnosticsIcon = "M5,5 L19,5 L19,19 L5,19 Z M8,9 L16,9 M8,12 L16,12 M8,15 L13,15";
-        private const string PointTargetHorizontalIcon = "M4,12 H20 M12,4 L12,20 M9,12 A3,3 0 1 0 15,12 A3,3 0 1 0 9,12";
-        private const string PointTargetVerticalIcon = "M12,4 V20 M4,12 L20,12 M9,12 A3,3 0 1 0 15,12 A3,3 0 1 0 9,12";
+        private const string ModelIcon = "M5,8 L12,4 L19,8 L12,12 Z M5,8 V16 L12,20 L19,16 V8 M12,12 V20";
+        private const string SpecifierIcon = "M6,4 H18 V20 H6 Z M8,8 H16 M8,12 H16 M8,16 H13";
 
         private readonly MultiCadLeaderAlignmentService _leaderAlignmentService = new();
         private readonly LeaderPointAlignmentService _leaderPointAlignmentService = new();
         private readonly DimensionAlignmentService _dimensionAlignmentService = new();
         private readonly DimensionDiagnosticsService _dimensionDiagnosticsService = new();
         private readonly SelectionDiagnosticsService _selectionDiagnosticsService = new();
-        private readonly List<DesignToolBlockViewModel> _allBlocks = new();
+        private readonly List<DesignToolCardViewModel> _allToolCards = new();
 
         [ObservableProperty] private string _status = "Инструменты проектировщика готовы к работе.";
         [ObservableProperty] private string _documentStatus = "Документ nanoCAD не проверен.";
@@ -97,6 +139,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
         [ObservableProperty] private string _activeFilter = FilterAll;
         [ObservableProperty] private string _activeFilterLabel = "Все";
 
+        public ObservableCollection<DesignToolCardViewModel> ToolCards { get; } = new();
         public ObservableCollection<DesignToolBlockViewModel> Blocks { get; } = new();
         public ICommand RefreshContextCommand { get; }
         public ICommand SelectFilterCommand { get; }
@@ -106,16 +149,92 @@ namespace SpecStudioParser.DesignTools.ViewModels
             RefreshContextCommand = new RelayCommand(RefreshContext);
             SelectFilterCommand = new RelayCommand<string>(SelectFilter);
 
-            _allBlocks.Add(CreateDraftingBlock());
-            _allBlocks.Add(CreateDiagnosticsBlock());
-            _allBlocks.Add(CreateModelBlock());
-            _allBlocks.Add(CreateSpecifierBridgeBlock());
+            _allToolCards.Add(CreateLeaderToolCard());
+            _allToolCards.Add(CreateDimensionToolCard());
+            _allToolCards.Add(CreateDiagnosticsToolCard());
+            _allToolCards.Add(CreateModelToolCard());
+            _allToolCards.Add(CreateSpecifierToolCard());
 
             ApplyFilter();
             RefreshContext();
         }
 
         partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+        private DesignToolCardViewModel CreateLeaderToolCard()
+        {
+            return new DesignToolCardViewModel(
+                "leaders",
+                "Выноски",
+                "Выравнивание и распределение MultiCAD-выносок и стандартных мультивыносок. Для режима 'Точка' после запуска нужно указать точку в чертеже.",
+                FilterDrafting,
+                LeadersIcon,
+                new[] { "Авто", "MultiCAD", "Мультивыноски" },
+                new[] { "Выровнять", "Распределить" },
+                new[] { "Горизонтально", "Вертикально" },
+                new[] { "Первая", "Точка" },
+                ExecuteLeaderTool);
+        }
+
+        private DesignToolCardViewModel CreateDimensionToolCard()
+        {
+            return new DesignToolCardViewModel(
+                "dimensions",
+                "Размеры",
+                "Управление положением текста размеров. Сейчас безопасно двигается только TextPosition; размерная геометрия не меняется.",
+                FilterDrafting,
+                DimensionsIcon,
+                new[] { "Текст" },
+                new[] { "Выровнять", "Распределить" },
+                new[] { "Горизонтально", "Вертикально" },
+                new[] { "Первая" },
+                ExecuteDimensionTool);
+        }
+
+        private DesignToolCardViewModel CreateDiagnosticsToolCard()
+        {
+            return new DesignToolCardViewModel(
+                "diagnostics",
+                "Диагностика",
+                "Служебный вывод сведений по выделенным объектам в командную строку nanoCAD.",
+                FilterDiagnostics,
+                DiagnosticsIcon,
+                new[] { "Все объекты", "Размеры" },
+                new[] { "Проверить" },
+                new[] { "-" },
+                new[] { "-" },
+                ExecuteDiagnosticsTool);
+        }
+
+        private DesignToolCardViewModel CreateModelToolCard()
+        {
+            return new DesignToolCardViewModel(
+                "model",
+                "3D и Model Studio CS",
+                "Каркас будущих команд проверки и анализа объектов модели.",
+                FilterModel,
+                ModelIcon,
+                new[] { "Модель" },
+                new[] { "Проверка пустых параметров" },
+                new[] { "-" },
+                new[] { "-" },
+                ExecuteStubTool);
+        }
+
+        private DesignToolCardViewModel CreateSpecifierToolCard()
+        {
+            return new DesignToolCardViewModel(
+                "specifier",
+                "Связь со спецификатором",
+                "Каркас будущих команд анализа данных спецификатора без изменения его текущей логики.",
+                FilterSpecifier,
+                SpecifierIcon,
+                new[] { "Спецификатор" },
+                new[] { "Проверка данных" },
+                new[] { "-" },
+                new[] { "-" },
+                ExecuteStubTool);
+        }
 
         private void SelectFilter(string? filter)
         {
@@ -133,54 +252,38 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
         private void ApplyFilter()
         {
-            Blocks.Clear();
+            ToolCards.Clear();
             var search = SearchText?.Trim() ?? string.Empty;
-            var hasSearch = !string.IsNullOrWhiteSpace(search);
-
-            foreach (var block in _allBlocks.Where(BlockMatchesActiveFilter))
+            foreach (var card in _allToolCards.Where(CardMatchesActiveFilter).Where(card => CardMatchesSearch(card, search)))
             {
-                if (!hasSearch)
-                {
-                    Blocks.Add(block);
-                    continue;
-                }
-
-                var filteredBlock = new DesignToolBlockViewModel(block.Id, block.Name, block.Description) { IsEnabled = block.IsEnabled };
-                foreach (var feature in block.Features.Where(feature => FeatureMatchesSearch(feature, search)))
-                {
-                    filteredBlock.Features.Add(feature);
-                }
-
-                if (filteredBlock.Features.Count > 0)
-                {
-                    Blocks.Add(filteredBlock);
-                }
+                ToolCards.Add(card);
             }
 
-            if (Blocks.Count == 0)
+            if (ToolCards.Count == 0)
             {
-                Status = "Команды по текущему фильтру не найдены.";
+                Status = "Инструменты по текущему фильтру не найдены.";
             }
         }
 
-        private bool BlockMatchesActiveFilter(DesignToolBlockViewModel block)
+        private bool CardMatchesActiveFilter(DesignToolCardViewModel card)
         {
-            return ActiveFilter switch
-            {
-                FilterDrafting => block.Id == "2d-drafting",
-                FilterDiagnostics => block.Id == "diagnostics",
-                FilterModel => block.Id == "3d-model-tools",
-                FilterSpecifier => block.Id == "specifier-bridge",
-                _ => true
-            };
+            return ActiveFilter == FilterAll || card.Category == ActiveFilter;
         }
 
-        private static bool FeatureMatchesSearch(DesignToolFeatureViewModel feature, string search)
+        private static bool CardMatchesSearch(DesignToolCardViewModel card, string search)
         {
-            return Contains(feature.Name, search) ||
-                   Contains(feature.Description, search) ||
-                   Contains(feature.Id, search) ||
-                   Contains(feature.NanoCadCommandName, search);
+            if (string.IsNullOrWhiteSpace(search))
+            {
+                return true;
+            }
+
+            return Contains(card.Title, search) ||
+                   Contains(card.Description, search) ||
+                   Contains(card.Id, search) ||
+                   card.Sources.Any(value => Contains(value, search)) ||
+                   card.Operations.Any(value => Contains(value, search)) ||
+                   card.Axes.Any(value => Contains(value, search)) ||
+                   card.References.Any(value => Contains(value, search));
         }
 
         private static bool Contains(string value, string search)
@@ -188,161 +291,123 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return !string.IsNullOrWhiteSpace(value) && value.Contains(search, StringComparison.OrdinalIgnoreCase);
         }
 
-        private DesignToolBlockViewModel CreateDraftingBlock()
+        private void ExecuteLeaderTool(DesignToolCardViewModel card)
         {
-            var block = new DesignToolBlockViewModel("2d-drafting", "2D-проектирование", "Быстрые команды для работы с чертежом, выносками и размерами.");
-            AddFeature(block, "2d-multicad-leaders-align-horizontal", "MultiCAD-выноски: горизонтально", "Выравнивает универсальные, групповые и другие MultiCAD-выноски по Y первой выбранной выноски.", "DT_ALIGN_MCAD_LEADERS_H", McadHorizontalIcon, ExecuteAlignMultiCadLeadersHorizontal);
-            AddFeature(block, "2d-multicad-leaders-align-vertical", "MultiCAD-выноски: вертикально", "Выравнивает универсальные, групповые и другие MultiCAD-выноски по X первой выбранной выноски.", "DT_ALIGN_MCAD_LEADERS_V", McadVerticalIcon, ExecuteAlignMultiCadLeadersVertical);
-            AddFeature(block, "2d-teigha-mleaders-align-horizontal", "Мультивыноски: горизонтально", "Выравнивает стандартные Teigha/nanoCAD мультивыноски по Y первой выбранной мультивыноски.", "DT_ALIGN_MLEADERS_H", MLeaderHorizontalIcon, ExecuteAlignTeighaMLeadersHorizontal);
-            AddFeature(block, "2d-teigha-mleaders-align-vertical", "Мультивыноски: вертикально", "Выравнивает стандартные Teigha/nanoCAD мультивыноски по X первой выбранной мультивыноски.", "DT_ALIGN_MLEADERS_V", MLeaderVerticalIcon, ExecuteAlignTeighaMLeadersVertical);
-            AddFeature(block, "2d-multicad-leaders-distribute-horizontal", "MultiCAD-выноски: распределить горизонтально", "Равномерно распределяет MultiCAD-выноски между крайними выносками по X.", "DT_DISTR_MCAD_LEADERS_H", DistributeHorizontalIcon, ExecuteDistributeMultiCadLeadersHorizontal);
-            AddFeature(block, "2d-multicad-leaders-distribute-vertical", "MultiCAD-выноски: распределить вертикально", "Равномерно распределяет MultiCAD-выноски между крайними выносками по Y.", "DT_DISTR_MCAD_LEADERS_V", DistributeVerticalIcon, ExecuteDistributeMultiCadLeadersVertical);
-            AddFeature(block, "2d-teigha-mleaders-distribute-horizontal", "Мультивыноски: распределить горизонтально", "Равномерно распределяет Teigha-мультивыноски между крайними мультивыносками по X.", "DT_DISTR_MLEADERS_H", DistributeHorizontalIcon, ExecuteDistributeTeighaMLeadersHorizontal);
-            AddFeature(block, "2d-teigha-mleaders-distribute-vertical", "Мультивыноски: распределить вертикально", "Равномерно распределяет Teigha-мультивыноски между крайними мультивыносками по Y.", "DT_DISTR_MLEADERS_V", DistributeVerticalIcon, ExecuteDistributeTeighaMLeadersVertical);
-            AddFeature(block, "2d-multicad-leaders-align-point-horizontal", "MultiCAD-выноски: горизонтально по точке", "Выравнивает MultiCAD-выноски по Y указанной пользователем точки.", "DT_ALIGN_MCAD_LEADERS_POINT_H", PointTargetHorizontalIcon, ExecuteAlignMultiCadLeadersToPointHorizontal);
-            AddFeature(block, "2d-multicad-leaders-align-point-vertical", "MultiCAD-выноски: вертикально по точке", "Выравнивает MultiCAD-выноски по X указанной пользователем точки.", "DT_ALIGN_MCAD_LEADERS_POINT_V", PointTargetVerticalIcon, ExecuteAlignMultiCadLeadersToPointVertical);
-            AddFeature(block, "2d-teigha-mleaders-align-point-horizontal", "Мультивыноски: горизонтально по точке", "Выравнивает Teigha/nanoCAD мультивыноски по Y указанной пользователем точки.", "DT_ALIGN_MLEADERS_POINT_H", PointTargetHorizontalIcon, ExecuteAlignTeighaMLeadersToPointHorizontal);
-            AddFeature(block, "2d-teigha-mleaders-align-point-vertical", "Мультивыноски: вертикально по точке", "Выравнивает Teigha/nanoCAD мультивыноски по X указанной пользователем точки.", "DT_ALIGN_MLEADERS_POINT_V", PointTargetVerticalIcon, ExecuteAlignTeighaMLeadersToPointVertical);
-            AddFeature(block, "2d-dimensions-align-horizontal", "Размеры: текст горизонтально", "Выравнивает позиции текста выбранных размеров по Y первого распознанного размера.", "DT_ALIGN_DIMS_H", DimensionHorizontalIcon, ExecuteAlignDimensionsHorizontal);
-            AddFeature(block, "2d-dimensions-align-vertical", "Размеры: текст вертикально", "Выравнивает позиции текста выбранных размеров по X первого распознанного размера.", "DT_ALIGN_DIMS_V", DimensionVerticalIcon, ExecuteAlignDimensionsVertical);
-            AddFeature(block, "2d-dimensions-distribute-horizontal", "Размеры: текст распределить X", "Равномерно распределяет позиции текста выбранных размеров между крайними по X.", "DT_DISTR_DIMS_H", DistributeHorizontalIcon, ExecuteDistributeDimensionsHorizontal);
-            AddFeature(block, "2d-dimensions-distribute-vertical", "Размеры: текст распределить Y", "Равномерно распределяет позиции текста выбранных размеров между крайними по Y.", "DT_DISTR_DIMS_V", DistributeVerticalIcon, ExecuteDistributeDimensionsVertical);
-            block.Features.Add(new DesignToolFeatureViewModel("2d-selection-info", "Сведения о выделении", "Показывает базовую информацию о текущем выделении nanoCAD.", DesignToolAccessLevel.Free, DesignToolContext.Drafting2D, ExecuteSelectionInfo));
-            block.Features.Add(new DesignToolFeatureViewModel("2d-select-layer", "Выделить по слою", "Будущая функция массового выделения объектов на том же слое.", DesignToolAccessLevel.Free, DesignToolContext.Drafting2D, ExecuteStub));
-            return block;
+            var axis = ParseAxis(card.SelectedAxis);
+            var source = ParseLeaderSource(card.SelectedSource);
+            var result = card.SelectedOperation == "Распределить"
+                ? ExecuteLeaderDistribution(source, axis)
+                : card.SelectedReference == "Точка"
+                    ? ExecuteLeaderPointAlignment(source, axis)
+                    : ExecuteLeaderAlignment(source, axis);
+
+            SetCardStatus(card, result.Message);
+            WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
         }
 
-        private static void AddFeature(DesignToolBlockViewModel block, string id, string name, string description, string commandName, string icon, Action<DesignToolFeatureViewModel> execute)
+        private LeaderAlignmentResult ExecuteLeaderAlignment(LeaderAlignmentSource source, LeaderAlignmentAxis axis)
         {
-            block.Features.Add(new DesignToolFeatureViewModel(new DesignToolCommandDescriptor { Id = id, Name = name, Description = description, NanoCadCommandName = commandName }, DesignToolAccessLevel.Free, DesignToolContext.Drafting2D, icon, execute));
-        }
-
-        private DesignToolBlockViewModel CreateDiagnosticsBlock()
-        {
-            var block = new DesignToolBlockViewModel("diagnostics", "Диагностика", "Служебные инструменты для определения реальных типов и свойств выбранных объектов.");
-            block.Features.Add(new DesignToolFeatureViewModel(new DesignToolCommandDescriptor { Id = "diagnostics-selected-objects", Name = "Диагностика выбранных объектов", Description = "Выводит в командную строку nanoCAD типы выбранных объектов, RXClass, слой, handle и найденные свойства точек.", NanoCadCommandName = "DT_DIAG_SELECTION" }, DesignToolAccessLevel.Free, DesignToolContext.Universal, DiagnosticsIcon, ExecuteSelectionDiagnostics));
-            block.Features.Add(new DesignToolFeatureViewModel(new DesignToolCommandDescriptor { Id = "diagnostics-dimensions", Name = "Диагностика размеров", Description = "Выводит подробные сведения по выбранным размерам: тип, RXClass, TextPosition, UsingDefaultTextPosition и доступные Point-свойства.", NanoCadCommandName = "DT_DIAG_DIMS" }, DesignToolAccessLevel.Free, DesignToolContext.Universal, DiagnosticsIcon, ExecuteDimensionDiagnostics));
-            return block;
-        }
-
-        private DesignToolBlockViewModel CreateModelBlock()
-        {
-            var block = new DesignToolBlockViewModel("3d-model-tools", "3D и Model Studio CS", "Инструменты проверки и анализа объектов модели.");
-            block.Features.Add(new DesignToolFeatureViewModel("3d-check-empty-parameters", "Проверка пустых параметров", "Будущая проверка обязательных параметров объектов Model Studio CS.", DesignToolAccessLevel.Paid, DesignToolContext.Modeling3D, ExecuteStub));
-            block.Features.Add(new DesignToolFeatureViewModel("3d-focus-selection", "Фокус на выделении", "Будущая команда фокусировки и визуального контроля выбранных объектов.", DesignToolAccessLevel.Free, DesignToolContext.Modeling3D, ExecuteStub));
-            return block;
-        }
-
-        private DesignToolBlockViewModel CreateSpecifierBridgeBlock()
-        {
-            var block = new DesignToolBlockViewModel("specifier-bridge", "Связь со спецификатором", "Функции, которые смогут использовать данные спецификатора, но не меняют его текущую логику.");
-            block.Features.Add(new DesignToolFeatureViewModel("specifier-check-active-profile", "Проверка данных спецификации", "Будущая функция анализа данных по активному профилю спецификатора.", DesignToolAccessLevel.Paid, DesignToolContext.Universal, ExecuteStub));
-            return block;
-        }
-
-        private void ExecuteAlignMultiCadLeadersHorizontal(DesignToolFeatureViewModel f) => ExecuteLeaderAlignment(f, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.MultiCad);
-        private void ExecuteAlignMultiCadLeadersVertical(DesignToolFeatureViewModel f) => ExecuteLeaderAlignment(f, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.MultiCad);
-        private void ExecuteAlignTeighaMLeadersHorizontal(DesignToolFeatureViewModel f) => ExecuteLeaderAlignment(f, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.TeighaMLeader);
-        private void ExecuteAlignTeighaMLeadersVertical(DesignToolFeatureViewModel f) => ExecuteLeaderAlignment(f, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.TeighaMLeader);
-        private void ExecuteDistributeMultiCadLeadersHorizontal(DesignToolFeatureViewModel f) => ExecuteLeaderDistribution(f, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.MultiCad);
-        private void ExecuteDistributeMultiCadLeadersVertical(DesignToolFeatureViewModel f) => ExecuteLeaderDistribution(f, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.MultiCad);
-        private void ExecuteDistributeTeighaMLeadersHorizontal(DesignToolFeatureViewModel f) => ExecuteLeaderDistribution(f, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.TeighaMLeader);
-        private void ExecuteDistributeTeighaMLeadersVertical(DesignToolFeatureViewModel f) => ExecuteLeaderDistribution(f, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.TeighaMLeader);
-        private void ExecuteAlignMultiCadLeadersToPointHorizontal(DesignToolFeatureViewModel f) => ExecuteLeaderPointAlignment(f, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.MultiCad);
-        private void ExecuteAlignMultiCadLeadersToPointVertical(DesignToolFeatureViewModel f) => ExecuteLeaderPointAlignment(f, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.MultiCad);
-        private void ExecuteAlignTeighaMLeadersToPointHorizontal(DesignToolFeatureViewModel f) => ExecuteLeaderPointAlignment(f, LeaderAlignmentAxis.Horizontal, LeaderAlignmentSource.TeighaMLeader);
-        private void ExecuteAlignTeighaMLeadersToPointVertical(DesignToolFeatureViewModel f) => ExecuteLeaderPointAlignment(f, LeaderAlignmentAxis.Vertical, LeaderAlignmentSource.TeighaMLeader);
-        private void ExecuteAlignDimensionsHorizontal(DesignToolFeatureViewModel f) => ExecuteDimensionAlignment(f, LeaderAlignmentAxis.Horizontal);
-        private void ExecuteAlignDimensionsVertical(DesignToolFeatureViewModel f) => ExecuteDimensionAlignment(f, LeaderAlignmentAxis.Vertical);
-        private void ExecuteDistributeDimensionsHorizontal(DesignToolFeatureViewModel f) => ExecuteDimensionDistribution(f, LeaderAlignmentAxis.Horizontal);
-        private void ExecuteDistributeDimensionsVertical(DesignToolFeatureViewModel f) => ExecuteDimensionDistribution(f, LeaderAlignmentAxis.Vertical);
-
-        private void ExecuteLeaderAlignment(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis, LeaderAlignmentSource source)
-        {
-            try
+            return source switch
             {
-                var result = source switch { LeaderAlignmentSource.MultiCad => _leaderAlignmentService.AlignSelectedMultiCadLeaders(axis), LeaderAlignmentSource.TeighaMLeader => _leaderAlignmentService.AlignSelectedTeighaMLeaders(axis), _ => _leaderAlignmentService.AlignSelectedLeaders(axis) };
-                SetFeatureStatus(feature, result.Message); WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
-            }
-            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка выравнивания выносок: {ex.Message}"); }
+                LeaderAlignmentSource.MultiCad => _leaderAlignmentService.AlignSelectedMultiCadLeaders(axis),
+                LeaderAlignmentSource.TeighaMLeader => _leaderAlignmentService.AlignSelectedTeighaMLeaders(axis),
+                _ => _leaderAlignmentService.AlignSelectedLeaders(axis)
+            };
         }
 
-        private void ExecuteLeaderDistribution(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis, LeaderAlignmentSource source)
+        private LeaderAlignmentResult ExecuteLeaderDistribution(LeaderAlignmentSource source, LeaderAlignmentAxis axis)
         {
-            try
+            return source switch
             {
-                var result = source == LeaderAlignmentSource.MultiCad ? _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis) : _leaderAlignmentService.DistributeSelectedTeighaMLeaders(axis);
-                SetFeatureStatus(feature, result.Message); WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
-            }
-            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка распределения выносок: {ex.Message}"); }
+                LeaderAlignmentSource.MultiCad => _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis),
+                LeaderAlignmentSource.TeighaMLeader => _leaderAlignmentService.DistributeSelectedTeighaMLeaders(axis),
+                _ => _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis).CandidateCount > 0
+                    ? _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis)
+                    : _leaderAlignmentService.DistributeSelectedTeighaMLeaders(axis)
+            };
         }
 
-        private void ExecuteLeaderPointAlignment(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis, LeaderAlignmentSource source)
+        private LeaderAlignmentResult ExecuteLeaderPointAlignment(LeaderAlignmentSource source, LeaderAlignmentAxis axis)
         {
-            try
+            if (source == LeaderAlignmentSource.MultiCad)
             {
-                var result = source == LeaderAlignmentSource.MultiCad
-                    ? _leaderPointAlignmentService.AlignSelectedMultiCadLeadersToPoint(axis)
-                    : _leaderPointAlignmentService.AlignSelectedTeighaMLeadersToPoint(axis);
-                SetFeatureStatus(feature, result.Message); WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
+                return _leaderPointAlignmentService.AlignSelectedMultiCadLeadersToPoint(axis);
             }
-            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка выравнивания выносок по точке: {ex.Message}"); }
-        }
 
-        private void ExecuteDimensionAlignment(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis)
-        {
-            try
+            if (source == LeaderAlignmentSource.TeighaMLeader)
             {
-                var result = _dimensionAlignmentService.AlignSelectedDimensions(axis);
-                SetFeatureStatus(feature, result.Message); WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
+                return _leaderPointAlignmentService.AlignSelectedTeighaMLeadersToPoint(axis);
             }
-            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка выравнивания размеров: {ex.Message}"); }
+
+            var multiCadResult = _leaderPointAlignmentService.AlignSelectedMultiCadLeadersToPoint(axis);
+            return multiCadResult.CandidateCount > 0 || multiCadResult.AlignedCount > 0
+                ? multiCadResult
+                : _leaderPointAlignmentService.AlignSelectedTeighaMLeadersToPoint(axis);
         }
 
-        private void ExecuteDimensionDistribution(DesignToolFeatureViewModel feature, LeaderAlignmentAxis axis)
+        private void ExecuteDimensionTool(DesignToolCardViewModel card)
         {
-            try
-            {
-                var result = _dimensionAlignmentService.DistributeSelectedDimensions(axis);
-                SetFeatureStatus(feature, result.Message); WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
-            }
-            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка распределения размеров: {ex.Message}"); }
+            var axis = ParseAxis(card.SelectedAxis);
+            var result = card.SelectedOperation == "Распределить"
+                ? _dimensionAlignmentService.DistributeSelectedDimensions(axis)
+                : _dimensionAlignmentService.AlignSelectedDimensions(axis);
+
+            SetCardStatus(card, result.Message);
+            WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
         }
 
-        private void ExecuteDimensionDiagnostics(DesignToolFeatureViewModel feature)
+        private void ExecuteDiagnosticsTool(DesignToolCardViewModel card)
         {
-            try
+            if (card.SelectedSource == "Размеры")
             {
                 var result = _dimensionDiagnosticsService.DiagnoseSelectedDimensions();
-                SetFeatureStatus(feature, result.Summary); WriteToNanoCad("\n" + result.Details + "\n");
+                SetCardStatus(card, result.Summary);
+                WriteToNanoCad("\n" + result.Details + "\n");
+                return;
             }
-            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка диагностики размеров: {ex.Message}"); }
+
+            var selectionResult = _selectionDiagnosticsService.DiagnoseSelection();
+            SetCardStatus(card, selectionResult.Summary);
+            WriteToNanoCad("\n" + selectionResult.Details + "\n");
         }
 
-        private void ExecuteSelectionDiagnostics(DesignToolFeatureViewModel feature)
+        private void ExecuteStubTool(DesignToolCardViewModel card)
         {
-            try { var result = _selectionDiagnosticsService.DiagnoseSelection(); SetFeatureStatus(feature, result.Summary); WriteToNanoCad("\n" + result.Details + "\n"); }
-            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка диагностики: {ex.Message}"); }
+            SetCardStatus(card, "Каркас инструмента создан. Реализация будет добавлена следующим шагом.");
         }
 
-        private void ExecuteSelectionInfo(DesignToolFeatureViewModel feature)
+        private static LeaderAlignmentAxis ParseAxis(string value)
         {
-            try
+            return value == "Вертикально" ? LeaderAlignmentAxis.Vertical : LeaderAlignmentAxis.Horizontal;
+        }
+
+        private static LeaderAlignmentSource ParseLeaderSource(string value)
+        {
+            return value switch
             {
-                var doc = CadApp.DocumentManager.MdiActiveDocument;
-                if (doc == null) { SetFeatureStatus(feature, "Нет активного документа nanoCAD."); return; }
-                var selection = doc.Editor.SelectImplied();
-                if (selection.Status != HostMgd.EditorInput.PromptStatus.OK || selection.Value == null) { SetFeatureStatus(feature, "Нет текущего выделения."); doc.Editor.WriteMessage("\n[DesignTools]: Нет текущего выделения.\n"); return; }
-                var count = selection.Value.GetObjectIds().Length;
-                SetFeatureStatus(feature, $"Выделено объектов: {count}."); doc.Editor.WriteMessage($"\n[DesignTools]: Выделено объектов: {count}.\n");
-            }
-            catch (Exception ex) { SetFeatureStatus(feature, $"Ошибка: {ex.Message}"); }
+                "MultiCAD" => LeaderAlignmentSource.MultiCad,
+                "Мультивыноски" => LeaderAlignmentSource.TeighaMLeader,
+                _ => LeaderAlignmentSource.Auto
+            };
         }
 
-        private void ExecuteStub(DesignToolFeatureViewModel feature) => SetFeatureStatus(feature, "Каркас функции создан. Реализация будет добавлена следующим шагом.");
-        private void SetFeatureStatus(DesignToolFeatureViewModel feature, string message) { feature.Status = message; Status = $"{feature.Name}: {message}"; }
-        private void RefreshContext() { var doc = CadApp.DocumentManager.MdiActiveDocument; DocumentStatus = doc == null ? "Активный документ nanoCAD не найден." : $"Активный документ: {doc.Name}"; Status = "Контекст nanoCAD обновлен."; }
-        private static void WriteToNanoCad(string message) { try { CadApp.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage(message); } catch { } }
+        private void SetCardStatus(DesignToolCardViewModel card, string message)
+        {
+            card.Status = message;
+            Status = $"{card.Title}: {message}";
+        }
+
+        private void RefreshContext()
+        {
+            var doc = CadApp.DocumentManager.MdiActiveDocument;
+            DocumentStatus = doc == null ? "Активный документ nanoCAD не найден." : $"Активный документ: {doc.Name}";
+            Status = "Контекст nanoCAD обновлен.";
+        }
+
+        private static void WriteToNanoCad(string message)
+        {
+            try { CadApp.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage(message); } catch { }
+        }
     }
 
     internal enum LeaderAlignmentSource { Auto, MultiCad, TeighaMLeader }
