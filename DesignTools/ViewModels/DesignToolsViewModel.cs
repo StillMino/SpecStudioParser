@@ -185,11 +185,11 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "leaders",
                 "Выноски",
-                "Выравнивание, распределение и сдвиг текста MultiCAD-выносок и стандартных мультивыносок. MultiCAD-выноски нужно выбрать до запуска команды.",
+                "Выравнивание, распределение, сдвиг и распределение с заданным шагом. MultiCAD-выноски нужно выбрать до запуска команды.",
                 FilterDrafting,
                 LeadersIcon,
                 new[] { "MultiCAD", "Мультивыноски" },
-                new[] { "Выровнять", "Распределить", "Сдвинуть" },
+                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Первая", "Точка" },
                 ExecuteLeaderTool);
@@ -200,11 +200,11 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "dimensions",
                 "Размеры",
-                "Управление положением текста размеров: выравнивание, распределение, сдвиг по вектору и сброс стандартного положения.",
+                "Управление положением текста размеров: выравнивание, распределение, сдвиг, шаг и сброс стандартного положения.",
                 FilterDrafting,
                 DimensionsIcon,
                 new[] { "Текст" },
-                new[] { "Выровнять", "Распределить", "Сдвинуть", "Сбросить" },
+                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг", "Сбросить" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Первая", "Точка" },
                 ExecuteDimensionTool);
@@ -420,6 +420,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
             {
                 "Распределить" => DesignToolsOperation.Distribute,
                 "Сдвинуть" => DesignToolsOperation.Shift,
+                "Шаг" => DesignToolsOperation.Step,
                 "Сбросить" => DesignToolsOperation.Reset,
                 "Проверить" => DesignToolsOperation.Check,
                 _ => DesignToolsOperation.Align

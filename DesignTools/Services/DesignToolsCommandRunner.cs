@@ -11,11 +11,13 @@ namespace SpecStudioParser.DesignTools.Services
         private readonly DimensionDiagnosticsService _dimensionDiagnosticsService = new();
         private readonly SelectionDiagnosticsService _selectionDiagnosticsService = new();
         private readonly DesignToolsVectorShiftService _vectorShiftService = new();
+        private readonly DesignToolsStepDistributionService _stepDistributionService = new();
 
         public string RunLeaders(DesignToolsCommandState state)
         {
             var result = state.Operation switch
             {
+                DesignToolsOperation.Step => _stepDistributionService.DistributeSelectedLeadersByStep(state.LeaderSource, state.Axis),
                 DesignToolsOperation.Shift => _vectorShiftService.ShiftSelectedLeaders(state.LeaderSource),
                 DesignToolsOperation.Distribute => ExecuteLeaderDistribution(state.LeaderSource, state.Axis),
                 _ => state.ReferenceMode == DesignToolsReferenceMode.Point
@@ -33,6 +35,7 @@ namespace SpecStudioParser.DesignTools.Services
             var result = state.Operation switch
             {
                 DesignToolsOperation.Reset => _dimensionAlignmentService.ResetSelectedDimensionTextPositions(),
+                DesignToolsOperation.Step => _stepDistributionService.DistributeSelectedDimensionTextByStep(state.Axis),
                 DesignToolsOperation.Shift => _vectorShiftService.ShiftSelectedDimensionTextPositions(),
                 DesignToolsOperation.Distribute => _dimensionAlignmentService.DistributeSelectedDimensions(state.Axis),
                 _ => state.ReferenceMode == DesignToolsReferenceMode.Point
