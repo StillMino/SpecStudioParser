@@ -7,6 +7,7 @@ using SpecStudioParser.Views;
 using SpecStudioParser.ViewModels;
 using SpecStudioParser.CadLib;
 using SpecStudioParser.DesignTools;
+using SpecStudioParser.DesignTools.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform; // Для работы с IPlatformHandle
@@ -24,6 +25,7 @@ namespace SpecStudioParser.Commands
         private static MainWindowViewModel? _currentViewModel;
         private static bool _isAvaloniaInitialized = false;
         private static readonly DesignToolsPaletteService _designToolsPaletteService = new();
+        private static readonly DesignToolsCommandRunner _designToolsCommandRunner = new();
 
         public static AppBuilder BuildAvaloniaApp()
         {
@@ -117,6 +119,45 @@ namespace SpecStudioParser.Commands
             catch (System.Exception ex)
             {
                 LogToNanoCadConsole($"\n[DesignTools Error]: Ошибка запуска панели: {ex.Message}\n");
+            }
+        }
+
+        [CommandMethod("DT_RUN_LEADERS_TOOL", CommandFlags.Modal)]
+        public static void RunDesignToolsLeadersTool()
+        {
+            RunDesignToolsCommand(DesignToolsToolKind.Leaders, state => _designToolsCommandRunner.RunLeaders(state));
+        }
+
+        [CommandMethod("DT_RUN_DIMENSIONS_TOOL", CommandFlags.Modal)]
+        public static void RunDesignToolsDimensionsTool()
+        {
+            RunDesignToolsCommand(DesignToolsToolKind.Dimensions, state => _designToolsCommandRunner.RunDimensions(state));
+        }
+
+        [CommandMethod("DT_RUN_DIAGNOSTICS_TOOL", CommandFlags.Modal)]
+        public static void RunDesignToolsDiagnosticsTool()
+        {
+            RunDesignToolsCommand(DesignToolsToolKind.Diagnostics, state => _designToolsCommandRunner.RunDiagnostics(state));
+        }
+
+        private static void RunDesignToolsCommand(DesignToolsToolKind toolKind, Func<DesignToolsCommandState, string> execute)
+        {
+            try
+            {
+                var state = DesignToolsCommandStateService.GetPendingState(toolKind);
+                if (state == null)
+                {
+                    LogToNanoCadConsole("\n[DesignTools]: Нет параметров для запуска инструмента. Запустите команду из панели DesignTools.\n");
+                    return;
+                }
+
+                execute(state);
+            }
+            catch (System.Exception ex)
+            {
+                var message = $"Ошибка выполнения инструмента: {ex.Message}";
+                LogToNanoCadConsole($"\n[DesignTools Error]: {message}\n");
+                DesignToolsCommandStateService.PublishResult(toolKind, message);
             }
         }
 

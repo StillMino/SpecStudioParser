@@ -1,13 +1,15 @@
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using HostMgd.ApplicationServices;
 using SpecStudioParser.DesignTools.Commands;
 using SpecStudioParser.DesignTools.Services;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using CadApp = HostMgd.ApplicationServices.Application;
@@ -118,7 +120,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
     {
         public static async Task RunAsync(Action action)
         {
-            // Let Avalonia finish Button.PointerReleased / mouse capture cleanup before nanoCAD Editor.GetPoint/GetSelection starts.
+            // Let Avalonia finish Button.PointerReleased / mouse capture cleanup before sending a nanoCAD command.
             await Task.Delay(150).ConfigureAwait(true);
             await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Background);
         }
@@ -138,12 +140,11 @@ namespace SpecStudioParser.DesignTools.ViewModels
         private const string ModelIcon = "M5,8 L12,4 L19,8 L12,12 Z M5,8 V16 L12,20 L19,16 V8 M12,12 V20";
         private const string SpecifierIcon = "M6,4 H18 V20 H6 Z M8,8 H16 M8,12 H16 M8,16 H13";
 
-        private readonly MultiCadLeaderAlignmentService _leaderAlignmentService = new();
-        private readonly LeaderPointAlignmentService _leaderPointAlignmentService = new();
-        private readonly DimensionAlignmentService _dimensionAlignmentService = new();
-        private readonly DimensionDiagnosticsService _dimensionDiagnosticsService = new();
-        private readonly SelectionDiagnosticsService _selectionDiagnosticsService = new();
         private readonly List<DesignToolCardViewModel> _allToolCards = new();
+        private readonly DesignToolsCommandRunner _directCommandRunner = new();
+        private DesignToolCardViewModel? _leadersCard;
+        private DesignToolCardViewModel? _dimensionsCard;
+        private DesignToolCardViewModel? _diagnosticsCard;
 
         [ObservableProperty] private string _status = "Инструменты проектировщика готовы к работе.";
         [ObservableProperty] private string _documentStatus = "Документ nanoCAD не проверен.";
@@ -161,11 +162,17 @@ namespace SpecStudioParser.DesignTools.ViewModels
             RefreshContextCommand = new RelayCommand(RefreshContext);
             SelectFilterCommand = new RelayCommand<string>(SelectFilter);
 
-            _allToolCards.Add(CreateLeaderToolCard());
-            _allToolCards.Add(CreateDimensionToolCard());
-            _allToolCards.Add(CreateDiagnosticsToolCard());
+            _leadersCard = CreateLeaderToolCard();
+            _dimensionsCard = CreateDimensionToolCard();
+            _diagnosticsCard = CreateDiagnosticsToolCard();
+
+            _allToolCards.Add(_leadersCard);
+            _allToolCards.Add(_dimensionsCard);
+            _allToolCards.Add(_diagnosticsCard);
             _allToolCards.Add(CreateModelToolCard());
             _allToolCards.Add(CreateSpecifierToolCard());
+
+            DesignToolsCommandStateService.ResultPublished += OnDesignToolsCommandResultPublished;
 
             ApplyFilter();
             RefreshContext();
@@ -178,10 +185,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "leaders",
                 "Выноски",
-                "Выравнивание и распределение MultiCAD-выносок и стандартных мультивыносок. Для режима 'Точка' после запуска нужно указать точку в чертеже.",
+                "Выравнивание и распределение MultiCAD-выносок и стандартных мультивыносок. MultiCAD-выноски нужно выбрать до запуска команды.",
                 FilterDrafting,
                 LeadersIcon,
-                new[] { "Авто", "MultiCAD", "Мультивыноски" },
+                new[] { "MultiCAD", "Мультивыноски" },
                 new[] { "Выровнять", "Распределить" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Первая", "Точка" },
@@ -305,87 +312,73 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
         private void ExecuteLeaderTool(DesignToolCardViewModel card)
         {
-            var axis = ParseAxis(card.SelectedAxis);
-            var source = ParseLeaderSource(card.SelectedSource);
-            var result = card.SelectedOperation == "Распределить"
-                ? ExecuteLeaderDistribution(source, axis)
-                : card.SelectedReference == "Точка"
-                    ? ExecuteLeaderPointAlignment(source, axis)
-                    : ExecuteLeaderAlignment(source, axis);
-
-            SetCardStatus(card, result.Message);
-            WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
-        }
-
-        private LeaderAlignmentResult ExecuteLeaderAlignment(LeaderAlignmentSource source, LeaderAlignmentAxis axis)
-        {
-            return source switch
+            var state = new DesignToolsCommandState
             {
-                LeaderAlignmentSource.MultiCad => _leaderAlignmentService.AlignSelectedMultiCadLeaders(axis),
-                LeaderAlignmentSource.TeighaMLeader => _leaderAlignmentService.AlignSelectedTeighaMLeaders(axis),
-                _ => _leaderAlignmentService.AlignSelectedLeaders(axis)
+                ToolKind = DesignToolsToolKind.Leaders,
+                LeaderSource = ParseLeaderSource(card.SelectedSource),
+                Operation = ParseOperation(card.SelectedOperation),
+                Axis = ParseAxis(card.SelectedAxis),
+                ReferenceMode = ParseReferenceMode(card.SelectedReference)
             };
-        }
 
-        private LeaderAlignmentResult ExecuteLeaderDistribution(LeaderAlignmentSource source, LeaderAlignmentAxis axis)
-        {
-            return source switch
+            if (state.LeaderSource == DesignToolsLeaderSource.MultiCad)
             {
-                LeaderAlignmentSource.MultiCad => _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis),
-                LeaderAlignmentSource.TeighaMLeader => _leaderAlignmentService.DistributeSelectedTeighaMLeaders(axis),
-                _ => _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis).CandidateCount > 0
-                    ? _leaderAlignmentService.DistributeSelectedMultiCadLeaders(axis)
-                    : _leaderAlignmentService.DistributeSelectedTeighaMLeaders(axis)
-            };
-        }
-
-        private LeaderAlignmentResult ExecuteLeaderPointAlignment(LeaderAlignmentSource source, LeaderAlignmentAxis axis)
-        {
-            if (source == LeaderAlignmentSource.MultiCad)
-            {
-                return _leaderPointAlignmentService.AlignSelectedMultiCadLeadersToPoint(axis);
+                RunMultiCadLeaderToolInPaletteContext(card, state);
+                return;
             }
 
-            if (source == LeaderAlignmentSource.TeighaMLeader)
-            {
-                return _leaderPointAlignmentService.AlignSelectedTeighaMLeadersToPoint(axis);
-            }
-
-            var multiCadResult = _leaderPointAlignmentService.AlignSelectedMultiCadLeadersToPoint(axis);
-            return multiCadResult.CandidateCount > 0 || multiCadResult.AlignedCount > 0
-                ? multiCadResult
-                : _leaderPointAlignmentService.AlignSelectedTeighaMLeadersToPoint(axis);
+            DesignToolsCommandStateService.SetPendingState(state);
+            SetCardStatus(card, "Команда передана в nanoCAD.");
+            SendNanoCadCommand("DT_RUN_LEADERS_TOOL");
         }
 
         private void ExecuteDimensionTool(DesignToolCardViewModel card)
         {
-            var axis = ParseAxis(card.SelectedAxis);
-            var result = card.SelectedOperation switch
+            DesignToolsCommandStateService.SetPendingState(new DesignToolsCommandState
             {
-                "Сбросить" => _dimensionAlignmentService.ResetSelectedDimensionTextPositions(),
-                "Распределить" => _dimensionAlignmentService.DistributeSelectedDimensions(axis),
-                _ => card.SelectedReference == "Точка"
-                    ? _dimensionAlignmentService.AlignSelectedDimensionsToPoint(axis)
-                    : _dimensionAlignmentService.AlignSelectedDimensions(axis)
-            };
+                ToolKind = DesignToolsToolKind.Dimensions,
+                Operation = ParseOperation(card.SelectedOperation),
+                Axis = ParseAxis(card.SelectedAxis),
+                ReferenceMode = ParseReferenceMode(card.SelectedReference)
+            });
 
-            SetCardStatus(card, result.Message);
-            WriteToNanoCad($"\n[DesignTools]: {result.Message}\n");
+            SetCardStatus(card, "Команда передана в nanoCAD.");
+            SendNanoCadCommand("DT_RUN_DIMENSIONS_TOOL");
         }
 
         private void ExecuteDiagnosticsTool(DesignToolCardViewModel card)
         {
-            if (card.SelectedSource == "Размеры")
+            DesignToolsCommandStateService.SetPendingState(new DesignToolsCommandState
             {
-                var result = _dimensionDiagnosticsService.DiagnoseSelectedDimensions();
-                SetCardStatus(card, result.Summary);
-                WriteToNanoCad("\n" + result.Details + "\n");
-                return;
-            }
+                ToolKind = DesignToolsToolKind.Diagnostics,
+                Operation = DesignToolsOperation.Check,
+                DiagnosticsSource = card.SelectedSource == "Размеры" ? DesignToolsDiagnosticsSource.Dimensions : DesignToolsDiagnosticsSource.AllObjects
+            });
 
-            var selectionResult = _selectionDiagnosticsService.DiagnoseSelection();
-            SetCardStatus(card, selectionResult.Summary);
-            WriteToNanoCad("\n" + selectionResult.Details + "\n");
+            SetCardStatus(card, "Команда передана в nanoCAD.");
+            SendNanoCadCommand("DT_RUN_DIAGNOSTICS_TOOL");
+        }
+
+        private void RunMultiCadLeaderToolInPaletteContext(DesignToolCardViewModel card, DesignToolsCommandState state)
+        {
+            try
+            {
+                // MultiCAD SelectionSet.CurrentSelection is the only confirmed reliable source for MultiCAD leaders.
+                if (!HasCurrentMultiCadSelection())
+                {
+                    SetCardStatus(card, "Для MultiCAD-выносок выберите объекты до запуска команды.");
+                    WriteToNanoCad("\n[DesignTools]: Для MultiCAD-выносок выберите объекты до запуска команды.\n");
+                    return;
+                }
+
+                SetCardStatus(card, "Выполняется MultiCAD-команда.");
+                var message = _directCommandRunner.RunLeaders(state);
+                SetCardStatus(card, message);
+            }
+            catch (Exception ex)
+            {
+                SetCardStatus(card, $"Ошибка MultiCAD-команды: {ex.Message}");
+            }
         }
 
         private void ExecuteStubTool(DesignToolCardViewModel card)
@@ -393,19 +386,48 @@ namespace SpecStudioParser.DesignTools.ViewModels
             SetCardStatus(card, "Каркас инструмента создан. Реализация будет добавлена следующим шагом.");
         }
 
+        private void OnDesignToolsCommandResultPublished(object? sender, DesignToolsCommandResultEventArgs e)
+        {
+            var card = e.ToolKind switch
+            {
+                DesignToolsToolKind.Leaders => _leadersCard,
+                DesignToolsToolKind.Dimensions => _dimensionsCard,
+                DesignToolsToolKind.Diagnostics => _diagnosticsCard,
+                _ => null
+            };
+
+            if (card == null)
+            {
+                return;
+            }
+
+            Dispatcher.UIThread.Post(() => SetCardStatus(card, e.Message));
+        }
+
         private static LeaderAlignmentAxis ParseAxis(string value)
         {
             return value == "Вертикально" ? LeaderAlignmentAxis.Vertical : LeaderAlignmentAxis.Horizontal;
         }
 
-        private static LeaderAlignmentSource ParseLeaderSource(string value)
+        private static DesignToolsLeaderSource ParseLeaderSource(string value)
+        {
+            return value == "MultiCAD" ? DesignToolsLeaderSource.MultiCad : DesignToolsLeaderSource.TeighaMLeader;
+        }
+
+        private static DesignToolsOperation ParseOperation(string value)
         {
             return value switch
             {
-                "MultiCAD" => LeaderAlignmentSource.MultiCad,
-                "Мультивыноски" => LeaderAlignmentSource.TeighaMLeader,
-                _ => LeaderAlignmentSource.Auto
+                "Распределить" => DesignToolsOperation.Distribute,
+                "Сбросить" => DesignToolsOperation.Reset,
+                "Проверить" => DesignToolsOperation.Check,
+                _ => DesignToolsOperation.Align
             };
+        }
+
+        private static DesignToolsReferenceMode ParseReferenceMode(string value)
+        {
+            return value == "Точка" ? DesignToolsReferenceMode.Point : DesignToolsReferenceMode.First;
         }
 
         private void SetCardStatus(DesignToolCardViewModel card, string message)
@@ -421,11 +443,89 @@ namespace SpecStudioParser.DesignTools.ViewModels
             Status = "Контекст nanoCAD обновлен.";
         }
 
+        private static bool HasCurrentMultiCadSelection()
+        {
+            try
+            {
+                var objectManagerType = ResolveLoadedType("Multicad.DatabaseServices.McObjectManager");
+                if (objectManagerType == null)
+                {
+                    return false;
+                }
+
+                var selectionSet = objectManagerType.GetProperty("SelectionSet", BindingFlags.Static | BindingFlags.Public)?.GetValue(null);
+                var selectionSetType = selectionSet?.GetType() ?? objectManagerType.GetNestedType("SelectionSet", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+                object? currentSelection = null;
+                if (selectionSet != null)
+                {
+                    currentSelection = selectionSet.GetType().GetProperty("CurrentSelection", BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public)?.GetValue(selectionSet);
+                }
+
+                if (currentSelection == null && selectionSetType != null)
+                {
+                    currentSelection = selectionSetType.GetProperty("CurrentSelection", BindingFlags.Static | BindingFlags.Public)?.GetValue(null);
+                }
+
+                if (currentSelection is IEnumerable enumerable)
+                {
+                    foreach (var item in enumerable)
+                    {
+                        if (item != null)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
+
+        private static Type? ResolveLoadedType(string fullName)
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    var type = assembly.GetType(fullName, false, true);
+                    if (type != null)
+                    {
+                        return type;
+                    }
+                }
+                catch (FileLoadException) { }
+                catch (BadImageFormatException) { }
+                catch (ReflectionTypeLoadException) { }
+            }
+
+            return null;
+        }
+
+        private static void SendNanoCadCommand(string commandName)
+        {
+            try
+            {
+                var doc = CadApp.DocumentManager.MdiActiveDocument;
+                if (doc == null)
+                {
+                    return;
+                }
+
+                doc.SendStringToExecute(commandName + " ", true, false, false);
+            }
+            catch (Exception ex)
+            {
+                try { CadApp.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"\n[DesignTools]: Не удалось передать команду {commandName}: {ex.Message}\n"); } catch { }
+            }
+        }
+
         private static void WriteToNanoCad(string message)
         {
             try { CadApp.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage(message); } catch { }
         }
     }
-
-    internal enum LeaderAlignmentSource { Auto, MultiCad, TeighaMLeader }
 }
