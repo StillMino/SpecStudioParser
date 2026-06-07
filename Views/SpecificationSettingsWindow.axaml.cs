@@ -118,6 +118,14 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void RunFilterDiagnosticsClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel && viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.RunFilterIntegrityDiagnostics();
+            }
+        }
+
         private void AddConditionToGroupClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.DataContext is FilterConditionGroup group)
