@@ -110,6 +110,14 @@ namespace SpecStudioParser.Views
             }
         }
 
+        private void GroupSelectedRootFilterItemsClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel && viewModel.SelectedDataset != null)
+            {
+                viewModel.SelectedDataset.GroupSelectedRootFilterItems();
+            }
+        }
+
         private void AddConditionToGroupClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.DataContext is FilterConditionGroup group)
