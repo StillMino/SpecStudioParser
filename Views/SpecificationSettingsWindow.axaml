@@ -110,17 +110,18 @@
 												<DataTemplate x:DataType="m:FilterRootItem">
 													<StackPanel Spacing="8">
 														<Border IsVisible="{Binding IsCondition}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Background="{StaticResource PanelBrush}" Padding="6" Margin="0,3">
-															<Grid ColumnDefinitions="Auto, Auto, *, 100, *, 80, Auto">
+															<Grid ColumnDefinitions="Auto, Auto, *, Auto, 100, *, 80, Auto">
 																<CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center" ToolTip.Tip="Выбрать для группировки на корневом уровне"/>
 																<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="0,0,6,0">
 																	<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveRootFilterItemUpClick" ToolTip.Tip="Переместить выше"><PathIcon Data="{StaticResource IconUp}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
 																	<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveRootFilterItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
 																</StackPanel>
-																<ComboBox Grid.Column="2" ItemsSource="{Binding Condition.AvailableAttributes}" SelectedItem="{Binding Condition.Attribute, Mode=TwoWay}"/>
-																<ComboBox Grid.Column="3" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
-																<TextBox Grid.Column="4" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
-																<ComboBox Grid.Column="5" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом; у последнего элемента не используется"/>
-																<Button Grid.Column="6" Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="RemoveRootFilterItemClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
+																<TextBox Grid.Column="2" Text="{Binding Condition.Attribute, Mode=TwoWay}" Watermark="Атрибут"/>
+																<Button Grid.Column="3" DataContext="{Binding Condition}" Classes="neutralButton" Content="..." Click="PickAttributeForConditionClick" Margin="4,0,0,0" Padding="6,0" ToolTip.Tip="Выбрать один атрибут из CADLib"/>
+																<ComboBox Grid.Column="4" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
+																<TextBox Grid.Column="5" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
+																<ComboBox Grid.Column="6" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом; у последнего элемента не используется"/>
+																<Button Grid.Column="7" Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="RemoveRootFilterItemClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
 															</Grid>
 														</Border>
 
@@ -145,17 +146,18 @@
 																		<DataTemplate x:DataType="m:FilterGroupItem">
 																			<StackPanel>
 																				<Border IsVisible="{Binding IsCondition}" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3" Padding="6" Margin="12,3,0,3">
-																					<Grid ColumnDefinitions="Auto, Auto, *, 100, *, 80, Auto">
+																					<Grid ColumnDefinitions="Auto, Auto, *, Auto, 100, *, 80, Auto">
 																						<CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center" ToolTip.Tip="Выбрать для группировки"/>
 																						<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="0,0,6,0">
 																							<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveNestedFilterGroupItemUpClick" ToolTip.Tip="Переместить выше"><PathIcon Data="{StaticResource IconUp}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
 																							<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveNestedFilterGroupItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
 																						</StackPanel>
-																						<ComboBox Grid.Column="2" ItemsSource="{Binding Condition.AvailableAttributes}" SelectedItem="{Binding Condition.Attribute, Mode=TwoWay}"/>
-																						<ComboBox Grid.Column="3" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
-																						<TextBox Grid.Column="4" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
-																						<ComboBox Grid.Column="5" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом внутри группы; у последнего элемента не используется"/>
-																						<Button Grid.Column="6" DataContext="{Binding Condition}" Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="RemoveFilterConditionClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
+																						<TextBox Grid.Column="2" Text="{Binding Condition.Attribute, Mode=TwoWay}" Watermark="Атрибут"/>
+																						<Button Grid.Column="3" DataContext="{Binding Condition}" Classes="neutralButton" Content="..." Click="PickAttributeForConditionClick" Margin="4,0,0,0" Padding="6,0" ToolTip.Tip="Выбрать один атрибут из CADLib"/>
+																						<ComboBox Grid.Column="4" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
+																						<TextBox Grid.Column="5" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
+																						<ComboBox Grid.Column="6" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0" ToolTip.Tip="Связь со следующим элементом внутри группы; у последнего элемента не используется"/>
+																						<Button Grid.Column="7" DataContext="{Binding Condition}" Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="RemoveFilterConditionClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
 																					</Grid>
 																				</Border>
 																				<Border IsVisible="{Binding IsGroup}" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3" Padding="6" Margin="22,5,0,5">
@@ -175,16 +177,17 @@
 																							<ItemsControl.ItemTemplate>
 																								<DataTemplate x:DataType="m:FilterGroupItem">
 																									<Border IsVisible="{Binding IsCondition}" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3" Padding="6" Margin="12,3,0,3">
-																										<Grid ColumnDefinitions="Auto, *, 100, *, 80, Auto">
+																										<Grid ColumnDefinitions="Auto, *, Auto, 100, *, 80, Auto">
 																											<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="0,0,6,0">
 																												<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveNestedFilterGroupItemUpClick" ToolTip.Tip="Переместить выше"><PathIcon Data="{StaticResource IconUp}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
 																												<Button Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="MoveNestedFilterGroupItemDownClick" ToolTip.Tip="Переместить ниже"><PathIcon Data="{StaticResource IconDown}" Width="10" Height="10" Foreground="{StaticResource AccentBrush}"/></Button>
 																											</StackPanel>
-																											<ComboBox Grid.Column="1" ItemsSource="{Binding Condition.AvailableAttributes}" SelectedItem="{Binding Condition.Attribute, Mode=TwoWay}"/>
-																											<ComboBox Grid.Column="2" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
-																											<TextBox Grid.Column="3" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
-																											<ComboBox Grid.Column="4" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0"/>
-																											<Button Grid.Column="5" DataContext="{Binding Condition}" Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="RemoveFilterConditionClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
+																											<TextBox Grid.Column="1" Text="{Binding Condition.Attribute, Mode=TwoWay}" Watermark="Атрибут"/>
+																											<Button Grid.Column="2" DataContext="{Binding Condition}" Classes="neutralButton" Content="..." Click="PickAttributeForConditionClick" Margin="4,0,0,0" Padding="6,0" ToolTip.Tip="Выбрать один атрибут из CADLib"/>
+																											<ComboBox Grid.Column="3" ItemsSource="{Binding Condition.AvailableOperators}" SelectedItem="{Binding Condition.Operator, Mode=TwoWay}" Margin="4,0"/>
+																											<TextBox Grid.Column="4" Text="{Binding Condition.Value, Mode=TwoWay}" Watermark="Значение"/>
+																											<ComboBox Grid.Column="5" ItemsSource="{Binding Condition.AvailableJoinOperators}" SelectedItem="{Binding Condition.JoinWithNext, Mode=TwoWay}" Margin="4,0"/>
+																											<Button Grid.Column="6" DataContext="{Binding Condition}" Classes="neutralButton iconMiniButton" Width="26" Height="26" Click="RemoveFilterConditionClick" Margin="4,0,0,0" ToolTip.Tip="Удалить условие"><PathIcon Data="{StaticResource IconDelete}" Width="12" Height="12" Foreground="{StaticResource DangerBrush}"/></Button>
 																										</Grid>
 																									</Border>
 																								</DataTemplate>
