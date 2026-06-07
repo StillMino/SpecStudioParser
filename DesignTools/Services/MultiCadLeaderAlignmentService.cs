@@ -3,6 +3,7 @@ using HostMgd.EditorInput;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using Teigha.DatabaseServices;
@@ -25,22 +26,14 @@ namespace SpecStudioParser.DesignTools.Services
     }
 
     /// <summary>
-    /// Сервис выравнивания выносок через MultiCAD.NET API.
-    /// Основной путь работы: McObjectManager.SelectionSet.CurrentSelection -> McObjectManager.GetObject(id)
-    /// и изменение базовой точки MultiCAD-объектов выносок: Origin, TextPosition, TextPos, PntText, Start, End.
-    /// Reflection используется намеренно, чтобы проект продолжал собираться в окружениях, где MultiCAD-сборки
-    /// подключаются nanoCAD во время загрузки модуля.
+    /// Сервис выравнивания выносок.
+    /// Сначала пытается использовать уже загруженный MultiCAD.NET API, затем переходит
+    /// к резервному HostMgd/Teigha-пути. Важно: сервис не выполняет явную загрузку
+    /// MultiCAD-сборок через Type.GetType("..., assembly"), потому что часть SDK-модулей
+    /// nanoCAD не является одиночными .NET-сборками и может давать FileLoadException.
     /// </summary>
     public sealed class MultiCadLeaderAlignmentService
     {
-        private static readonly string[] MultiCadAssemblyNames =
-        {
-            "mapinet",
-            "mapimgd",
-            "MultiCAD",
-            "Multicad"
-        };
-
         private static readonly string[] LeaderTypeMarkers =
         {
             "McNote",
@@ -84,14 +77,27 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static LeaderAlignmentResult? TryAlignSelectedMultiCadLeaders(LeaderAlignmentAxis axis)
         {
+            Type? objectManagerType;
             try
             {
-                var objectManagerType = ResolveType("Multicad.DatabaseServices.McObjectManager");
-                if (objectManagerType == null)
-                {
-                    return null;
-                }
+                objectManagerType = ResolveLoadedType("Multicad.DatabaseServices.McObjectManager");
+            }
+            catch (FileLoadException)
+            {
+                return null;
+            }
+            catch (BadImageFormatException)
+            {
+                return null;
+            }
 
+            if (objectManagerType == null)
+            {
+                return null;
+            }
+
+            try
+            {
                 var selectionIds = GetCurrentMultiCadSelection(objectManagerType);
                 if (selectionIds.Count == 0)
                 {
@@ -147,6 +153,14 @@ namespace SpecStudioParser.DesignTools.Services
                     AbortMultiCadTransaction(objectManagerType);
                     throw;
                 }
+            }
+            catch (FileLoadException)
+            {
+                return null;
+            }
+            catch (BadImageFormatException)
+            {
+                return null;
             }
             catch (Exception ex)
             {
@@ -321,20 +335,28 @@ namespace SpecStudioParser.DesignTools.Services
             transactionsType?.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public, Type.EmptyTypes)?.Invoke(null, Array.Empty<object>());
         }
 
-        private static Type? ResolveType(string fullName)
+        private static Type? ResolveLoadedType(string fullName)
         {
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                var type = assembly.GetType(fullName, false, true);
-                if (type != null)
+                Type? type = null;
+                try
                 {
-                    return type;
+                    type = assembly.GetType(fullName, false, true);
                 }
-            }
+                catch (FileLoadException)
+                {
+                    continue;
+                }
+                catch (BadImageFormatException)
+                {
+                    continue;
+                }
+                catch (ReflectionTypeLoadException)
+                {
+                    continue;
+                }
 
-            foreach (var assemblyName in MultiCadAssemblyNames)
-            {
-                var type = Type.GetType($"{fullName}, {assemblyName}", false, true);
                 if (type != null)
                 {
                     return type;
