@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Teigha.DatabaseServices;
+using Teigha.Geometry;
 using CadApp = HostMgd.ApplicationServices.Application;
 
 namespace SpecStudioParser.DesignTools.Services
@@ -300,6 +301,9 @@ namespace SpecStudioParser.DesignTools.Services
             if (!TryGetGroupAlignStep(editor, axis, out var step))
                 return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = "Указание шага отменено." };
 
+            if (!ShowGroupAlignPreview(editor, targets, axis, step, anchor))
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, CandidateCount = targets.Count, Message = "Групповое выравнивание отменено пользователем." };
+
             try
             {
                 StartMultiCadTransaction(objectManagerType);
@@ -367,6 +371,9 @@ namespace SpecStudioParser.DesignTools.Services
             if (!TryGetGroupAlignStep(editor, axis, out var step))
                 return new LeaderAlignmentResult { SelectedCount = selection.Length, CandidateCount = targets.Count, Message = "Указание шага отменено." };
 
+            if (!ShowGroupAlignPreview(editor, targets, axis, step, anchor))
+                return new LeaderAlignmentResult { SelectedCount = selection.Length, CandidateCount = targets.Count, Message = "Групповое выравнивание отменено пользователем." };
+
             // Транзакция для записи
             using (doc.LockDocument())
             using (var tr = doc.Database.TransactionManager.StartTransaction())
@@ -393,6 +400,53 @@ namespace SpecStudioParser.DesignTools.Services
                     Message = $"Мультивыноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {writableTargets.Count}."
                 };
             }
+        }
+
+        /// <summary>
+        /// Предпросмотр: временные векторы от текущих позиций к целевым + запрос подтверждения.
+        /// </summary>
+        private static bool ShowGroupAlignPreview(Editor editor, IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, double step, AlignmentPoint anchor)
+        {
+            // Вычисляем целевые позиции
+            var ordered = axis == LeaderAlignmentAxis.Horizontal
+                ? targets.OrderBy(t => Math.Abs(t.Point.X - anchor.X)).ToArray()
+                : targets.OrderBy(t => Math.Abs(t.Point.Y - anchor.Y)).ToArray();
+
+            var targetPoints = new List<AlignmentPoint>(ordered.Length);
+            for (var i = 0; i < ordered.Length; i++)
+            {
+                var current = ordered[i].Point;
+                var p = axis == LeaderAlignmentAxis.Horizontal
+                    ? new AlignmentPoint(anchor.X + step * i, anchor.Y, current.Z)
+                    : new AlignmentPoint(anchor.X, anchor.Y + step * i, current.Z);
+                targetPoints.Add(p);
+            }
+
+            // Рисуем векторы: текущая → целевая, красный пунктир
+            for (var i = 0; i < ordered.Length; i++)
+            {
+                var from = ordered[i].Point;
+                var to = targetPoints[i];
+                var fromPt = new Point3d(from.X, from.Y, from.Z);
+                var toPt = new Point3d(to.X, to.Y, to.Z);
+                editor.DrawVector(fromPt, toPt, 1, false); // цвет 1 (красный), false = не подсвечивать
+            }
+
+            // Запрос подтверждения
+            NanoCadEditorFocusService.PrepareForEditorInput();
+            var keyOpts = new PromptKeywordOptions("\nПринять результат? [Да/Нет] <Да>: ")
+            {
+                AllowNone = true
+            };
+            keyOpts.Keywords.Add("Да", "Да", "Да");
+            keyOpts.Keywords.Add("Нет", "Нет", "Нет");
+            keyOpts.Keywords.Default = "Да";
+
+            var result = editor.GetKeywords(keyOpts);
+
+            // Принимаем по Enter или "Да", иначе отмена
+            return result.Status == PromptStatus.OK && string.Equals(result.StringResult, "Да", StringComparison.OrdinalIgnoreCase)
+                   || result.Status == PromptStatus.None;
         }
 
         /// <summary>
