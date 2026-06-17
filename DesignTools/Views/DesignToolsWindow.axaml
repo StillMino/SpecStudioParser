@@ -21,7 +21,10 @@
 	<Grid RowDefinitions="Auto, Auto, Auto, *, Auto" Background="{StaticResource AppBackgroundBrush}">
 		<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8">
 			<Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
-				<TextBlock Grid.Column="0" Grid.Row="0" Text="Инструменты проектировщика" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+				<StackPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+					<TextBlock Text="Инструменты проектировщика" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+					<TextBlock Text="{Binding Version}" Margin="8,0,0,0" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" ToolTip.Tip="Версия сборки (ветка-коммиты-хэш)"/>
+				</StackPanel>
 				<Button Grid.Column="1" Grid.Row="0" Classes="neutralButton" Command="{Binding RefreshContextCommand}" Padding="6,2" ToolTip.Tip="Обновить сведения об активном документе nanoCAD">
 					<TextBlock Text="↻" FontSize="13"/>
 				</Button>

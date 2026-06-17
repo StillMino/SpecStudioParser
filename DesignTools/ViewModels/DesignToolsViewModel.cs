@@ -176,6 +176,8 @@ namespace SpecStudioParser.DesignTools.ViewModels
         [ObservableProperty] private string _activeFilter = FilterAll;
         [ObservableProperty] private string _activeFilterLabel = "Все";
 
+        public string Version => VersionInfo.Version;
+
         public ObservableCollection<DesignToolCardViewModel> ToolCards { get; } = new();
         public ObservableCollection<DesignToolBlockViewModel> Blocks { get; } = new();
         public ICommand RefreshContextCommand { get; }
