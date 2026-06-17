@@ -98,6 +98,13 @@ namespace SpecStudioParser.DesignTools.Services
                 : DistributeSelectedTeighaMLeadersByStep(axis);
         }
 
+        public LeaderAlignmentResult GroupAlignSelectedLeaders(DesignToolsLeaderSource source, LeaderAlignmentAxis axis)
+        {
+            return source == DesignToolsLeaderSource.MultiCad
+                ? GroupAlignMultiCadLeaders(axis)
+                : GroupAlignTeighaMLeaders(axis);
+        }
+
         private static LeaderAlignmentResult DistributeSelectedTeighaMLeadersByStep(LeaderAlignmentAxis axis)
         {
             var doc = CadApp.DocumentManager.MdiActiveDocument;
@@ -247,6 +254,147 @@ namespace SpecStudioParser.DesignTools.Services
             catch (Exception ex)
             {
                 return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка распределения MultiCAD-выносок с шагом: {ex.Message}" };
+            }
+        }
+
+        private static LeaderAlignmentResult GroupAlignMultiCadLeaders(LeaderAlignmentAxis axis)
+        {
+            Type? objectManagerType;
+            try { objectManagerType = ResolveLoadedType("Multicad.DatabaseServices.McObjectManager"); }
+            catch (FileLoadException) { return new LeaderAlignmentResult { Message = "MultiCAD API недоступен в текущем сеансе nanoCAD." }; }
+            catch (BadImageFormatException) { return new LeaderAlignmentResult { Message = "MultiCAD API недоступен в текущем сеансе nanoCAD." }; }
+
+            if (objectManagerType == null)
+                return new LeaderAlignmentResult { Message = "MultiCAD API недоступен в текущем сеансе nanoCAD." };
+
+            var selectionIds = GetCurrentMultiCadSelection(objectManagerType);
+            if (selectionIds.Count == 0)
+                return new LeaderAlignmentResult { Message = "Для группового выравнивания выберите MultiCAD-выноски до запуска команды." };
+
+            var doc = CadApp.DocumentManager.MdiActiveDocument;
+            var editor = doc?.Editor;
+            if (editor == null)
+                return new LeaderAlignmentResult { Message = "Нет активного документа nanoCAD." };
+
+            if (!TryGetStep(editor, axis, out var step))
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = "Указание шага отменено." };
+
+            try
+            {
+                StartMultiCadTransaction(objectManagerType);
+                try
+                {
+                    var targets = new List<StepTarget>();
+                    foreach (var id in selectionIds)
+                    {
+                        var obj = GetMultiCadObject(objectManagerType, id);
+                        if (obj == null || !IsLeaderCandidate(obj)) continue;
+                        if (TryCreateLeaderPointTarget(obj, out var target))
+                            targets.Add(target);
+                    }
+
+                    if (targets.Count < 2)
+                    {
+                        AbortMultiCadTransaction(objectManagerType);
+                        return new LeaderAlignmentResult
+                        {
+                            SelectedCount = selectionIds.Count,
+                            CandidateCount = targets.Count,
+                            Message = $"Для группового выравнивания нужно минимум 2 MultiCAD-выноски. Найдено: {targets.Count}."
+                        };
+                    }
+
+                    ApplyGroupAlign(targets, axis, step);
+                    EndMultiCadTransaction(objectManagerType);
+                    UpdateMultiCadGraphics(objectManagerType);
+
+                    return new LeaderAlignmentResult
+                    {
+                        SelectedCount = selectionIds.Count,
+                        CandidateCount = targets.Count,
+                        AlignedCount = targets.Count,
+                        Message = $"MultiCAD-выноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
+                    };
+                }
+                catch { AbortMultiCadTransaction(objectManagerType); throw; }
+            }
+            catch (Exception ex)
+            {
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка группового выравнивания: {ex.Message}" };
+            }
+        }
+
+        private static LeaderAlignmentResult GroupAlignTeighaMLeaders(LeaderAlignmentAxis axis)
+        {
+            var doc = CadApp.DocumentManager.MdiActiveDocument;
+            if (doc == null)
+                return new LeaderAlignmentResult { Message = "Нет активного документа nanoCAD." };
+
+            var editor = doc.Editor;
+            var selection = GetDbSelection(editor, "\nВыберите мультивыноски для группового выравнивания: ");
+            if (selection == null || selection.Length == 0)
+                return new LeaderAlignmentResult { Message = "Не выбраны мультивыноски для обработки." };
+
+            if (!TryGetStep(editor, axis, out var step))
+                return new LeaderAlignmentResult { SelectedCount = selection.Length, Message = "Указание шага отменено." };
+
+            using (doc.LockDocument())
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
+            {
+                var targets = new List<StepTarget>();
+                foreach (var id in selection)
+                {
+                    var obj = tr.GetObject(id, OpenMode.ForWrite, false);
+                    if (obj is not MLeader mLeader) continue;
+                    if (TryCreatePropertyPointTarget(mLeader, "TextLocation", out var target, afterApply: MarkObjectModified)
+                        || TryCreatePropertyPointTarget(mLeader, "BlockPosition", out target, afterApply: MarkObjectModified))
+                        targets.Add(target);
+                }
+
+                if (targets.Count < 2)
+                {
+                    tr.Abort();
+                    return new LeaderAlignmentResult
+                    {
+                        SelectedCount = selection.Length,
+                        CandidateCount = targets.Count,
+                        Message = $"Для группового выравнивания нужно минимум 2 мультивыноски. Найдено: {targets.Count}."
+                    };
+                }
+
+                ApplyGroupAlign(targets, axis, step);
+                tr.Commit();
+                editor.UpdateScreen();
+
+                return new LeaderAlignmentResult
+                {
+                    SelectedCount = selection.Length,
+                    CandidateCount = targets.Count,
+                    AlignedCount = targets.Count,
+                    Message = $"Мультивыноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
+                };
+            }
+        }
+
+        /// <summary>
+        /// Групповое выравнивание: все цели получают общую координату по опорной оси (от первого),
+        /// и равномерно распределяются по второй оси с заданным шагом.
+        /// Горизонтально: общий Y, шаг по X. Вертикально: общий X, шаг по Y.
+        /// </summary>
+        private static void ApplyGroupAlign(IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, double step)
+        {
+            var ordered = axis == LeaderAlignmentAxis.Horizontal
+                ? targets.OrderBy(t => t.Point.X).ToArray()
+                : targets.OrderBy(t => t.Point.Y).ToArray();
+
+            var first = ordered[0].Point;
+            for (var index = 0; index < ordered.Length; index++)
+            {
+                var current = ordered[index].Point;
+                var aligned = axis == LeaderAlignmentAxis.Horizontal
+                    ? new AlignmentPoint(first.X + step * index, first.Y, current.Z)  // общий Y, шаг по X
+                    : new AlignmentPoint(first.X, first.Y + step * index, current.Z); // общий X, шаг по Y
+                ordered[index].Apply(aligned);
             }
         }
 

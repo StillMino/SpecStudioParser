@@ -23,6 +23,7 @@ namespace SpecStudioParser.DesignTools.Services
         Step,
         AlignShelvesToLine,
         AlignExtensionLinesToLine,
+        GroupAlign,
         Reset,
         Check
     }

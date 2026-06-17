@@ -189,7 +189,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 FilterDrafting,
                 LeadersIcon,
                 new[] { "MultiCAD", "Мультивыноски" },
-                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг", "Полки по линии", "Выносные по линии" },
+                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг", "Полки по линии", "Выносные по линии", "Группа" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Первая", "Точка" },
                 ExecuteLeaderTool);
@@ -423,6 +423,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 "Шаг" => DesignToolsOperation.Step,
                 "Полки по линии" => DesignToolsOperation.AlignShelvesToLine,
                 "Выносные по линии" => DesignToolsOperation.AlignExtensionLinesToLine,
+                "Группа" => DesignToolsOperation.GroupAlign,
                 "Сбросить" => DesignToolsOperation.Reset,
                 "Проверить" => DesignToolsOperation.Check,
                 _ => DesignToolsOperation.Align
