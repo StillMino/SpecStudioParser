@@ -75,6 +75,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
         [ObservableProperty] private string _selectedOperation = string.Empty;
         [ObservableProperty] private string _selectedAxis = string.Empty;
         [ObservableProperty] private string _selectedReference = string.Empty;
+        [ObservableProperty] private bool _isReferenceLocked;
+        [ObservableProperty] private string _referenceLockLabel = "Опорная";
+
+        public bool IsReferenceEnabled => !IsReferenceLocked;
 
         public string Id { get; }
         public string Title { get; }
@@ -113,6 +117,26 @@ namespace SpecStudioParser.DesignTools.ViewModels
             SelectedAxis = Axes.FirstOrDefault() ?? string.Empty;
             SelectedReference = References.FirstOrDefault() ?? string.Empty;
             RunCommand = new RelayCommand(async () => await DeferredCommandRunner.RunAsync(() => execute(this)));
+        }
+
+        partial void OnSelectedOperationChanged(string value)
+        {
+            IsReferenceLocked = value == "Группа";
+            if (IsReferenceLocked)
+            {
+                ReferenceLockLabel = "Опорная";
+                SelectedReference = "Опорная";
+            }
+            else
+            {
+                ReferenceLockLabel = string.Empty;
+                SelectedReference = References.FirstOrDefault() ?? string.Empty;
+            }
+        }
+
+        partial void OnIsReferenceLockedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(IsReferenceEnabled));
         }
     }
 
@@ -185,7 +209,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "leaders",
                 "Выноски",
-                "Выравнивание, распределение, сдвиг, шаг и выравнивание по указанной линии. MultiCAD-выноски нужно выбрать до запуска команды.",
+                "Выравнивание, распределение, сдвиг, шаг, линия и группа с общим якорем. MultiCAD-выноски нужно выбрать до запуска команды.",
                 FilterDrafting,
                 LeadersIcon,
                 new[] { "MultiCAD", "Мультивыноски" },

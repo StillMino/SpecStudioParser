@@ -271,12 +271,33 @@ namespace SpecStudioParser.DesignTools.Services
             if (selectionIds.Count == 0)
                 return new LeaderAlignmentResult { Message = "Для группового выравнивания выберите MultiCAD-выноски до запуска команды." };
 
+            // Строим цели до запроса якоря — нужны для Enter-умолчания.
+            var targets = new List<StepTarget>();
+            foreach (var id in selectionIds)
+            {
+                var obj = GetMultiCadObject(objectManagerType, id);
+                if (obj == null || !IsLeaderCandidate(obj)) continue;
+                if (TryCreateLeaderPointTarget(obj, out var target))
+                    targets.Add(target);
+            }
+
+            if (targets.Count < 2)
+                return new LeaderAlignmentResult
+                {
+                    SelectedCount = selectionIds.Count,
+                    CandidateCount = targets.Count,
+                    Message = $"Для группового выравнивания нужно минимум 2 MultiCAD-выноски. Найдено: {targets.Count}."
+                };
+
             var doc = CadApp.DocumentManager.MdiActiveDocument;
             var editor = doc?.Editor;
             if (editor == null)
                 return new LeaderAlignmentResult { Message = "Нет активного документа nanoCAD." };
 
-            if (!TryGetStep(editor, axis, out var step))
+            if (!TryGetAnchorPoint(editor, targets, axis, out var anchor))
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = "Указание опорной точки отменено." };
+
+            if (!TryGetGroupAlignStep(editor, axis, out var step))
                 return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = "Указание шага отменено." };
 
             try
@@ -284,27 +305,7 @@ namespace SpecStudioParser.DesignTools.Services
                 StartMultiCadTransaction(objectManagerType);
                 try
                 {
-                    var targets = new List<StepTarget>();
-                    foreach (var id in selectionIds)
-                    {
-                        var obj = GetMultiCadObject(objectManagerType, id);
-                        if (obj == null || !IsLeaderCandidate(obj)) continue;
-                        if (TryCreateLeaderPointTarget(obj, out var target))
-                            targets.Add(target);
-                    }
-
-                    if (targets.Count < 2)
-                    {
-                        AbortMultiCadTransaction(objectManagerType);
-                        return new LeaderAlignmentResult
-                        {
-                            SelectedCount = selectionIds.Count,
-                            CandidateCount = targets.Count,
-                            Message = $"Для группового выравнивания нужно минимум 2 MultiCAD-выноски. Найдено: {targets.Count}."
-                        };
-                    }
-
-                    ApplyGroupAlign(targets, axis, step);
+                    ApplyGroupAlign(targets, axis, step, anchor);
                     EndMultiCadTransaction(objectManagerType);
                     UpdateMultiCadGraphics(objectManagerType);
 
@@ -335,65 +336,85 @@ namespace SpecStudioParser.DesignTools.Services
             if (selection == null || selection.Length == 0)
                 return new LeaderAlignmentResult { Message = "Не выбраны мультивыноски для обработки." };
 
-            if (!TryGetStep(editor, axis, out var step))
-                return new LeaderAlignmentResult { SelectedCount = selection.Length, Message = "Указание шага отменено." };
-
+            // Строим цели в read-транзакции, затем закрываем.
+            List<StepTarget> targets;
             using (doc.LockDocument())
             using (var tr = doc.Database.TransactionManager.StartTransaction())
             {
-                var targets = new List<StepTarget>();
+                targets = new List<StepTarget>();
+                foreach (var id in selection)
+                {
+                    var obj = tr.GetObject(id, OpenMode.ForRead, false);
+                    if (obj is not MLeader mLeader) continue;
+                    if (TryCreatePropertyPointTarget(mLeader, "TextLocation", out var target, afterApply: null)
+                        || TryCreatePropertyPointTarget(mLeader, "BlockPosition", out target, afterApply: null))
+                        targets.Add(target);
+                }
+                tr.Abort();
+            }
+
+            if (targets.Count < 2)
+                return new LeaderAlignmentResult
+                {
+                    SelectedCount = selection.Length,
+                    CandidateCount = targets.Count,
+                    Message = $"Для группового выравнивания нужно минимум 2 мультивыноски. Найдено: {targets.Count}."
+                };
+
+            if (!TryGetAnchorPoint(editor, targets, axis, out var anchor))
+                return new LeaderAlignmentResult { SelectedCount = selection.Length, CandidateCount = targets.Count, Message = "Указание опорной точки отменено." };
+
+            if (!TryGetGroupAlignStep(editor, axis, out var step))
+                return new LeaderAlignmentResult { SelectedCount = selection.Length, CandidateCount = targets.Count, Message = "Указание шага отменено." };
+
+            // Транзакция для записи
+            using (doc.LockDocument())
+            using (var tr = doc.Database.TransactionManager.StartTransaction())
+            {
+                var writableTargets = new List<StepTarget>();
                 foreach (var id in selection)
                 {
                     var obj = tr.GetObject(id, OpenMode.ForWrite, false);
                     if (obj is not MLeader mLeader) continue;
                     if (TryCreatePropertyPointTarget(mLeader, "TextLocation", out var target, afterApply: MarkObjectModified)
                         || TryCreatePropertyPointTarget(mLeader, "BlockPosition", out target, afterApply: MarkObjectModified))
-                        targets.Add(target);
+                        writableTargets.Add(target);
                 }
 
-                if (targets.Count < 2)
-                {
-                    tr.Abort();
-                    return new LeaderAlignmentResult
-                    {
-                        SelectedCount = selection.Length,
-                        CandidateCount = targets.Count,
-                        Message = $"Для группового выравнивания нужно минимум 2 мультивыноски. Найдено: {targets.Count}."
-                    };
-                }
-
-                ApplyGroupAlign(targets, axis, step);
+                ApplyGroupAlign(writableTargets, axis, step, anchor);
                 tr.Commit();
                 editor.UpdateScreen();
 
                 return new LeaderAlignmentResult
                 {
                     SelectedCount = selection.Length,
-                    CandidateCount = targets.Count,
-                    AlignedCount = targets.Count,
-                    Message = $"Мультивыноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
+                    CandidateCount = writableTargets.Count,
+                    AlignedCount = writableTargets.Count,
+                    Message = $"Мультивыноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {writableTargets.Count}."
                 };
             }
         }
 
         /// <summary>
-        /// Групповое выравнивание: все цели получают общую координату по опорной оси (от первого),
+        /// Групповое выравнивание: все цели получают общую координату по опорной оси (от якоря),
         /// и равномерно распределяются по второй оси с заданным шагом.
         /// Горизонтально: общий Y, шаг по X. Вертикально: общий X, шаг по Y.
+        /// anchor — опорная точка; если null, используется точка первого объекта.
         /// </summary>
-        private static void ApplyGroupAlign(IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, double step)
+        private static void ApplyGroupAlign(IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, double step, AlignmentPoint? anchor = null)
         {
-            var ordered = axis == LeaderAlignmentAxis.Horizontal
-                ? targets.OrderBy(t => t.Point.X).ToArray()
-                : targets.OrderBy(t => t.Point.Y).ToArray();
+            var anchorPoint = anchor ?? targets[0].Point;
 
-            var first = ordered[0].Point;
+            var ordered = axis == LeaderAlignmentAxis.Horizontal
+                ? targets.OrderBy(t => Math.Abs(t.Point.X - anchorPoint.X)).ToArray()
+                : targets.OrderBy(t => Math.Abs(t.Point.Y - anchorPoint.Y)).ToArray();
+
             for (var index = 0; index < ordered.Length; index++)
             {
                 var current = ordered[index].Point;
                 var aligned = axis == LeaderAlignmentAxis.Horizontal
-                    ? new AlignmentPoint(first.X + step * index, first.Y, current.Z)  // общий Y, шаг по X
-                    : new AlignmentPoint(first.X, first.Y + step * index, current.Z); // общий X, шаг по Y
+                    ? new AlignmentPoint(anchorPoint.X + step * index, anchorPoint.Y, current.Z)
+                    : new AlignmentPoint(anchorPoint.X, anchorPoint.Y + step * index, current.Z);
                 ordered[index].Apply(aligned);
             }
         }
@@ -413,6 +434,81 @@ namespace SpecStudioParser.DesignTools.Services
                     : new AlignmentPoint(current.X, first.Y + step * index, current.Z);
                 ordered[index].Apply(next);
             }
+        }
+
+        private static bool TryGetAnchorPoint(Editor editor, IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, out AlignmentPoint anchor)
+        {
+            anchor = default;
+            var firstTarget = targets.Count > 0 ? targets[0].Point : default;
+
+            NanoCadEditorFocusService.PrepareForEditorInput();
+            var options = new PromptPointOptions("\nУкажите опорную точку или выноску [Enter — первая]: ")
+            {
+                AllowNone = true
+            };
+            var result = editor.GetPoint(options);
+
+            if (result.Status == PromptStatus.None || result.Status == PromptStatus.Cancel)
+            {
+                // Enter/Cancel — якорь от первого объекта
+                anchor = firstTarget;
+                return true;
+            }
+
+            if (result.Status == PromptStatus.OK)
+            {
+                anchor = new AlignmentPoint(result.Value.X, result.Value.Y, result.Value.Z);
+                return true;
+            }
+
+            anchor = firstTarget;
+            return true;
+        }
+
+        /// <summary>
+        /// Запрашивает шаг: две точки мышью или числовой ввод с клавиатуры.
+        /// Отрицательный шаг допускается (обратное направление).
+        /// </summary>
+        private static bool TryGetGroupAlignStep(Editor editor, LeaderAlignmentAxis axis, out double step)
+        {
+            step = 0.0;
+
+            // Сначала пробуем GetDistance — обрабатывает и число, и две точки.
+            NanoCadEditorFocusService.PrepareForEditorInput();
+            var distOpts = new PromptDistanceOptions("\nУкажите шаг [число или две точки]: ")
+            {
+                AllowNone = true
+            };
+            var distanceResult = editor.GetDistance(distOpts);
+
+            if (distanceResult.Status == PromptStatus.OK)
+            {
+                // GetDistance всегда положительный — знак определим ниже по направлению
+                step = distanceResult.Value;
+                return Math.Abs(step) > 1e-9;
+            }
+
+            // Пользователь нажал Enter без ввода — явный запрос числа
+            if (distanceResult.Status == PromptStatus.None || distanceResult.Status == PromptStatus.Cancel)
+            {
+                NanoCadEditorFocusService.PrepareForEditorInput();
+                var doubleOpts = new PromptDoubleOptions("\nВведите числовое значение шага: ")
+                {
+                    AllowNone = true
+                };
+                var doubleResult = editor.GetDouble(doubleOpts);
+
+                if (doubleResult.Status == PromptStatus.OK)
+                {
+                    step = doubleResult.Value;
+                    return Math.Abs(step) > 1e-9;
+                }
+
+                // Повторное Enter — две точки
+                return TryGetStep(editor, axis, out step);
+            }
+
+            return false;
         }
 
         private static bool TryGetStep(Editor editor, LeaderAlignmentAxis axis, out double step)

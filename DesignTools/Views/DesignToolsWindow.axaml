@@ -65,7 +65,7 @@
 									<ComboBox Grid.Column="0" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" FontSize="11" MinHeight="26" Margin="0,0,4,0"/>
 									<ComboBox Grid.Column="1" ItemsSource="{Binding Operations}" SelectedItem="{Binding SelectedOperation}" FontSize="11" MinHeight="26" Margin="0,0,4,0"/>
 									<ComboBox Grid.Column="2" ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis}" FontSize="11" MinHeight="26" Margin="0,0,4,0"/>
-									<ComboBox Grid.Column="3" ItemsSource="{Binding References}" SelectedItem="{Binding SelectedReference}" FontSize="11" MinHeight="26"/>
+									<ComboBox Grid.Column="3" ItemsSource="{Binding References}" SelectedItem="{Binding SelectedReference}" IsEnabled="{Binding IsReferenceEnabled}" FontSize="11" MinHeight="26"/>
 								</Grid>
 
 								<TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Status}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" ToolTip.Tip="{Binding Status}"/>
