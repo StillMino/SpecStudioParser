@@ -185,11 +185,11 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "leaders",
                 "Выноски",
-                "Выравнивание, распределение, сдвиг и распределение с заданным шагом. MultiCAD-выноски нужно выбрать до запуска команды.",
+                "Выравнивание, распределение, сдвиг, шаг и выравнивание по указанной линии. MultiCAD-выноски нужно выбрать до запуска команды.",
                 FilterDrafting,
                 LeadersIcon,
                 new[] { "MultiCAD", "Мультивыноски" },
-                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг" },
+                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг", "Полки по линии", "Выносные по линии" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Первая", "Точка" },
                 ExecuteLeaderTool);
@@ -200,11 +200,11 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "dimensions",
                 "Размеры",
-                "Управление положением текста размеров: выравнивание, распределение, сдвиг, шаг и сброс стандартного положения.",
+                "Управление положением текста размеров: выравнивание, распределение, сдвиг, шаг, линия и сброс стандартного положения.",
                 FilterDrafting,
                 DimensionsIcon,
                 new[] { "Текст" },
-                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг", "Сбросить" },
+                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг", "Полки по линии", "Выносные по линии", "Сбросить" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Первая", "Точка" },
                 ExecuteDimensionTool);
@@ -421,6 +421,8 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 "Распределить" => DesignToolsOperation.Distribute,
                 "Сдвинуть" => DesignToolsOperation.Shift,
                 "Шаг" => DesignToolsOperation.Step,
+                "Полки по линии" => DesignToolsOperation.AlignShelvesToLine,
+                "Выносные по линии" => DesignToolsOperation.AlignExtensionLinesToLine,
                 "Сбросить" => DesignToolsOperation.Reset,
                 "Проверить" => DesignToolsOperation.Check,
                 _ => DesignToolsOperation.Align

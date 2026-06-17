@@ -12,11 +12,14 @@ namespace SpecStudioParser.DesignTools.Services
         private readonly SelectionDiagnosticsService _selectionDiagnosticsService = new();
         private readonly DesignToolsVectorShiftService _vectorShiftService = new();
         private readonly DesignToolsStepDistributionService _stepDistributionService = new();
+        private readonly DesignToolsLineAlignmentService _lineAlignmentService = new();
 
         public string RunLeaders(DesignToolsCommandState state)
         {
             var result = state.Operation switch
             {
+                DesignToolsOperation.AlignShelvesToLine => _lineAlignmentService.AlignSelectedLeaderShelvesToLine(state.LeaderSource),
+                DesignToolsOperation.AlignExtensionLinesToLine => _lineAlignmentService.AlignSelectedLeaderExtensionLinesToLine(state.LeaderSource),
                 DesignToolsOperation.Step => _stepDistributionService.DistributeSelectedLeadersByStep(state.LeaderSource, state.Axis),
                 DesignToolsOperation.Shift => _vectorShiftService.ShiftSelectedLeaders(state.LeaderSource),
                 DesignToolsOperation.Distribute => ExecuteLeaderDistribution(state.LeaderSource, state.Axis),
@@ -35,6 +38,8 @@ namespace SpecStudioParser.DesignTools.Services
             var result = state.Operation switch
             {
                 DesignToolsOperation.Reset => _dimensionAlignmentService.ResetSelectedDimensionTextPositions(),
+                DesignToolsOperation.AlignShelvesToLine => _lineAlignmentService.AlignSelectedDimensionShelvesToLine(),
+                DesignToolsOperation.AlignExtensionLinesToLine => _lineAlignmentService.AlignSelectedDimensionExtensionLinesToLine(),
                 DesignToolsOperation.Step => _stepDistributionService.DistributeSelectedDimensionTextByStep(state.Axis),
                 DesignToolsOperation.Shift => _vectorShiftService.ShiftSelectedDimensionTextPositions(),
                 DesignToolsOperation.Distribute => _dimensionAlignmentService.DistributeSelectedDimensions(state.Axis),

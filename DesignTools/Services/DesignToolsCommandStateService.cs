@@ -21,6 +21,8 @@ namespace SpecStudioParser.DesignTools.Services
         Distribute,
         Shift,
         Step,
+        AlignShelvesToLine,
+        AlignExtensionLinesToLine,
         Reset,
         Check
     }
