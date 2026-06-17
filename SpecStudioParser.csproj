@@ -47,7 +47,10 @@
   <!-- Generate VersionInfo from git -->
   <Target Name="GenerateVersionInfo" BeforeTargets="BeforeBuild">
     <MakeDir Directories="$(IntermediateOutputPath)" />
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\gen-version.ps1&quot; -ProjectDir &quot;$(MSBuildProjectDirectory)&quot; -IntermediateDir &quot;$(IntermediateOutputPath)&quot; -AssemblyVersion &quot;$(Version)&quot;" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\gen-version.ps1&quot; -ProjectDir &quot;$(MSBuildProjectDirectory)&quot; -IntermediateDir &quot;$(IntermediateOutputPath.TrimEnd('\'))&quot; -AssemblyVersion &quot;$(Version)&quot;" ContinueOnError="true" />
+    <!-- Fallback on script failure -->
+    <Exec Condition="!Exists('$(IntermediateOutputPath)VersionInfo.Generated.cs')"
+          Command="powershell -NoProfile -Command &quot;$l1='// Auto-generated (no git)'; $l2='namespace SpecStudioParser { internal static class VersionInfo { public const string Version = \&quot;$(Version)-unknown\&quot;; public const string BuildDate = \&quot;unknown\&quot;; } }'; @($l1,$l2) | Out-File -Encoding UTF8 '$(IntermediateOutputPath)VersionInfo.Generated.cs'&quot;" />
     <ItemGroup>
       <Compile Include="$(IntermediateOutputPath)VersionInfo.Generated.cs" />
     </ItemGroup>
