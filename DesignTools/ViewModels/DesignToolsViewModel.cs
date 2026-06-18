@@ -121,7 +121,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
         partial void OnSelectedOperationChanged(string value)
         {
-            IsReferenceLocked = value == "Группа";
+            IsReferenceLocked = value == "Группа" || value == "Умная группа";
             if (IsReferenceLocked)
             {
                 ReferenceLockLabel = "Опорная";
@@ -215,7 +215,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 FilterDrafting,
                 LeadersIcon,
                 new[] { "MultiCAD", "Мультивыноски" },
-                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг", "Полки по линии", "Выносные по линии", "Группа" },
+                new[] { "Выровнять", "Распределить", "Сдвинуть", "Шаг", "Полки по линии", "Выносные по линии", "Группа", "Умная группа" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Первая", "Точка" },
                 ExecuteLeaderTool);
@@ -449,6 +449,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 "Шаг" => DesignToolsOperation.Step,
                 "Полки по линии" => DesignToolsOperation.AlignShelvesToLine,
                 "Выносные по линии" => DesignToolsOperation.AlignExtensionLinesToLine,
+                "Умная группа" => DesignToolsOperation.SmartGroup,
                 "Группа" => DesignToolsOperation.GroupAlign,
                 "Сбросить" => DesignToolsOperation.Reset,
                 "Проверить" => DesignToolsOperation.Check,

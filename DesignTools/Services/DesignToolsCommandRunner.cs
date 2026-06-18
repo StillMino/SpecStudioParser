@@ -22,6 +22,7 @@ namespace SpecStudioParser.DesignTools.Services
                 DesignToolsOperation.AlignExtensionLinesToLine => _lineAlignmentService.AlignSelectedLeaderExtensionLinesToLine(state.LeaderSource),
                 DesignToolsOperation.Step => _stepDistributionService.DistributeSelectedLeadersByStep(state.LeaderSource, state.Axis),
                 DesignToolsOperation.Shift => _vectorShiftService.ShiftSelectedLeaders(state.LeaderSource),
+                DesignToolsOperation.SmartGroup => _stepDistributionService.SmartGroupAlignSelectedLeaders(state.LeaderSource, state.Axis),
                 DesignToolsOperation.GroupAlign => _stepDistributionService.GroupAlignSelectedLeaders(state.LeaderSource, state.Axis),
                 DesignToolsOperation.Distribute => ExecuteLeaderDistribution(state.LeaderSource, state.Axis),
                 _ => state.ReferenceMode == DesignToolsReferenceMode.Point

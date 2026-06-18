@@ -25,6 +25,18 @@ namespace SpecStudioParser.DesignTools.Services
             "Start", "End", "Location", "Position"
         };
 
+        private static readonly string[] ShelfMirrorProperties =
+        {
+            "IsShelfFlipped", "IsFlipped", "ShelfDirection", "MirrorShelf",
+            "FlipShelfDirection", "IsReversed", "ShelfFlipped", "Flipped"
+        };
+
+        private static readonly string[] ShelfMirrorMethods =
+        {
+            "FlipShelf", "MirrorShelf", "ToggleShelfDirection", "SetShelfDirection",
+            "ReverseShelf", "FlipDirection", "SetFlipped"
+        };
+
         public DimensionAlignmentResult DistributeSelectedDimensionTextByStep(LeaderAlignmentAxis axis)
         {
             var doc = CadApp.DocumentManager.MdiActiveDocument;
@@ -403,11 +415,57 @@ namespace SpecStudioParser.DesignTools.Services
         }
 
         /// <summary>
-        /// Предпросмотр: временные векторы от текущих позиций к целевым + запрос подтверждения.
+        /// Предпросмотр: векторы смещения + кресты-маркеры в целевых точках.
+        /// Синий вектор от текущей позиции к целевой. Зелёный от якоря к цели. Красные кресты.
         /// </summary>
         private static bool ShowGroupAlignPreview(Editor editor, IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, double step, AlignmentPoint anchor)
         {
-            // Вычисляем целевые позиции
+            var (ordered, targetPoints) = ComputeTargetPoints(targets, axis, step, anchor);
+            var collisionCount = DetectCollisions(ordered, targetPoints);
+
+            for (var i = 0; i < ordered.Length; i++)
+            {
+                var from = ordered[i].Point;
+                var to = targetPoints[i];
+
+                // Синий вектор: текущая → целевая позиция
+                editor.DrawVector(new Point3d(from.X, from.Y, from.Z), new Point3d(to.X, to.Y, to.Z), 5, false);
+                // Зелёный вектор: якорь → целевая позиция
+                editor.DrawVector(new Point3d(anchor.X, anchor.Y, anchor.Z), new Point3d(to.X, to.Y, to.Z), 3, false);
+
+                // Красный крест-маркер в целевой позиции
+                var half = Math.Max(Math.Abs(step) * 0.3, 2.0);
+                editor.DrawVector(new Point3d(to.X - half, to.Y, to.Z), new Point3d(to.X + half, to.Y, to.Z), 1, false);
+                editor.DrawVector(new Point3d(to.X, to.Y - half, to.Z), new Point3d(to.X, to.Y + half, to.Z), 1, false);
+            }
+
+            // Предупреждение о коллизиях
+            if (collisionCount > 0)
+            {
+                editor.WriteMessage($"\n⚠ Обнаружено наложений текста: {collisionCount}. Проверьте результат.");
+            }
+
+            // Запрос подтверждения
+            NanoCadEditorFocusService.PrepareForEditorInput();
+            var keyOpts = new PromptKeywordOptions($"\nПринять результат? [Да/Нет] <Да>: ")
+            {
+                AllowNone = true
+            };
+            keyOpts.Keywords.Add("Да", "Да", "Да");
+            keyOpts.Keywords.Add("Нет", "Нет", "Нет");
+            keyOpts.Keywords.Default = "Да";
+
+            var result = editor.GetKeywords(keyOpts);
+            return result.Status == PromptStatus.OK && string.Equals(result.StringResult, "Да", StringComparison.OrdinalIgnoreCase)
+                   || result.Status == PromptStatus.None;
+        }
+
+        /// <summary>
+        /// Вычисляет целевые позиции для группового выравнивания.
+        /// </summary>
+        private static (StepTarget[] ordered, List<AlignmentPoint> targetPoints) ComputeTargetPoints(
+            IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, double step, AlignmentPoint anchor)
+        {
             var ordered = axis == LeaderAlignmentAxis.Horizontal
                 ? targets.OrderBy(t => Math.Abs(t.Point.X - anchor.X)).ToArray()
                 : targets.OrderBy(t => Math.Abs(t.Point.Y - anchor.Y)).ToArray();
@@ -422,55 +480,287 @@ namespace SpecStudioParser.DesignTools.Services
                 targetPoints.Add(p);
             }
 
-            // Рисуем векторы: текущая → целевая, красный пунктир
-            for (var i = 0; i < ordered.Length; i++)
+            return (ordered, targetPoints);
+        }
+
+        /// <summary>
+        /// Детекция коллизий: проверка перекрытия bounding box'ов текста.
+        /// Возвращает количество найденных пересечений.
+        /// </summary>
+        private static int DetectCollisions(StepTarget[] ordered, List<AlignmentPoint> targetPoints)
+        {
+            const double defaultTextWidth = 40.0;
+            const double defaultTextHeight = 8.0;
+            var count = 0;
+
+            for (var i = 0; i < targetPoints.Count; i++)
             {
-                var from = ordered[i].Point;
-                var to = targetPoints[i];
-                var fromPt = new Point3d(from.X, from.Y, from.Z);
-                var toPt = new Point3d(to.X, to.Y, to.Z);
-                editor.DrawVector(fromPt, toPt, 1, false); // цвет 1 (красный), false = не подсвечивать
+                for (var j = i + 1; j < targetPoints.Count; j++)
+                {
+                    var a = targetPoints[i];
+                    var b = targetPoints[j];
+                    var spacing = Math.Abs(Math.Sqrt(Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2)));
+
+                    // Вертикальная группа: перекрытие по Y при одинаковом X
+                    if (Math.Abs(a.X - b.X) < 0.1 && spacing < defaultTextHeight)
+                        count++;
+                    // Горизонтальная группа: перекрытие по X при одинаковом Y
+                    else if (Math.Abs(a.Y - b.Y) < 0.1 && spacing < defaultTextWidth * 0.6)
+                        count++;
+                    // Общий случай: перекрытие bounding box
+                    else
+                    {
+                        var overlapX = Math.Max(0.0, defaultTextWidth - Math.Abs(a.X - b.X));
+                        var overlapY = Math.Max(0.0, defaultTextHeight - Math.Abs(a.Y - b.Y));
+                        if (overlapX > 0 && overlapY > 0) count++;
+                    }
+                }
             }
 
-            // Запрос подтверждения
-            NanoCadEditorFocusService.PrepareForEditorInput();
-            var keyOpts = new PromptKeywordOptions("\nПринять результат? [Да/Нет] <Да>: ")
-            {
-                AllowNone = true
-            };
-            keyOpts.Keywords.Add("Да", "Да", "Да");
-            keyOpts.Keywords.Add("Нет", "Нет", "Нет");
-            keyOpts.Keywords.Default = "Да";
-
-            var result = editor.GetKeywords(keyOpts);
-
-            // Принимаем по Enter или "Да", иначе отмена
-            return result.Status == PromptStatus.OK && string.Equals(result.StringResult, "Да", StringComparison.OrdinalIgnoreCase)
-                   || result.Status == PromptStatus.None;
+            return count;
         }
 
         /// <summary>
         /// Групповое выравнивание: все цели получают общую координату по опорной оси (от якоря),
         /// и равномерно распределяются по второй оси с заданным шагом.
-        /// Горизонтально: общий Y, шаг по X. Вертикально: общий X, шаг по Y.
-        /// anchor — опорная точка; если null, используется точка первого объекта.
         /// </summary>
         private static void ApplyGroupAlign(IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, double step, AlignmentPoint? anchor = null)
         {
             var anchorPoint = anchor ?? targets[0].Point;
-
-            var ordered = axis == LeaderAlignmentAxis.Horizontal
-                ? targets.OrderBy(t => Math.Abs(t.Point.X - anchorPoint.X)).ToArray()
-                : targets.OrderBy(t => Math.Abs(t.Point.Y - anchorPoint.Y)).ToArray();
-
+            var (ordered, _) = ComputeTargetPoints(targets, axis, step, anchorPoint);
             for (var index = 0; index < ordered.Length; index++)
             {
-                var current = ordered[index].Point;
                 var aligned = axis == LeaderAlignmentAxis.Horizontal
-                    ? new AlignmentPoint(anchorPoint.X + step * index, anchorPoint.Y, current.Z)
-                    : new AlignmentPoint(anchorPoint.X, anchorPoint.Y + step * index, current.Z);
+                    ? new AlignmentPoint(anchorPoint.X + step * index, anchorPoint.Y, ordered[index].Point.Z)
+                    : new AlignmentPoint(anchorPoint.X, anchorPoint.Y + step * index, ordered[index].Point.Z);
                 ordered[index].Apply(aligned);
             }
+        }
+
+        // ========= SmartGroup (умная группа) =========
+
+        public LeaderAlignmentResult SmartGroupAlignSelectedLeaders(DesignToolsLeaderSource source, LeaderAlignmentAxis axis)
+        {
+            return source == DesignToolsLeaderSource.MultiCad
+                ? SmartGroupAlignMultiCadLeaders(axis)
+                : SmartGroupAlignTeighaMLeaders(axis);
+        }
+
+        /// <summary>
+        /// Умная группа для MultiCAD: групповое выравнивание + авто-зеркало полок + проверка коллизий.
+        /// </summary>
+        private LeaderAlignmentResult SmartGroupAlignMultiCadLeaders(LeaderAlignmentAxis axis)
+        {
+            Type? objectManagerType;
+            try { objectManagerType = ResolveLoadedType("Multicad.DatabaseServices.McObjectManager"); }
+            catch (FileLoadException) { return new LeaderAlignmentResult { Message = "MultiCAD API недоступен." }; }
+            catch (BadImageFormatException) { return new LeaderAlignmentResult { Message = "MultiCAD API недоступен." }; }
+
+            if (objectManagerType == null)
+                return new LeaderAlignmentResult { Message = "MultiCAD API недоступен." };
+
+            var selectionIds = GetCurrentMultiCadSelection(objectManagerType);
+            if (selectionIds.Count == 0)
+                return new LeaderAlignmentResult { Message = "Выберите MultiCAD-выноски до запуска команды." };
+
+            var targets = new List<StepTarget>();
+            var leaderObjects = new List<object>();
+            foreach (var id in selectionIds)
+            {
+                var obj = GetMultiCadObject(objectManagerType, id);
+                if (obj == null || !IsLeaderCandidate(obj)) continue;
+                if (TryCreateLeaderPointTarget(obj, out var target))
+                {
+                    targets.Add(target);
+                    leaderObjects.Add(obj);
+                }
+            }
+
+            if (targets.Count < 2)
+                return new LeaderAlignmentResult
+                {
+                    SelectedCount = selectionIds.Count,
+                    CandidateCount = targets.Count,
+                    Message = $"Для умной группы нужно минимум 2 MultiCAD-выноски. Найдено: {targets.Count}."
+                };
+
+            var doc = CadApp.DocumentManager.MdiActiveDocument;
+            var editor = doc?.Editor;
+            if (editor == null) return new LeaderAlignmentResult { Message = "Нет активного документа." };
+
+            if (!TryGetAnchorPoint(editor, targets, axis, out var anchor))
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = "Указание опорной точки отменено." };
+
+            if (!TryGetGroupAlignStep(editor, axis, out var step))
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = "Указание шага отменено." };
+
+            // Вычисляем целевые позиции
+            var (ordered, targetPoints) = ComputeTargetPoints(targets, axis, step, anchor);
+
+            // Проверка коллизий
+            var collisionCount = DetectCollisions(ordered, targetPoints);
+
+            // Корректируем полки, которые «сломались»
+            var fixedShelves = 0;
+            for (var i = 0; i < ordered.Length; i++)
+            {
+                if (leaderObjects.Count > i)
+                {
+                    if (FixShelfOrientation(leaderObjects[i], targetPoints[i], axis))
+                        fixedShelves++;
+                }
+            }
+
+            // Предпросмотр с маркерами коллизий
+            if (!ShowGroupAlignPreview(editor, targets, axis, step, anchor))
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, CandidateCount = targets.Count, Message = "Умная группа отменена пользователем." };
+
+            try
+            {
+                StartMultiCadTransaction(objectManagerType);
+                try
+                {
+                    ApplyGroupAlign(targets, axis, step, anchor);
+                    EndMultiCadTransaction(objectManagerType);
+                    UpdateMultiCadGraphics(objectManagerType);
+
+                    var extra = string.Empty;
+                    if (fixedShelves > 0) extra += $" | Зеркалировано полок: {fixedShelves}";
+                    if (collisionCount > 0) extra += $" | ⚠ Наложений текста: {collisionCount}";
+
+                    return new LeaderAlignmentResult
+                    {
+                        SelectedCount = selectionIds.Count,
+                        CandidateCount = targets.Count,
+                        AlignedCount = targets.Count,
+                        Message = $"Умная группа: MultiCAD-выноски выровнены с шагом {FormatStep(step)}. Обработано: {targets.Count}.{extra}"
+                    };
+                }
+                catch { AbortMultiCadTransaction(objectManagerType); throw; }
+            }
+            catch (Exception ex)
+            {
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка умной группы: {ex.Message}" };
+            }
+        }
+
+        private static LeaderAlignmentResult SmartGroupAlignTeighaMLeaders(LeaderAlignmentAxis axis)
+        {
+            return new LeaderAlignmentResult { Message = "Умная группа для Teigha MLeader будет реализована позже." };
+        }
+
+        /// <summary>
+        /// Проверяет ориентацию полки выноски: если после смещения полка оказывается
+        /// с обратной стороны от начала выноски (Origin) — зеркалит её.
+        /// </summary>
+        private static bool FixShelfOrientation(object leaderObj, AlignmentPoint newTextPoint, LeaderAlignmentAxis axis)
+        {
+            try
+            {
+                var type = leaderObj.GetType();
+
+                // Получаем Origin (начало выноски)
+                var originProp = type.GetProperty("Origin", BindingFlags.Instance | BindingFlags.Public);
+                if (originProp == null) return false;
+
+                if (!TryGetPoint(originProp.GetValue(leaderObj), out var origin))
+                    return false;
+
+                // Текущая позиция текста
+                if (!TryGetPoint(GetCurrentTextPoint(leaderObj), out var currentText))
+                    return false;
+
+                // Направление полки ДО смещения
+                var shelfWasRight = axis == LeaderAlignmentAxis.Vertical
+                    ? currentText.X > origin.X   // текст справа от начала
+                    : currentText.Y > origin.Y;
+
+                // Направление полки ПОСЛЕ смещения
+                var shelfWillBeRight = axis == LeaderAlignmentAxis.Vertical
+                    ? newTextPoint.X > origin.X
+                    : newTextPoint.Y > origin.Y;
+
+                // Если направление изменилось — полка «переломилась», зеркалим
+                if (shelfWasRight != shelfWillBeRight)
+                {
+                    return MirrorLeaderShelf(leaderObj);
+                }
+            }
+            catch { /* best-effort */ }
+            return false;
+        }
+
+        private static object? GetCurrentTextPoint(object leaderObj)
+        {
+            var type = leaderObj.GetType();
+            foreach (var propName in LeaderAnchorPointProperties)
+            {
+                var prop = type.GetProperty(propName, BindingFlags.Instance | BindingFlags.Public);
+                if (prop != null && prop.CanRead && TryGetPoint(prop.GetValue(leaderObj), out _))
+                    return prop.GetValue(leaderObj);
+            }
+            return null;
+        }
+
+        private static bool MirrorLeaderShelf(object leaderObj)
+        {
+            var type = leaderObj.GetType();
+
+            // Пробуем свойство-флаг
+            foreach (var propName in ShelfMirrorProperties)
+            {
+                var prop = type.GetProperty(propName, BindingFlags.Instance | BindingFlags.Public);
+                if (prop == null) continue;
+
+                if (prop.CanRead && prop.CanWrite && prop.PropertyType == typeof(bool))
+                {
+                    var current = (bool?)prop.GetValue(leaderObj);
+                    prop.SetValue(leaderObj, !(current ?? false));
+                    return true;
+                }
+
+                // Enum-свойство (ShelfDirection = Left/Right)
+                if (prop.CanRead && prop.CanWrite && prop.PropertyType.IsEnum)
+                {
+                    var current = prop.GetValue(leaderObj);
+                    var values = Enum.GetValues(prop.PropertyType);
+                    if (values.Length == 2)
+                    {
+                        var next = values.GetValue(0)?.Equals(current) == true ? values.GetValue(1) : values.GetValue(0);
+                        prop.SetValue(leaderObj, next);
+                        return true;
+                    }
+                }
+
+                // Int-свойство (-1/0/1)
+                if (prop.CanRead && prop.CanWrite && prop.PropertyType == typeof(int))
+                {
+                    var current = (int?)prop.GetValue(leaderObj) ?? 0;
+                    prop.SetValue(leaderObj, -current);
+                    return true;
+                }
+            }
+
+            // Пробуем метод-переключатель
+            foreach (var methodName in ShelfMirrorMethods)
+            {
+                var method = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public, Type.EmptyTypes);
+                if (method != null)
+                {
+                    method.Invoke(leaderObj, Array.Empty<object>());
+                    return true;
+                }
+
+                // Метод с bool-параметром: SetShelfDirection(true/false), SetFlipped(true/false)
+                var boolMethod = type.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public, new[] { typeof(bool) });
+                if (boolMethod != null)
+                {
+                    boolMethod.Invoke(leaderObj, new object[] { true });
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void ApplyStepDistribution(IReadOnlyList<StepTarget> targets, LeaderAlignmentAxis axis, double step)
