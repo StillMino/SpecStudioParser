@@ -352,6 +352,13 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 // GroupAlign/SmartGroup идут через Jig (нужен контекст команды nanoCAD)
                 if (state.Operation == DesignToolsOperation.GroupAlign || state.Operation == DesignToolsOperation.SmartGroup)
                 {
+                    if (!HasCurrentMultiCadSelection())
+                    {
+                        SetCardStatus(card, "Нет MultiCAD-выносок в текущем наборе выделения.");
+                        WriteToNanoCad("\n[DesignTools]: Нет MultiCAD-выносок в текущем наборе выделения.\n");
+                        return;
+                    }
+
                     state.ToolKind = DesignToolsToolKind.GroupDrag;
                     DesignToolsCommandStateService.SetPendingState(state);
                     SetCardStatus(card, "Запуск интерактивного группового выравнивания...");

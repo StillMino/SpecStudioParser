@@ -148,6 +148,7 @@ namespace SpecStudioParser.Commands
                 }
 
                 var result = _designToolsCommandRunner.RunGroupAlignJig(state.LeaderSource, state.Axis);
+                LogToNanoCadConsole($"\n[DesignTools]: {result.Message}\n");
                 DesignToolsCommandStateService.PublishResult(toolKind, result.Message);
             }
             catch (System.Exception ex)

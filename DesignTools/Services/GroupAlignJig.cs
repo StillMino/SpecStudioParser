@@ -61,8 +61,14 @@ namespace SpecStudioParser.DesignTools.Services
                 return SamplerStatus.NoChange;
             }
 
-            WasAccepted = false;
-            return SamplerStatus.Cancel;
+            if (result.Status == PromptStatus.Keyword)
+            {
+                WasAccepted = false;
+                return SamplerStatus.Cancel;
+            }
+
+            // Other, Error, Modeless — retry, don't cancel
+            return SamplerStatus.NoChange;
         }
 
         private SamplerStatus SampleStep(JigPrompts prompts)
@@ -100,6 +106,7 @@ namespace SpecStudioParser.DesignTools.Services
                 return SamplerStatus.OK;
             }
 
+            // Other, Error, Modeless — keep dragging
             return SamplerStatus.NoChange;
         }
 
