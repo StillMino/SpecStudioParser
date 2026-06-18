@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace SpecStudioParser.DesignTools.Services
 {
@@ -50,6 +51,8 @@ namespace SpecStudioParser.DesignTools.Services
         public LeaderAlignmentAxis Axis { get; init; } = LeaderAlignmentAxis.Horizontal;
         public DesignToolsReferenceMode ReferenceMode { get; init; } = DesignToolsReferenceMode.First;
         public DesignToolsDiagnosticsSource DiagnosticsSource { get; init; } = DesignToolsDiagnosticsSource.AllObjects;
+        /// <summary>Кэшированные ID MultiCAD-выносок из селекции (чтобы не терять при переходе в команду)</summary>
+        public List<object>? MultiCadSelectionIds { get; set; }
     }
 
     public sealed class DesignToolsCommandResultEventArgs : EventArgs

@@ -360,6 +360,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
                     }
 
                     state.ToolKind = DesignToolsToolKind.GroupDrag;
+                    state.MultiCadSelectionIds = CaptureMultiCadSelectionIds();
                     DesignToolsCommandStateService.SetPendingState(state);
                     SetCardStatus(card, "Запуск интерактивного группового выравнивания...");
                     SendNanoCadCommand("DT_GROUP_DRAG");
@@ -532,6 +533,33 @@ namespace SpecStudioParser.DesignTools.ViewModels
             }
 
             return false;
+        }
+
+        private static List<object> CaptureMultiCadSelectionIds()
+        {
+            var result = new List<object>();
+            try
+            {
+                var objectManagerType = ResolveLoadedType("Multicad.DatabaseServices.McObjectManager");
+                if (objectManagerType == null) return result;
+
+                var selectionSet = objectManagerType.GetProperty("SelectionSet", BindingFlags.Static | BindingFlags.Public)?.GetValue(null);
+                var selectionSetType = selectionSet?.GetType() ?? objectManagerType.GetNestedType("SelectionSet", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+                object? currentSelection = null;
+                if (selectionSet != null)
+                    currentSelection = selectionSet.GetType().GetProperty("CurrentSelection", BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public)?.GetValue(selectionSet);
+                if (currentSelection == null && selectionSetType != null)
+                    currentSelection = selectionSetType.GetProperty("CurrentSelection", BindingFlags.Static | BindingFlags.Public)?.GetValue(null);
+
+                if (currentSelection is IEnumerable enumerable)
+                {
+                    foreach (var item in enumerable)
+                        if (item != null) result.Add(item);
+                }
+            }
+            catch { }
+            return result;
         }
 
         private static Type? ResolveLoadedType(string fullName)

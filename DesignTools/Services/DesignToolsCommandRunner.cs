@@ -35,10 +35,10 @@ namespace SpecStudioParser.DesignTools.Services
             return result.Message;
         }
 
-        public LeaderAlignmentResult RunGroupAlignJig(DesignToolsLeaderSource source, LeaderAlignmentAxis axis)
+        public LeaderAlignmentResult RunGroupAlignJig(DesignToolsCommandState state)
         {
-            if (source == DesignToolsLeaderSource.MultiCad)
-                return _stepDistributionService.RunGroupAlignJig(axis);
+            if (state.LeaderSource == DesignToolsLeaderSource.MultiCad)
+                return _stepDistributionService.RunGroupAlignJig(state);
 
             return new LeaderAlignmentResult { Message = "Интерактивный предпросмотр доступен только для MultiCAD-выносок." };
         }

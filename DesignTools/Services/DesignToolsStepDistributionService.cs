@@ -539,8 +539,9 @@ namespace SpecStudioParser.DesignTools.Services
 
         // ========= Интерактивное групповое выравнивание через McTransientGraphics =========
 
-        public LeaderAlignmentResult RunGroupAlignJig(LeaderAlignmentAxis axis)
+        public LeaderAlignmentResult RunGroupAlignJig(DesignToolsCommandState state)
         {
+            var axis = state.Axis;
             var doc = CadApp.DocumentManager.MdiActiveDocument;
             var editor = doc?.Editor;
             if (editor == null)
@@ -553,9 +554,9 @@ namespace SpecStudioParser.DesignTools.Services
             if (objectManagerType == null)
                 return new LeaderAlignmentResult { Message = "MultiCAD API недоступен." };
 
-            var selectionIds = GetCurrentMultiCadSelection(objectManagerType);
+            var selectionIds = state.MultiCadSelectionIds ?? new List<object>();
             if (selectionIds.Count == 0)
-                return new LeaderAlignmentResult { Message = "Выберите MultiCAD-выноски до запуска команды." };
+                return new LeaderAlignmentResult { Message = "Нет кэшированных ID выносок. Запустите команду из панели DesignTools." };
 
             var targets = new List<StepTarget>();
             foreach (var id in selectionIds)
