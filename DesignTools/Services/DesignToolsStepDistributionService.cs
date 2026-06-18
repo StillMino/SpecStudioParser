@@ -537,7 +537,7 @@ namespace SpecStudioParser.DesignTools.Services
             }
         }
 
-        // ========= Jig-based GroupAlign (интерактивный drag) =========
+        // ========= Интерактивное групповое выравнивание через McTransientGraphics =========
 
         public LeaderAlignmentResult RunGroupAlignJig(LeaderAlignmentAxis axis)
         {
@@ -557,63 +557,212 @@ namespace SpecStudioParser.DesignTools.Services
             if (selectionIds.Count == 0)
                 return new LeaderAlignmentResult { Message = "Выберите MultiCAD-выноски до запуска команды." };
 
-            // Извлекаем текущие точки текста
-            var currentPoints = new List<GroupAlignJig.AlignmentPoint>();
             var targets = new List<StepTarget>();
             foreach (var id in selectionIds)
             {
                 var obj = GetMultiCadObject(objectManagerType, id);
                 if (obj == null || !IsLeaderCandidate(obj)) continue;
                 if (TryCreateLeaderPointTarget(obj, out var target))
-                {
                     targets.Add(target);
-                    currentPoints.Add(new GroupAlignJig.AlignmentPoint(target.Point.X, target.Point.Y, target.Point.Z));
-                }
             }
 
-            if (currentPoints.Count < 2)
+            if (targets.Count < 2)
                 return new LeaderAlignmentResult
                 {
                     SelectedCount = selectionIds.Count,
-                    CandidateCount = currentPoints.Count,
-                    Message = $"Для группового выравнивания нужно минимум 2 выноски. Найдено: {currentPoints.Count}."
+                    CandidateCount = targets.Count,
+                    Message = $"Для группового выравнивания нужно минимум 2 выноски. Найдено: {targets.Count}."
                 };
 
-            // Запуск Jig
-            var jig = new GroupAlignJig(currentPoints, axis);
-            var dragResult = editor.Drag(jig);
+            // Фаза 1: опорная точка
+            var anchorOpts = new PromptPointOptions("\nУкажите опорную точку или выноску [Enter - первая]: ")
+            {
+                AllowNone = true
+            };
+            var anchorResult = editor.GetPoint(anchorOpts);
+            AlignmentPoint anchor;
+            if (anchorResult.Status == PromptStatus.None || anchorResult.Status == PromptStatus.Cancel)
+                anchor = targets[0].Point;
+            else if (anchorResult.Status == PromptStatus.OK)
+                anchor = new AlignmentPoint(anchorResult.Value.X, anchorResult.Value.Y, anchorResult.Value.Z);
+            else
+                return new LeaderAlignmentResult { Message = "Групповое выравнивание отменено." };
 
-            if (dragResult.Status != PromptStatus.OK || !jig.WasAccepted)
-                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, CandidateCount = currentPoints.Count, Message = "Групповое выравнивание отменено." };
+            // Инициализируем McTransientGraphics
+            var transientGfx = CreateMcTransientGraphics();
+            if (transientGfx == null)
+                return new LeaderAlignmentResult { Message = "MultiCAD Graphics API недоступен." };
 
-            // Применяем результат
+            object? previewHandle = null;
             try
             {
-                StartMultiCadTransaction(objectManagerType);
+                // Фаза 2: шаг с предпросмотром
+                var distOpts = new PromptDistanceOptions("\nУкажите шаг [число / Enter - применить]: ")
+                {
+                    BasePoint = new Point3d(anchor.X, anchor.Y, anchor.Z),
+                    UseBasePoint = true,
+                    AllowNone = true
+                };
+                var distResult = editor.GetDistance(distOpts);
+                if (distResult.Status != PromptStatus.OK && distResult.Status != PromptStatus.None)
+                {
+                    HideMcTransientGraphics(transientGfx);
+                    return new LeaderAlignmentResult { Message = "Групповое выравнивание отменено." };
+                }
+
+                var step = distResult.Status == PromptStatus.OK ? distResult.Value : 0.0;
+                if (Math.Abs(step) < 1e-9)
+                {
+                    HideMcTransientGraphics(transientGfx);
+                    return new LeaderAlignmentResult { Message = "Групповое выравнивание отменено (шаг не задан)." };
+                }
+
+                // Вычисляем целевые позиции и показываем предпросмотр
+                var ordered = axis == LeaderAlignmentAxis.Horizontal
+                    ? targets.OrderBy(t => Math.Abs(t.Point.X - anchor.X)).ToArray()
+                    : targets.OrderBy(t => Math.Abs(t.Point.Y - anchor.Y)).ToArray();
+
+                var targetPoints = new AlignmentPoint[ordered.Length];
+                for (var i = 0; i < ordered.Length; i++)
+                {
+                    targetPoints[i] = axis == LeaderAlignmentAxis.Horizontal
+                        ? new AlignmentPoint(anchor.X + step * i, anchor.Y, ordered[i].Point.Z)
+                        : new AlignmentPoint(anchor.X, anchor.Y + step * i, ordered[i].Point.Z);
+                }
+
+                previewHandle = ShowMcTransientPreview(transientGfx, targets.Select(t => t.Point).ToArray(), targetPoints, anchor);
+
+                // Фаза 3: подтверждение
+                var confirmOpts = new PromptKeywordOptions("\nПрименить групповое выравнивание? [Да/Нет] <Д>: ")
+                {
+                    AllowNone = true
+                };
+                confirmOpts.Keywords.Add("Да", "Да", "Да");
+                confirmOpts.Keywords.Add("Нет", "Нет", "Нет");
+                confirmOpts.Keywords.Default = "Да";
+                var confirmResult = editor.GetKeywords(confirmOpts);
+
+                if (confirmResult.Status == PromptStatus.Cancel ||
+                    (confirmResult.Status == PromptStatus.Keyword && confirmResult.StringResult == "Нет"))
+                {
+                    HideMcTransientGraphics(transientGfx);
+                    return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, CandidateCount = targets.Count, Message = "Групповое выравнивание отменено." };
+                }
+
+                // Применяем
+                HideMcTransientGraphics(transientGfx);
                 try
                 {
-                    var step = jig.FinalStep;
-                    var anchor = jig.FinalAnchor;
-                    var svcAnchor = new AlignmentPoint(anchor.X, anchor.Y, anchor.Z);
-
-                    // Строим apply-действия для тех же точек через ApplyGroupAlign
-                    ApplyGroupAlign(targets, axis, step, svcAnchor);
-                    EndMultiCadTransaction(objectManagerType);
-                    UpdateMultiCadGraphics(objectManagerType);
-
-                    return new LeaderAlignmentResult
+                    StartMultiCadTransaction(objectManagerType);
+                    try
                     {
-                        SelectedCount = selectionIds.Count,
-                        CandidateCount = targets.Count,
-                        AlignedCount = targets.Count,
-                        Message = $"MultiCAD-выноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
-                    };
+                        for (var i = 0; i < ordered.Length; i++)
+                            ordered[i].Apply(targetPoints[i]);
+                        EndMultiCadTransaction(objectManagerType);
+                        UpdateMultiCadGraphics(objectManagerType);
+
+                        return new LeaderAlignmentResult
+                        {
+                            SelectedCount = selectionIds.Count,
+                            CandidateCount = targets.Count,
+                            AlignedCount = targets.Count,
+                            Message = $"MultiCAD-выноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
+                        };
+                    }
+                    catch { AbortMultiCadTransaction(objectManagerType); throw; }
                 }
-                catch { AbortMultiCadTransaction(objectManagerType); throw; }
+                catch (Exception ex)
+                {
+                    return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка группового выравнивания: {ex.Message}" };
+                }
             }
-            catch (Exception ex)
+            catch
             {
-                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка группового выравнивания: {ex.Message}" };
+                if (previewHandle != null)
+                    HideMcTransientGraphics(transientGfx);
+                throw;
+            }
+        }
+
+        private static object? CreateMcTransientGraphics()
+        {
+            try
+            {
+                var type = ResolveLoadedType("Multicad.Graphics.McTransientGraphics");
+                return type != null ? Activator.CreateInstance(type) : null;
+            }
+            catch { return null; }
+        }
+
+        private static void HideMcTransientGraphics(object transientGfx)
+        {
+            try { transientGfx.GetType().GetMethod("HideAll")?.Invoke(transientGfx, null); }
+            catch { /* best effort */ }
+        }
+
+        private static object? ShowMcTransientPreview(object transientGfx, AlignmentPoint[] currentPoints, AlignmentPoint[] targetPoints, AlignmentPoint anchor)
+        {
+            try
+            {
+                var point3dType = ResolveLoadedType("Multicad.Geometry.Point3d");
+                var lineSeg3dType = ResolveLoadedType("Multicad.Geometry.LineSeg3d");
+                var entityGeometryType = ResolveLoadedType("Multicad.Geometry.EntityGeometry");
+                if (point3dType == null || lineSeg3dType == null || entityGeometryType == null)
+                    return null;
+
+                var listType = typeof(List<>).MakeGenericType(entityGeometryType);
+                var geomList = Activator.CreateInstance(listType);
+                var addMethod = listType.GetMethod("Add");
+                var showMethod = transientGfx.GetType().GetMethod("Show", new[] { entityGeometryType.MakeByRefType() })
+                    ?? transientGfx.GetType().GetMethod("Show");
+
+                var createPoint = new Func<double, double, double, object>((x, y, z) =>
+                    Activator.CreateInstance(point3dType, x, y, z));
+
+                for (var i = 0; i < targetPoints.Length && i < currentPoints.Length; i++)
+                {
+                    var from = currentPoints[i];
+                    var to = targetPoints[i];
+
+                    // Синяя линия: текущая → целевая
+                    var blueLine = Activator.CreateInstance(lineSeg3dType,
+                        createPoint(from.X, from.Y, from.Z),
+                        createPoint(to.X, to.Y, to.Z));
+                    var blueGeom = Activator.CreateInstance(entityGeometryType, blueLine);
+                    entityGeometryType.GetProperty("Color")?.SetValue(blueGeom, System.Drawing.Color.Blue);
+                    addMethod?.Invoke(geomList, new[] { blueGeom });
+
+                    // Зелёная линия: якорь → целевая
+                    var greenLine = Activator.CreateInstance(lineSeg3dType,
+                        createPoint(anchor.X, anchor.Y, anchor.Z),
+                        createPoint(to.X, to.Y, to.Z));
+                    var greenGeom = Activator.CreateInstance(entityGeometryType, greenLine);
+                    entityGeometryType.GetProperty("Color")?.SetValue(greenGeom, System.Drawing.Color.Green);
+                    addMethod?.Invoke(geomList, new[] { greenGeom });
+
+                    // Красный маркер в целевой точке
+                    var half = Math.Max(Math.Abs(targetPoints[0].X - anchor.X) * 0.3, 2.0);
+                    var hLine = Activator.CreateInstance(lineSeg3dType,
+                        createPoint(to.X - half, to.Y, to.Z),
+                        createPoint(to.X + half, to.Y, to.Z));
+                    var vLine = Activator.CreateInstance(lineSeg3dType,
+                        createPoint(to.X, to.Y - half, to.Z),
+                        createPoint(to.X, to.Y + half, to.Z));
+                    var hGeom = Activator.CreateInstance(entityGeometryType, hLine);
+                    var vGeom = Activator.CreateInstance(entityGeometryType, vLine);
+                    entityGeometryType.GetProperty("Color")?.SetValue(hGeom, System.Drawing.Color.Red);
+                    entityGeometryType.GetProperty("Color")?.SetValue(vGeom, System.Drawing.Color.Red);
+                    addMethod?.Invoke(geomList, new[] { hGeom });
+                    addMethod?.Invoke(geomList, new[] { vGeom });
+                }
+
+                var args = new object[] { geomList };
+                showMethod?.Invoke(transientGfx, args);
+                return args[0]; // возвращаем (возможно изменённый ref) для отладки
+            }
+            catch (Exception)
+            {
+                return null;
             }
         }
 
