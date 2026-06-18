@@ -44,7 +44,7 @@ namespace SpecStudioParser.DesignTools.Services
 
     public sealed class DesignToolsCommandState
     {
-        public DesignToolsToolKind ToolKind { get; init; }
+        public DesignToolsToolKind ToolKind { get; set; }
         public DesignToolsLeaderSource LeaderSource { get; init; } = DesignToolsLeaderSource.TeighaMLeader;
         public DesignToolsOperation Operation { get; init; } = DesignToolsOperation.Align;
         public LeaderAlignmentAxis Axis { get; init; } = LeaderAlignmentAxis.Horizontal;
