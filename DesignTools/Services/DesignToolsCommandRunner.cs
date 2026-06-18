@@ -35,6 +35,14 @@ namespace SpecStudioParser.DesignTools.Services
             return result.Message;
         }
 
+        public LeaderAlignmentResult RunGroupAlignJig(DesignToolsLeaderSource source, LeaderAlignmentAxis axis)
+        {
+            if (source == DesignToolsLeaderSource.MultiCad)
+                return _stepDistributionService.RunGroupAlignJig(axis);
+
+            return new LeaderAlignmentResult { Message = "Интерактивный предпросмотр доступен только для MultiCAD-выносок." };
+        }
+
         public string RunDimensions(DesignToolsCommandState state)
         {
             var result = state.Operation switch

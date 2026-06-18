@@ -349,6 +349,15 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
             if (state.LeaderSource == DesignToolsLeaderSource.MultiCad)
             {
+                // GroupAlign/SmartGroup идут через Jig (нужен контекст команды nanoCAD)
+                if (state.Operation == DesignToolsOperation.GroupAlign || state.Operation == DesignToolsOperation.SmartGroup)
+                {
+                    DesignToolsCommandStateService.SetPendingState(state);
+                    SetCardStatus(card, "Запуск интерактивного группового выравнивания...");
+                    SendNanoCadCommand("DT_GROUP_DRAG");
+                    return;
+                }
+
                 RunMultiCadLeaderToolInPaletteContext(card, state);
                 return;
             }

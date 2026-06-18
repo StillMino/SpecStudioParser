@@ -537,6 +537,86 @@ namespace SpecStudioParser.DesignTools.Services
             }
         }
 
+        // ========= Jig-based GroupAlign (интерактивный drag) =========
+
+        public LeaderAlignmentResult RunGroupAlignJig(LeaderAlignmentAxis axis)
+        {
+            var doc = CadApp.DocumentManager.MdiActiveDocument;
+            var editor = doc?.Editor;
+            if (editor == null)
+                return new LeaderAlignmentResult { Message = "Нет активного документа nanoCAD." };
+
+            Type? objectManagerType;
+            try { objectManagerType = ResolveLoadedType("Multicad.DatabaseServices.McObjectManager"); }
+            catch { return new LeaderAlignmentResult { Message = "MultiCAD API недоступен." }; }
+
+            if (objectManagerType == null)
+                return new LeaderAlignmentResult { Message = "MultiCAD API недоступен." };
+
+            var selectionIds = GetCurrentMultiCadSelection(objectManagerType);
+            if (selectionIds.Count == 0)
+                return new LeaderAlignmentResult { Message = "Выберите MultiCAD-выноски до запуска команды." };
+
+            // Извлекаем текущие точки текста
+            var currentPoints = new List<GroupAlignJig.AlignmentPoint>();
+            var targets = new List<StepTarget>();
+            foreach (var id in selectionIds)
+            {
+                var obj = GetMultiCadObject(objectManagerType, id);
+                if (obj == null || !IsLeaderCandidate(obj)) continue;
+                if (TryCreateLeaderPointTarget(obj, out var target))
+                {
+                    targets.Add(target);
+                    currentPoints.Add(new GroupAlignJig.AlignmentPoint(target.Point.X, target.Point.Y, target.Point.Z));
+                }
+            }
+
+            if (currentPoints.Count < 2)
+                return new LeaderAlignmentResult
+                {
+                    SelectedCount = selectionIds.Count,
+                    CandidateCount = currentPoints.Count,
+                    Message = $"Для группового выравнивания нужно минимум 2 выноски. Найдено: {currentPoints.Count}."
+                };
+
+            // Запуск Jig
+            var jig = new GroupAlignJig(currentPoints, axis);
+            var dragResult = editor.Drag(jig);
+
+            if (dragResult.Status != PromptStatus.OK || !jig.WasAccepted)
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, CandidateCount = currentPoints.Count, Message = "Групповое выравнивание отменено." };
+
+            // Применяем результат
+            try
+            {
+                StartMultiCadTransaction(objectManagerType);
+                try
+                {
+                    var step = jig.FinalStep;
+                    var anchor = jig.FinalAnchor;
+                    var svcAnchor = new AlignmentPoint(anchor.X, anchor.Y, anchor.Z);
+
+                    // Строим apply-действия для тех же точек через ApplyGroupAlign
+                    ApplyGroupAlign(targets, axis, step, svcAnchor);
+                    EndMultiCadTransaction(objectManagerType);
+                    UpdateMultiCadGraphics(objectManagerType);
+
+                    return new LeaderAlignmentResult
+                    {
+                        SelectedCount = selectionIds.Count,
+                        CandidateCount = targets.Count,
+                        AlignedCount = targets.Count,
+                        Message = $"MultiCAD-выноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
+                    };
+                }
+                catch { AbortMultiCadTransaction(objectManagerType); throw; }
+            }
+            catch (Exception ex)
+            {
+                return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка группового выравнивания: {ex.Message}" };
+            }
+        }
+
         // ========= SmartGroup (умная группа) =========
 
         public LeaderAlignmentResult SmartGroupAlignSelectedLeaders(DesignToolsLeaderSource source, LeaderAlignmentAxis axis)

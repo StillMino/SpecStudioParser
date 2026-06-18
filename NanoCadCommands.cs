@@ -134,6 +134,30 @@ namespace SpecStudioParser.Commands
             RunDesignToolsCommand(DesignToolsToolKind.Dimensions, state => _designToolsCommandRunner.RunDimensions(state));
         }
 
+        [CommandMethod("DT_GROUP_DRAG", CommandFlags.Modal)]
+        public static void ExecuteGroupDrag()
+        {
+            var toolKind = DesignToolsToolKind.GroupDrag;
+            try
+            {
+                var state = DesignToolsCommandStateService.GetPendingState(toolKind);
+                if (state == null)
+                {
+                    LogToNanoCadConsole("\n[DesignTools]: Нет параметров для группового выравнивания. Запустите команду из панели DesignTools.\n");
+                    return;
+                }
+
+                var result = _designToolsCommandRunner.RunGroupAlignJig(state.LeaderSource, state.Axis);
+                DesignToolsCommandStateService.PublishResult(toolKind, result.Message);
+            }
+            catch (System.Exception ex)
+            {
+                var message = $"Ошибка группового выравнивания: {ex.Message}";
+                LogToNanoCadConsole($"\n[DesignTools Error]: {message}\n");
+                DesignToolsCommandStateService.PublishResult(toolKind, message);
+            }
+        }
+
         [CommandMethod("DT_RUN_DIAGNOSTICS_TOOL", CommandFlags.Modal)]
         public static void RunDesignToolsDiagnosticsTool()
         {

@@ -6,7 +6,8 @@ namespace SpecStudioParser.DesignTools.Services
     {
         Leaders,
         Dimensions,
-        Diagnostics
+        Diagnostics,
+        GroupDrag
     }
 
     public enum DesignToolsLeaderSource
