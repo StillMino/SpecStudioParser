@@ -598,107 +598,118 @@ namespace SpecStudioParser.DesignTools.Services
             if (transientGfx == null)
                 return new LeaderAlignmentResult { Message = "MultiCAD Graphics API недоступен." };
 
-            object? previewHandle = null;
             try
             {
-                // Фаза 2: шаг с предпросмотром
-                var distOpts = new PromptDistanceOptions("\nУкажите шаг [число / Enter - применить]: ")
+                // Главный цикл: шаг → предпросмотр → подтверждение
+                while (true)
                 {
-                    BasePoint = new Point3d(anchor.X, anchor.Y, anchor.Z),
-                    UseBasePoint = true,
-                    AllowNone = true
-                };
-                var distResult = editor.GetDistance(distOpts);
-                if (distResult.Status != PromptStatus.OK && distResult.Status != PromptStatus.None)
-                {
+                    // Фаза 2: шаг
+                    var distOpts = new PromptDistanceOptions("\nУкажите шаг [Enter - применить]: ")
+                    {
+                        BasePoint = new Point3d(anchor.X, anchor.Y, anchor.Z),
+                        UseBasePoint = true,
+                        AllowNone = true
+                    };
+                    var distResult = editor.GetDistance(distOpts);
+                    if (distResult.Status != PromptStatus.OK && distResult.Status != PromptStatus.None)
+                    {
+                        HideMcTransientGraphics(transientGfx);
+                        return new LeaderAlignmentResult { Message = "Групповое выравнивание отменено." };
+                    }
+
+                    var step = distResult.Status == PromptStatus.OK ? distResult.Value : 0.0;
+                    if (Math.Abs(step) < 1e-9)
+                    {
+                        HideMcTransientGraphics(transientGfx);
+                        return new LeaderAlignmentResult { Message = "Групповое выравнивание отменено (шаг не задан)." };
+                    }
+
+                    // Упорядочиваем цели и вычисляем целевые позиции
+                    var ordered = axis == LeaderAlignmentAxis.Horizontal
+                        ? targets.Select((t, idx) => (target: t, id: targetIds[idx]))
+                            .OrderBy(x => Math.Abs(x.target.Point.X - anchor.X))
+                            .ToArray()
+                        : targets.Select((t, idx) => (target: t, id: targetIds[idx]))
+                            .OrderBy(x => Math.Abs(x.target.Point.Y - anchor.Y))
+                            .ToArray();
+
+                    var targetPoints = new AlignmentPoint[ordered.Length];
+                    var originalPoints = new AlignmentPoint[ordered.Length];
+                    for (var i = 0; i < ordered.Length; i++)
+                    {
+                        originalPoints[i] = ordered[i].target.Point;
+                        targetPoints[i] = axis == LeaderAlignmentAxis.Horizontal
+                            ? new AlignmentPoint(anchor.X + step * i, anchor.Y, ordered[i].target.Point.Z)
+                            : new AlignmentPoint(anchor.X, anchor.Y + step * i, ordered[i].target.Point.Z);
+                    }
+
+                    // Предпросмотр: apply → capture GeometryCache → revert → show clones
                     HideMcTransientGraphics(transientGfx);
-                    return new LeaderAlignmentResult { Message = "Групповое выравнивание отменено." };
-                }
-
-                var step = distResult.Status == PromptStatus.OK ? distResult.Value : 0.0;
-                if (Math.Abs(step) < 1e-9)
-                {
-                    HideMcTransientGraphics(transientGfx);
-                    return new LeaderAlignmentResult { Message = "Групповое выравнивание отменено (шаг не задан)." };
-                }
-
-                // Вычисляем целевые позиции и показываем предпросмотр
-                var ordered = axis == LeaderAlignmentAxis.Horizontal
-                    ? targets.OrderBy(t => Math.Abs(t.Point.X - anchor.X)).ToArray()
-                    : targets.OrderBy(t => Math.Abs(t.Point.Y - anchor.Y)).ToArray();
-
-                var targetPoints = new AlignmentPoint[ordered.Length];
-                for (var i = 0; i < ordered.Length; i++)
-                {
-                    targetPoints[i] = axis == LeaderAlignmentAxis.Horizontal
-                        ? new AlignmentPoint(anchor.X + step * i, anchor.Y, ordered[i].Point.Z)
-                        : new AlignmentPoint(anchor.X, anchor.Y + step * i, ordered[i].Point.Z);
-                }
-
-                try
-                {
-                    previewHandle = ShowMcTransientPreview(transientGfx, targets.Select(t => t.Point).ToArray(), targetPoints, anchor, objectManagerType, targetIds);
-                    editor.WriteMessage($"\n[DesignTools]: Предпросмотр построен ({((System.Collections.IList)previewHandle)?.Count ?? 0} объектов).\n");
-                }
-                catch (Exception ex)
-                {
-                    editor.WriteMessage($"\n[DesignTools]: Ошибка построения предпросмотра: {ex.Message}\n");
-                    HideMcTransientGraphics(transientGfx);
-                    return new LeaderAlignmentResult { Message = $"Ошибка предпросмотра: {ex.Message}" };
-                }
-
-                // Фаза 3: подтверждение
-                var confirmOpts = new PromptKeywordOptions("\nПрименить? ")
-                {
-                    AllowNone = true
-                };
-                confirmOpts.Keywords.Add("Yes");
-                confirmOpts.Keywords.Add("No");
-                var confirmResult = editor.GetKeywords(confirmOpts);
-
-                editor.WriteMessage($"\n[DesignTools]: Status={confirmResult.Status}, String='{confirmResult.StringResult}'\n");
-
-                // Применяем если Status OK или Keyword и результат содержит Y
-                var accepted = (confirmResult.Status == PromptStatus.Keyword || confirmResult.Status == PromptStatus.OK)
-                    && confirmResult.StringResult != null
-                    && confirmResult.StringResult.StartsWith("Y", StringComparison.OrdinalIgnoreCase);
-                if (!accepted)
-                {
-                    HideMcTransientGraphics(transientGfx);
-                    return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, CandidateCount = targets.Count, Message = "Групповое выравнивание отменено." };
-                }
-
-                // Применяем
-                HideMcTransientGraphics(transientGfx);
-                try
-                {
-                    StartMultiCadTransaction(objectManagerType);
                     try
                     {
-                        for (var i = 0; i < ordered.Length; i++)
-                            ordered[i].Apply(targetPoints[i]);
-                        EndMultiCadTransaction(objectManagerType);
-                        UpdateMultiCadGraphics(objectManagerType);
-
-                        return new LeaderAlignmentResult
-                        {
-                            SelectedCount = selectionIds.Count,
-                            CandidateCount = targets.Count,
-                            AlignedCount = targets.Count,
-                            Message = $"MultiCAD-выноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
-                        };
+                        var orderedIds = ordered.Select(x => x.id).ToList();
+                        var orderedTargets = ordered.Select(x => x.target).ToArray();
+                        var preview = ShowMcTransientPreview(transientGfx, orderedTargets, targetPoints, originalPoints, objectManagerType, orderedIds);
+                        editor.WriteMessage($"\n[DesignTools]: Предпросмотр построен ({((System.Collections.IList)preview)?.Count ?? 0} объектов).\n");
                     }
-                    catch { AbortMultiCadTransaction(objectManagerType); throw; }
-                }
-                catch (Exception ex)
-                {
-                    return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка группового выравнивания: {ex.Message}" };
+                    catch (Exception ex)
+                    {
+                        editor.WriteMessage($"\n[DesignTools]: Ошибка построения предпросмотра: {ex.Message}\n");
+                        HideMcTransientGraphics(transientGfx);
+                        return new LeaderAlignmentResult { Message = $"Ошибка предпросмотра: {ex.Message}" };
+                    }
+
+                    // Фаза 3: подтверждение
+                    var confirmOpts = new PromptKeywordOptions("\nПрименить? ")
+                    {
+                        AllowNone = true
+                    };
+                    confirmOpts.Keywords.Add("Yes");
+                    confirmOpts.Keywords.Add("No");
+                    var confirmResult = editor.GetKeywords(confirmOpts);
+
+                    editor.WriteMessage($"\n[DesignTools]: Status={confirmResult.Status}, String='{confirmResult.StringResult}'\n");
+
+                    var accepted = (confirmResult.Status == PromptStatus.Keyword || confirmResult.Status == PromptStatus.OK)
+                        && confirmResult.StringResult != null
+                        && confirmResult.StringResult.StartsWith("Y", StringComparison.OrdinalIgnoreCase);
+
+                    if (accepted)
+                    {
+                        HideMcTransientGraphics(transientGfx);
+                        try
+                        {
+                            StartMultiCadTransaction(objectManagerType);
+                            try
+                            {
+                                for (var i = 0; i < ordered.Length; i++)
+                                    ordered[i].target.Apply(targetPoints[i]);
+                                EndMultiCadTransaction(objectManagerType);
+                                UpdateMultiCadGraphics(objectManagerType);
+
+                                return new LeaderAlignmentResult
+                                {
+                                    SelectedCount = selectionIds.Count,
+                                    CandidateCount = targets.Count,
+                                    AlignedCount = targets.Count,
+                                    Message = $"MultiCAD-выноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
+                                };
+                            }
+                            catch { AbortMultiCadTransaction(objectManagerType); throw; }
+                        }
+                        catch (Exception ex)
+                        {
+                            return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка группового выравнивания: {ex.Message}" };
+                        }
+                    }
+
+                    // No → цикл: скрыть фантомы, вернуться к вводу шага
+                    HideMcTransientGraphics(transientGfx);
                 }
             }
             catch
             {
-                if (previewHandle != null)
-                    HideMcTransientGraphics(transientGfx);
+                HideMcTransientGraphics(transientGfx);
                 throw;
             }
         }
@@ -719,9 +730,9 @@ namespace SpecStudioParser.DesignTools.Services
             catch { /* best effort */ }
         }
 
-        private static object? ShowMcTransientPreview(object transientGfx, AlignmentPoint[] currentPoints, AlignmentPoint[] targetPoints, AlignmentPoint anchor, Type objectManagerType, List<object> targetEntityIds)
+        private static object? ShowMcTransientPreview(object transientGfx, StepTarget[] orderedTargets, AlignmentPoint[] targetPoints, AlignmentPoint[] originalPoints, Type objectManagerType, List<object> orderedIds)
         {
-            // Шаг 1: Найти Show(List<EntityGeometry>) — типы берём ПРЯМО из сигнатуры
+            // Найти Show(List<EntityGeometry>) — типы из сигнатуры
             MethodInfo? showMethod = null;
             Type? listType = null;
             Type? geomType = null;
@@ -742,53 +753,41 @@ namespace SpecStudioParser.DesignTools.Services
             if (showMethod == null || geomType == null)
                 throw new InvalidOperationException("McTransientGraphics.Show(List<EntityGeometry>) не найден");
 
-            // Шаг 2: Типы из методов EntityGeometry — тот же assembly context
             var cloneMethod = geomType.GetMethod("Clone")
                 ?? throw new InvalidOperationException("EntityGeometry.Clone не найден");
-            var transformMethod = geomType.GetMethod("TransformBy")
-                ?? throw new InvalidOperationException("EntityGeometry.TransformBy не найден");
-            // Matrix3d — ПРЯМО из сигнатуры TransformBy, не через ResolveLoadedType
-            var matrix3dType = transformMethod.GetParameters()[0].ParameterType;
-            var makeTranslation = matrix3dType.GetMethod("MakeTranslation", new[] { typeof(double), typeof(double), typeof(double) })
-                ?? throw new InvalidOperationException("Matrix3d.MakeTranslation(double,double,double) не найден");
 
             var geomList = Activator.CreateInstance(listType)!;
             var addMethod = listType.GetMethod("Add")!;
 
-            // Для каждой выноски: получаем GeometryCache, клонируем, сдвигаем
-            for (var i = 0; i < targetPoints.Length && i < currentPoints.Length; i++)
+            // APPLY: применяем целевые позиции
+            for (var i = 0; i < orderedTargets.Length && i < targetPoints.Length; i++)
+                orderedTargets[i].Apply(targetPoints[i]);
+
+            try
             {
-                var from = currentPoints[i];
-                var to = targetPoints[i];
-                var dx = to.X - from.X;
-                var dy = to.Y - from.Y;
-                var dz = to.Z - from.Z;
-
-                // Matrix3d.MakeTranslation(dx, dy, dz)
-                var matrix = makeTranslation.Invoke(null, new object[] { dx, dy, dz });
-
-                // Получить McEntity для этой выноски
-                var mcEntity = GetMcEntityForTarget(objectManagerType, targetEntityIds[i]);
-                if (mcEntity == null) continue;
-
-                // GeometryCache → List<EntityGeometry>
-                var geometryCache = objectManagerType.Assembly.GetType("Multicad.DatabaseServices.McEntity")
-                    ?.GetProperty("GeometryCache")?.GetValue(mcEntity);
-                if (geometryCache is not IEnumerable cacheEnumerable) continue;
-
-                foreach (var geomEntry in cacheEnumerable)
+                // CAPTURE: читаем GeometryCache и клонируем
+                for (var i = 0; i < orderedIds.Count; i++)
                 {
-                    if (geomEntry == null) continue;
-                    // Clone
-                    var cloned = cloneMethod.Invoke(geomEntry, null);
-                    if (cloned == null) continue;
-                    // TransformBy(matrix)
-                    transformMethod.Invoke(cloned, new[] { matrix });
-                    addMethod.Invoke(geomList, new[] { cloned });
-                }
+                    var mcEntity = GetMcEntityForTarget(objectManagerType, orderedIds[i]);
+                    if (mcEntity == null) continue;
 
-                // Дополнительно: синяя линия от текущей позиции к целевой (для наглядности)
-                // (оставляем как маркер направления перемещения)
+                    var geometryCache = mcEntity.GetType().GetProperty("GeometryCache")?.GetValue(mcEntity);
+                    if (geometryCache is not IEnumerable cacheEnumerable) continue;
+
+                    foreach (var geomEntry in cacheEnumerable)
+                    {
+                        if (geomEntry == null) continue;
+                        var cloned = cloneMethod.Invoke(geomEntry, null);
+                        if (cloned == null) continue;
+                        addMethod.Invoke(geomList, new[] { cloned });
+                    }
+                }
+            }
+            finally
+            {
+                // REVERT: возвращаем исходные позиции
+                for (var i = 0; i < orderedTargets.Length && i < originalPoints.Length; i++)
+                    orderedTargets[i].Apply(originalPoints[i]);
             }
 
             showMethod.Invoke(transientGfx, new[] { geomList });
