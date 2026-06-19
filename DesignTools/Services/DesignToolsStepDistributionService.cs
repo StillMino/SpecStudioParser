@@ -631,7 +631,17 @@ namespace SpecStudioParser.DesignTools.Services
                         : new AlignmentPoint(anchor.X, anchor.Y + step * i, ordered[i].Point.Z);
                 }
 
-                previewHandle = ShowMcTransientPreview(transientGfx, targets.Select(t => t.Point).ToArray(), targetPoints, anchor);
+                try
+                {
+                    previewHandle = ShowMcTransientPreview(transientGfx, targets.Select(t => t.Point).ToArray(), targetPoints, anchor);
+                    editor.WriteMessage($"\n[DesignTools]: Предпросмотр построен ({((System.Collections.IList)previewHandle)?.Count ?? 0} объектов).\n");
+                }
+                catch (Exception ex)
+                {
+                    editor.WriteMessage($"\n[DesignTools]: Ошибка построения предпросмотра: {ex.Message}\n");
+                    HideMcTransientGraphics(transientGfx);
+                    return new LeaderAlignmentResult { Message = $"Ошибка предпросмотра: {ex.Message}" };
+                }
 
                 // Фаза 3: подтверждение
                 var confirmOpts = new PromptKeywordOptions("\nПрименить групповое выравнивание? [Да/Нет] <Д>: ")
@@ -703,67 +713,101 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static object? ShowMcTransientPreview(object transientGfx, AlignmentPoint[] currentPoints, AlignmentPoint[] targetPoints, AlignmentPoint anchor)
         {
+            var point3dType = ResolveLoadedType("Multicad.Geometry.Point3d")
+                ?? throw new InvalidOperationException("Multicad.Geometry.Point3d не найден");
+            var lineSeg3dType = ResolveLoadedType("Multicad.Geometry.LineSeg3d")
+                ?? throw new InvalidOperationException("Multicad.Geometry.LineSeg3d не найден");
+            var entityGeometryType = ResolveLoadedType("Multicad.Geometry.EntityGeometry")
+                ?? throw new InvalidOperationException("Multicad.Geometry.EntityGeometry не найден");
+
+            var listType = typeof(List<>).MakeGenericType(entityGeometryType);
+            var geomList = Activator.CreateInstance(listType);
+            var addMethod = listType.GetMethod("Add")
+                ?? throw new InvalidOperationException("List<EntityGeometry>.Add не найден");
+
+            // Пробуем Show без ref — SDK может врать про ref (как с WorldDraw)
+            var listParamType = typeof(List<>).MakeGenericType(entityGeometryType);
+            var showMethod = transientGfx.GetType().GetMethod("Show", new[] { listParamType })
+                ?? transientGfx.GetType().GetMethod("Show", new[] { listParamType.MakeByRefType() });
+            if (showMethod == null)
+            {
+                // Последняя попытка — ищем любой Show
+                foreach (var m in transientGfx.GetType().GetMethods())
+                    if (m.Name == "Show" && m.GetParameters().Length == 1)
+                        { showMethod = m; break; }
+            }
+            if (showMethod == null)
+                throw new InvalidOperationException("McTransientGraphics.Show не найден");
+
+            Func<double, double, double, object> createPoint = (x, y, z) =>
+                Activator.CreateInstance(point3dType, x, y, z);
+
+            for (var i = 0; i < targetPoints.Length && i < currentPoints.Length; i++)
+            {
+                var from = currentPoints[i];
+                var to = targetPoints[i];
+
+                // Синяя линия: текущая → целевая
+                var blueLine = Activator.CreateInstance(lineSeg3dType,
+                    createPoint(from.X, from.Y, from.Z),
+                    createPoint(to.X, to.Y, to.Z));
+                var blueGeom = Activator.CreateInstance(entityGeometryType, blueLine);
+                TrySetColor(entityGeometryType, blueGeom, System.Drawing.Color.Blue);
+                addMethod.Invoke(geomList, new[] { blueGeom });
+
+                // Зелёная линия: якорь → целевая
+                var greenLine = Activator.CreateInstance(lineSeg3dType,
+                    createPoint(anchor.X, anchor.Y, anchor.Z),
+                    createPoint(to.X, to.Y, to.Z));
+                var greenGeom = Activator.CreateInstance(entityGeometryType, greenLine);
+                TrySetColor(entityGeometryType, greenGeom, System.Drawing.Color.Green);
+                addMethod.Invoke(geomList, new[] { greenGeom });
+
+                // Красный крест-маркер в целевой точке
+                var half = Math.Max(Math.Abs(targetPoints[0].X - anchor.X) * 0.3, 2.0);
+                var hLine = Activator.CreateInstance(lineSeg3dType,
+                    createPoint(to.X - half, to.Y, to.Z),
+                    createPoint(to.X + half, to.Y, to.Z));
+                var vLine = Activator.CreateInstance(lineSeg3dType,
+                    createPoint(to.X, to.Y - half, to.Z),
+                    createPoint(to.X, to.Y + half, to.Z));
+                var hGeom = Activator.CreateInstance(entityGeometryType, hLine);
+                var vGeom = Activator.CreateInstance(entityGeometryType, vLine);
+                TrySetColor(entityGeometryType, hGeom, System.Drawing.Color.Red);
+                TrySetColor(entityGeometryType, vGeom, System.Drawing.Color.Red);
+                addMethod.Invoke(geomList, new[] { hGeom });
+                addMethod.Invoke(geomList, new[] { vGeom });
+            }
+
+            showMethod.Invoke(transientGfx, new[] { geomList });
+            return geomList;
+        }
+
+        private static void TrySetColor(Type entityGeometryType, object geomEnt, System.Drawing.Color color)
+        {
             try
             {
-                var point3dType = ResolveLoadedType("Multicad.Geometry.Point3d");
-                var lineSeg3dType = ResolveLoadedType("Multicad.Geometry.LineSeg3d");
-                var entityGeometryType = ResolveLoadedType("Multicad.Geometry.EntityGeometry");
-                if (point3dType == null || lineSeg3dType == null || entityGeometryType == null)
-                    return null;
-
-                var listType = typeof(List<>).MakeGenericType(entityGeometryType);
-                var geomList = Activator.CreateInstance(listType);
-                var addMethod = listType.GetMethod("Add");
-                var showMethod = transientGfx.GetType().GetMethod("Show", new[] { entityGeometryType.MakeByRefType() })
-                    ?? transientGfx.GetType().GetMethod("Show");
-
-                var createPoint = new Func<double, double, double, object>((x, y, z) =>
-                    Activator.CreateInstance(point3dType, x, y, z));
-
-                for (var i = 0; i < targetPoints.Length && i < currentPoints.Length; i++)
-                {
-                    var from = currentPoints[i];
-                    var to = targetPoints[i];
-
-                    // Синяя линия: текущая → целевая
-                    var blueLine = Activator.CreateInstance(lineSeg3dType,
-                        createPoint(from.X, from.Y, from.Z),
-                        createPoint(to.X, to.Y, to.Z));
-                    var blueGeom = Activator.CreateInstance(entityGeometryType, blueLine);
-                    entityGeometryType.GetProperty("Color")?.SetValue(blueGeom, System.Drawing.Color.Blue);
-                    addMethod?.Invoke(geomList, new[] { blueGeom });
-
-                    // Зелёная линия: якорь → целевая
-                    var greenLine = Activator.CreateInstance(lineSeg3dType,
-                        createPoint(anchor.X, anchor.Y, anchor.Z),
-                        createPoint(to.X, to.Y, to.Z));
-                    var greenGeom = Activator.CreateInstance(entityGeometryType, greenLine);
-                    entityGeometryType.GetProperty("Color")?.SetValue(greenGeom, System.Drawing.Color.Green);
-                    addMethod?.Invoke(geomList, new[] { greenGeom });
-
-                    // Красный маркер в целевой точке
-                    var half = Math.Max(Math.Abs(targetPoints[0].X - anchor.X) * 0.3, 2.0);
-                    var hLine = Activator.CreateInstance(lineSeg3dType,
-                        createPoint(to.X - half, to.Y, to.Z),
-                        createPoint(to.X + half, to.Y, to.Z));
-                    var vLine = Activator.CreateInstance(lineSeg3dType,
-                        createPoint(to.X, to.Y - half, to.Z),
-                        createPoint(to.X, to.Y + half, to.Z));
-                    var hGeom = Activator.CreateInstance(entityGeometryType, hLine);
-                    var vGeom = Activator.CreateInstance(entityGeometryType, vLine);
-                    entityGeometryType.GetProperty("Color")?.SetValue(hGeom, System.Drawing.Color.Red);
-                    entityGeometryType.GetProperty("Color")?.SetValue(vGeom, System.Drawing.Color.Red);
-                    addMethod?.Invoke(geomList, new[] { hGeom });
-                    addMethod?.Invoke(geomList, new[] { vGeom });
-                }
-
-                var args = new object[] { geomList };
-                showMethod?.Invoke(transientGfx, args);
-                return args[0]; // возвращаем (возможно изменённый ref) для отладки
+                entityGeometryType.GetProperty("Color")?.SetValue(geomEnt, color);
             }
-            catch (Exception)
+            catch
             {
-                return null;
+                // MultiCAD Color может быть не System.Drawing.Color — пробуем по имени
+                try
+                {
+                    var colorProp = entityGeometryType.GetProperty("Color");
+                    if (colorProp != null)
+                    {
+                        var mcColorType = colorProp.PropertyType;
+                        // Пробуем FromArgb
+                        var fromArgb = mcColorType.GetMethod("FromArgb", new[] { typeof(int) });
+                        if (fromArgb != null)
+                        {
+                            var mcColor = fromArgb.Invoke(null, new object[] { color.ToArgb() });
+                            colorProp.SetValue(geomEnt, mcColor);
+                        }
+                    }
+                }
+                catch { /* оставляем цвет по умолчанию */ }
             }
         }
 
