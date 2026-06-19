@@ -649,7 +649,7 @@ namespace SpecStudioParser.DesignTools.Services
                     {
                         var orderedIds = ordered.Select(x => x.id).ToList();
                         var orderedTargets = ordered.Select(x => x.target).ToArray();
-                        var preview = ShowMcTransientPreview(transientGfx, orderedTargets, targetPoints, originalPoints, objectManagerType, orderedIds);
+                        var preview = ShowMcTransientPreview(transientGfx, orderedTargets, targetPoints, originalPoints, objectManagerType, orderedIds, editor);
                         editor.WriteMessage($"\n[DesignTools]: Предпросмотр построен ({((System.Collections.IList)preview)?.Count ?? 0} объектов).\n");
                     }
                     catch (Exception ex)
@@ -730,7 +730,7 @@ namespace SpecStudioParser.DesignTools.Services
             catch { /* best effort */ }
         }
 
-        private static object? ShowMcTransientPreview(object transientGfx, StepTarget[] orderedTargets, AlignmentPoint[] targetPoints, AlignmentPoint[] originalPoints, Type objectManagerType, List<object> orderedIds)
+        private static object? ShowMcTransientPreview(object transientGfx, StepTarget[] orderedTargets, AlignmentPoint[] targetPoints, AlignmentPoint[] originalPoints, Type objectManagerType, List<object> orderedIds, HostMgd.EditorInput.Editor editor)
         {
             // Найти Show(List<EntityGeometry>) — типы из сигнатуры
             MethodInfo? showMethod = null;
@@ -758,40 +758,61 @@ namespace SpecStudioParser.DesignTools.Services
 
             var geomList = Activator.CreateInstance(listType)!;
             var addMethod = listType.GetMethod("Add")!;
+            int capturedCount = 0;
 
-            // APPLY через транзакцию: Start → Apply → MarkModified → UpdateGraphics → Capture → Abort
+            // APPLY через транзакцию
             StartMultiCadTransaction(objectManagerType);
             try
             {
                 for (var i = 0; i < orderedTargets.Length && i < targetPoints.Length; i++)
                     orderedTargets[i].Apply(targetPoints[i]);
 
-                // Force geometry cache rebuild
                 InvokeTransactionMethod(objectManagerType, "UpdateGraphics");
 
-                // CAPTURE: читаем GeometryCache и клонируем
+                // CAPTURE
                 for (var i = 0; i < orderedIds.Count; i++)
                 {
                     var mcEntity = GetMcEntityForTarget(objectManagerType, orderedIds[i]);
-                    if (mcEntity == null) continue;
+                    if (mcEntity == null)
+                    {
+                        editor.WriteMessage($"\n[Preview] #{i}: McEntity == null");
+                        continue;
+                    }
+
+                    editor.WriteMessage($"\n[Preview] #{i}: type={mcEntity.GetType().Name}");
 
                     var geometryCache = mcEntity.GetType().GetProperty("GeometryCache")?.GetValue(mcEntity);
-                    if (geometryCache is not IEnumerable cacheEnumerable) continue;
-
-                    foreach (var geomEntry in cacheEnumerable)
+                    if (geometryCache == null)
                     {
-                        if (geomEntry == null) continue;
-                        var cloned = cloneMethod.Invoke(geomEntry, null);
-                        if (cloned == null) continue;
-                        addMethod.Invoke(geomList, new[] { cloned });
+                        editor.WriteMessage(" → GeometryCache == null");
+                        continue;
                     }
+
+                    int entityCount = 0;
+                    if (geometryCache is IEnumerable cacheEnumerable)
+                    {
+                        foreach (var geomEntry in cacheEnumerable)
+                        {
+                            if (geomEntry == null) continue;
+                            entityCount++;
+                            var cloned = cloneMethod.Invoke(geomEntry, null);
+                            if (cloned == null) continue;
+                            addMethod.Invoke(geomList, new[] { cloned });
+                            capturedCount++;
+                        }
+                    }
+                    editor.WriteMessage($" → cache={entityCount}, captured={capturedCount}");
                 }
             }
             finally
             {
-                // ABORT: откатывает все изменения
                 AbortMultiCadTransaction(objectManagerType);
             }
+
+            editor.WriteMessage($"\n[Preview] Total captured: {capturedCount}");
+
+            if (capturedCount == 0)
+                throw new InvalidOperationException("GeometryCache пуст или недоступен для всех выносок");
 
             showMethod.Invoke(transientGfx, new[] { geomList });
             return geomList;
