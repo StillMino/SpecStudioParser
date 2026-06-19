@@ -643,68 +643,61 @@ namespace SpecStudioParser.DesignTools.Services
                             : new AlignmentPoint(anchor.X, anchor.Y + step * i, ordered[i].target.Point.Z);
                     }
 
-                    // Предпросмотр: apply → capture GeometryCache → revert → show clones
-                    HideMcTransientGraphics(transientGfx);
+                    // APPLY: применяем выравнивание в транзакции
+                    var orderedIds = ordered.Select(x => x.id).ToList();
+                    var orderedTargets = ordered.Select(x => x.target).ToArray();
+
+                    StartMultiCadTransaction(objectManagerType);
                     try
                     {
-                        var orderedIds = ordered.Select(x => x.id).ToList();
-                        var orderedTargets = ordered.Select(x => x.target).ToArray();
-                        var preview = ShowMcTransientPreview(transientGfx, orderedTargets, targetPoints, originalPoints, objectManagerType, orderedIds, editor);
-                        editor.WriteMessage($"\n[DesignTools]: Предпросмотр построен ({((System.Collections.IList)preview)?.Count ?? 0} объектов).\n");
+                        for (var i = 0; i < orderedTargets.Length; i++)
+                            orderedTargets[i].Apply(targetPoints[i]);
+                        EndMultiCadTransaction(objectManagerType);
+                    }
+                    catch { AbortMultiCadTransaction(objectManagerType); throw; }
+
+                    UpdateMultiCadGraphics(objectManagerType);
+
+                    // CAPTURE: показываем фантомы из реальной геометрии
+                    object? preview;
+                    try
+                    {
+                        preview = ShowPhantomFromCurrentState(transientGfx, objectManagerType, orderedIds, editor);
                     }
                     catch (Exception ex)
                     {
-                        editor.WriteMessage($"\n[DesignTools]: Ошибка построения предпросмотра: {ex.Message}\n");
-                        HideMcTransientGraphics(transientGfx);
-                        return new LeaderAlignmentResult { Message = $"Ошибка предпросмотра: {ex.Message}" };
+                        editor.WriteMessage($"\n[DesignTools]: Ошибка фантома: {ex.Message}\n");
+                        // Undo и вернуть к вводу шага
+                        SendUndo(editor);
+                        continue;
                     }
 
-                    // Фаза 3: подтверждение
-                    var confirmOpts = new PromptKeywordOptions("\nПрименить? ")
-                    {
-                        AllowNone = true
-                    };
+                    // Подтверждение
+                    var confirmOpts = new PromptKeywordOptions("\nОставить? ")
+                    { AllowNone = true };
                     confirmOpts.Keywords.Add("Yes");
                     confirmOpts.Keywords.Add("No");
                     var confirmResult = editor.GetKeywords(confirmOpts);
-
-                    editor.WriteMessage($"\n[DesignTools]: Status={confirmResult.Status}, String='{confirmResult.StringResult}'\n");
 
                     var accepted = (confirmResult.Status == PromptStatus.Keyword || confirmResult.Status == PromptStatus.OK)
                         && confirmResult.StringResult != null
                         && confirmResult.StringResult.StartsWith("Y", StringComparison.OrdinalIgnoreCase);
 
+                    HideMcTransientGraphics(transientGfx);
+
                     if (accepted)
                     {
-                        HideMcTransientGraphics(transientGfx);
-                        try
+                        return new LeaderAlignmentResult
                         {
-                            StartMultiCadTransaction(objectManagerType);
-                            try
-                            {
-                                for (var i = 0; i < ordered.Length; i++)
-                                    ordered[i].target.Apply(targetPoints[i]);
-                                EndMultiCadTransaction(objectManagerType);
-                                UpdateMultiCadGraphics(objectManagerType);
-
-                                return new LeaderAlignmentResult
-                                {
-                                    SelectedCount = selectionIds.Count,
-                                    CandidateCount = targets.Count,
-                                    AlignedCount = targets.Count,
-                                    Message = $"MultiCAD-выноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
-                                };
-                            }
-                            catch { AbortMultiCadTransaction(objectManagerType); throw; }
-                        }
-                        catch (Exception ex)
-                        {
-                            return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, Message = $"Ошибка группового выравнивания: {ex.Message}" };
-                        }
+                            SelectedCount = selectionIds.Count,
+                            CandidateCount = targets.Count,
+                            AlignedCount = targets.Count,
+                            Message = $"MultiCAD-выноски: группа выровнена по оси с шагом {FormatStep(step)}. Обработано: {targets.Count}."
+                        };
                     }
 
-                    // No → цикл: скрыть фантомы, вернуться к вводу шага
-                    HideMcTransientGraphics(transientGfx);
+                    // No → Undo (откатить apply), вернуться к вводу шага
+                    SendUndo(editor);
                 }
             }
             catch
@@ -730,9 +723,9 @@ namespace SpecStudioParser.DesignTools.Services
             catch { /* best effort */ }
         }
 
-        private static object? ShowMcTransientPreview(object transientGfx, StepTarget[] orderedTargets, AlignmentPoint[] targetPoints, AlignmentPoint[] originalPoints, Type objectManagerType, List<object> orderedIds, HostMgd.EditorInput.Editor editor)
+        private static object? ShowPhantomFromCurrentState(object transientGfx, Type objectManagerType, List<object> orderedIds, HostMgd.EditorInput.Editor editor)
         {
-            // Найти Show(List<EntityGeometry>) — типы из сигнатуры
+            // Найти Show(List<EntityGeometry>)
             MethodInfo? showMethod = null;
             Type? listType = null;
             Type? geomType = null;
@@ -751,71 +744,46 @@ namespace SpecStudioParser.DesignTools.Services
                 }
             }
             if (showMethod == null || geomType == null)
-                throw new InvalidOperationException("McTransientGraphics.Show(List<EntityGeometry>) не найден");
+                throw new InvalidOperationException("Show(List<EntityGeometry>) не найден");
 
             var cloneMethod = geomType.GetMethod("Clone")
                 ?? throw new InvalidOperationException("EntityGeometry.Clone не найден");
 
             var geomList = Activator.CreateInstance(listType)!;
             var addMethod = listType.GetMethod("Add")!;
-            int capturedCount = 0;
+            int captured = 0;
 
-            // APPLY через транзакцию
-            StartMultiCadTransaction(objectManagerType);
-            try
+            foreach (var id in orderedIds)
             {
-                for (var i = 0; i < orderedTargets.Length && i < targetPoints.Length; i++)
-                    orderedTargets[i].Apply(targetPoints[i]);
+                var mcEntity = GetMcEntityForTarget(objectManagerType, id);
+                if (mcEntity == null) continue;
 
-                InvokeTransactionMethod(objectManagerType, "UpdateGraphics");
+                var geometryCache = mcEntity.GetType().GetProperty("GeometryCache")?.GetValue(mcEntity);
+                if (geometryCache is not IEnumerable cacheEnumerable) continue;
 
-                // CAPTURE
-                for (var i = 0; i < orderedIds.Count; i++)
+                foreach (var geomEntry in cacheEnumerable)
                 {
-                    var mcEntity = GetMcEntityForTarget(objectManagerType, orderedIds[i]);
-                    if (mcEntity == null)
-                    {
-                        editor.WriteMessage($"\n[Preview] #{i}: McEntity == null");
-                        continue;
-                    }
-
-                    editor.WriteMessage($"\n[Preview] #{i}: type={mcEntity.GetType().Name}");
-
-                    var geometryCache = mcEntity.GetType().GetProperty("GeometryCache")?.GetValue(mcEntity);
-                    if (geometryCache == null)
-                    {
-                        editor.WriteMessage(" → GeometryCache == null");
-                        continue;
-                    }
-
-                    int entityCount = 0;
-                    if (geometryCache is IEnumerable cacheEnumerable)
-                    {
-                        foreach (var geomEntry in cacheEnumerable)
-                        {
-                            if (geomEntry == null) continue;
-                            entityCount++;
-                            var cloned = cloneMethod.Invoke(geomEntry, null);
-                            if (cloned == null) continue;
-                            addMethod.Invoke(geomList, new[] { cloned });
-                            capturedCount++;
-                        }
-                    }
-                    editor.WriteMessage($" → cache={entityCount}, captured={capturedCount}");
+                    if (geomEntry == null) continue;
+                    var cloned = cloneMethod.Invoke(geomEntry, null);
+                    if (cloned == null) continue;
+                    addMethod.Invoke(geomList, new[] { cloned });
+                    captured++;
                 }
             }
-            finally
-            {
-                AbortMultiCadTransaction(objectManagerType);
-            }
 
-            editor.WriteMessage($"\n[Preview] Total captured: {capturedCount}");
+            editor.WriteMessage($"\n[DesignTools]: Фантомы: {captured} объектов.\n");
 
-            if (capturedCount == 0)
-                throw new InvalidOperationException("GeometryCache пуст или недоступен для всех выносок");
+            if (captured == 0)
+                throw new InvalidOperationException("GeometryCache пуст");
 
             showMethod.Invoke(transientGfx, new[] { geomList });
             return geomList;
+        }
+
+        private static void SendUndo(HostMgd.EditorInput.Editor editor)
+        {
+            var doc = CadApp.DocumentManager.MdiActiveDocument;
+            doc?.SendStringToExecute("_U ", true, false, false);
         }
 
         private static object? GetMcEntityForTarget(Type objectManagerType, object id)
