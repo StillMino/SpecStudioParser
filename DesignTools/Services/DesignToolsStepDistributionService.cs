@@ -648,17 +648,17 @@ namespace SpecStudioParser.DesignTools.Services
                 }
 
                 // Фаза 3: подтверждение
-                var confirmOpts = new PromptKeywordOptions("\nПрименить групповое выравнивание? [Да/Нет] <Д>: ")
+                var confirmOpts = new PromptKeywordOptions("\nПрименить групповое выравнивание? [Да/Нет] <Нет>: ")
                 {
                     AllowNone = true
                 };
                 confirmOpts.Keywords.Add("Да", "Да", "Да");
                 confirmOpts.Keywords.Add("Нет", "Нет", "Нет");
-                confirmOpts.Keywords.Default = "Да";
+                confirmOpts.Keywords.Default = "Нет";
                 var confirmResult = editor.GetKeywords(confirmOpts);
 
-                if (confirmResult.Status == PromptStatus.Cancel ||
-                    (confirmResult.Status == PromptStatus.Keyword && confirmResult.StringResult == "Нет"))
+                // Применяем ТОЛЬКО при явном "Да"
+                if (confirmResult.Status != PromptStatus.Keyword || confirmResult.StringResult != "Да")
                 {
                     HideMcTransientGraphics(transientGfx);
                     return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, CandidateCount = targets.Count, Message = "Групповое выравнивание отменено." };
@@ -780,8 +780,6 @@ namespace SpecStudioParser.DesignTools.Services
                     if (cloned == null) continue;
                     // TransformBy(matrix)
                     transformMethod.Invoke(cloned, new[] { matrix });
-                    // Полупрозрачный цвет
-                    TrySetColor(geomType, cloned, System.Drawing.Color.FromArgb(128, 0, 150, 255));
                     addMethod.Invoke(geomList, new[] { cloned });
                 }
 
