@@ -648,17 +648,19 @@ namespace SpecStudioParser.DesignTools.Services
                 }
 
                 // Фаза 3: подтверждение
-                var confirmOpts = new PromptKeywordOptions("\nПрименить групповое выравнивание? [Да/Нет] <Нет>: ")
+                var confirmOpts = new PromptKeywordOptions("\nПрименить групповое выравнивание? [Yes/No] <No>: ")
                 {
                     AllowNone = true
                 };
-                confirmOpts.Keywords.Add("Да", "Да", "Да");
-                confirmOpts.Keywords.Add("Нет", "Нет", "Нет");
-                confirmOpts.Keywords.Default = "Нет";
+                confirmOpts.Keywords.Add("Yes");
+                confirmOpts.Keywords.Add("No");
+                confirmOpts.Keywords.Default = "No";
                 var confirmResult = editor.GetKeywords(confirmOpts);
 
-                // Применяем ТОЛЬКО при явном "Да"
-                if (confirmResult.Status != PromptStatus.Keyword || confirmResult.StringResult != "Да")
+                // Применяем ТОЛЬКО при явном Yes
+                var accepted = confirmResult.Status == PromptStatus.Keyword
+                    && string.Equals(confirmResult.StringResult, "Yes", StringComparison.OrdinalIgnoreCase);
+                if (!accepted)
                 {
                     HideMcTransientGraphics(transientGfx);
                     return new LeaderAlignmentResult { SelectedCount = selectionIds.Count, CandidateCount = targets.Count, Message = "Групповое выравнивание отменено." };
