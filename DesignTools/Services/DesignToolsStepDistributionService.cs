@@ -738,19 +738,15 @@ namespace SpecStudioParser.DesignTools.Services
             if (showMethod == null || geomType == null)
                 throw new InvalidOperationException("McTransientGraphics.Show(List<EntityGeometry>) не найден");
 
-            // Шаг 2: GeometryCache из McEntity и Matrix3d.MakeTranslation — через reflection
-            var matrix3dType = ResolveLoadedType("Multicad.Geometry.Matrix3d")
-                ?? throw new InvalidOperationException("Matrix3d не найден");
-            var makeTranslation = matrix3dType.GetMethod("MakeTranslation", new[] { typeof(double), typeof(double), typeof(double) })
-                ?? throw new InvalidOperationException("Matrix3d.MakeTranslation(double,double,double) не найден");
-
-            // Clone и TransformBy на EntityGeometry
+            // Шаг 2: Типы из методов EntityGeometry — тот же assembly context
             var cloneMethod = geomType.GetMethod("Clone")
                 ?? throw new InvalidOperationException("EntityGeometry.Clone не найден");
             var transformMethod = geomType.GetMethod("TransformBy")
                 ?? throw new InvalidOperationException("EntityGeometry.TransformBy не найден");
-            // Параметр TransformBy — Matrix3d из сигнатуры метода
-            var matrixParamType = transformMethod.GetParameters()[0].ParameterType;
+            // Matrix3d — ПРЯМО из сигнатуры TransformBy, не через ResolveLoadedType
+            var matrix3dType = transformMethod.GetParameters()[0].ParameterType;
+            var makeTranslation = matrix3dType.GetMethod("MakeTranslation", new[] { typeof(double), typeof(double), typeof(double) })
+                ?? throw new InvalidOperationException("Matrix3d.MakeTranslation(double,double,double) не найден");
 
             var geomList = Activator.CreateInstance(listType)!;
             var addMethod = listType.GetMethod("Add")!;
