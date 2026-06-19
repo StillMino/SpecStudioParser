@@ -559,12 +559,16 @@ namespace SpecStudioParser.DesignTools.Services
                 return new LeaderAlignmentResult { Message = "Нет кэшированных ID выносок. Запустите команду из панели DesignTools." };
 
             var targets = new List<StepTarget>();
+            var targetIds = new List<object>();
             foreach (var id in selectionIds)
             {
                 var obj = GetMultiCadObject(objectManagerType, id);
                 if (obj == null || !IsLeaderCandidate(obj)) continue;
                 if (TryCreateLeaderPointTarget(obj, out var target))
+                {
                     targets.Add(target);
+                    targetIds.Add(id);
+                }
             }
 
             if (targets.Count < 2)
@@ -633,7 +637,7 @@ namespace SpecStudioParser.DesignTools.Services
 
                 try
                 {
-                    previewHandle = ShowMcTransientPreview(transientGfx, targets.Select(t => t.Point).ToArray(), targetPoints, anchor);
+                    previewHandle = ShowMcTransientPreview(transientGfx, targets.Select(t => t.Point).ToArray(), targetPoints, anchor, objectManagerType, targetIds);
                     editor.WriteMessage($"\n[DesignTools]: Предпросмотр построен ({((System.Collections.IList)previewHandle)?.Count ?? 0} объектов).\n");
                 }
                 catch (Exception ex)
@@ -711,7 +715,7 @@ namespace SpecStudioParser.DesignTools.Services
             catch { /* best effort */ }
         }
 
-        private static object? ShowMcTransientPreview(object transientGfx, AlignmentPoint[] currentPoints, AlignmentPoint[] targetPoints, AlignmentPoint anchor)
+        private static object? ShowMcTransientPreview(object transientGfx, AlignmentPoint[] currentPoints, AlignmentPoint[] targetPoints, AlignmentPoint anchor, Type objectManagerType, List<object> targetEntityIds)
         {
             // Шаг 1: Найти Show(List<EntityGeometry>) — типы берём ПРЯМО из сигнатуры
             MethodInfo? showMethod = null;
@@ -734,84 +738,76 @@ namespace SpecStudioParser.DesignTools.Services
             if (showMethod == null || geomType == null)
                 throw new InvalidOperationException("McTransientGraphics.Show(List<EntityGeometry>) не найден");
 
-            // Шаг 2: Найти конструктор EntityGeometry(LineSeg3d) — ТОЧНОЕ имя, без Contains
-            Type? lineSegType = null;
-            ConstructorInfo? geomCtor = null;
-            foreach (var c in geomType.GetConstructors())
-            {
-                var parms = c.GetParameters();
-                if (parms.Length != 1) continue;
-                if (parms[0].ParameterType.Name == "LineSeg3d")
-                {
-                    lineSegType = parms[0].ParameterType;
-                    geomCtor = c;
-                    break;
-                }
-            }
-            if (lineSegType == null || geomCtor == null)
-                throw new InvalidOperationException("EntityGeometry(LineSeg3d) конструктор не найден. Доступные: "
-                    + string.Join(", ", geomType.GetConstructors().Select(c => $"({string.Join(", ", c.GetParameters().Select(p => p.ParameterType.Name))})")));
+            // Шаг 2: GeometryCache из McEntity и Matrix3d.MakeTranslation — через reflection
+            var matrix3dType = ResolveLoadedType("Multicad.Geometry.Matrix3d")
+                ?? throw new InvalidOperationException("Matrix3d не найден");
+            var makeTranslation = matrix3dType.GetMethod("MakeTranslation", new[] { typeof(double), typeof(double), typeof(double) })
+                ?? throw new InvalidOperationException("Matrix3d.MakeTranslation(double,double,double) не найден");
 
-            // Шаг 3: Найти LineSeg3d(Point3d, Point3d) — берём тип Point3d прямо оттуда
-            Type? pointType = null;
-            ConstructorInfo? lineSegCtor = null;
-            foreach (var c in lineSegType.GetConstructors())
-            {
-                var parms = c.GetParameters();
-                if (parms.Length == 2
-                    && parms[0].ParameterType.Name == "Point3d"
-                    && parms[1].ParameterType.Name == "Point3d")
-                {
-                    pointType = parms[0].ParameterType;
-                    lineSegCtor = c;
-                    break;
-                }
-            }
-            if (pointType == null || lineSegCtor == null)
-                throw new InvalidOperationException("LineSeg3d(Point3d, Point3d) конструктор не найден");
+            // Clone и TransformBy на EntityGeometry
+            var cloneMethod = geomType.GetMethod("Clone")
+                ?? throw new InvalidOperationException("EntityGeometry.Clone не найден");
+            var transformMethod = geomType.GetMethod("TransformBy")
+                ?? throw new InvalidOperationException("EntityGeometry.TransformBy не найден");
+            // Параметр TransformBy — Matrix3d из сигнатуры метода
+            var matrixParamType = transformMethod.GetParameters()[0].ParameterType;
 
-            // Шаг 4: Point3d(double, double, double)
-            var pointCtor = pointType.GetConstructor(new[] { typeof(double), typeof(double), typeof(double) })
-                ?? throw new InvalidOperationException("Point3d(double,double,double) конструктор не найден");
-
-            // Всё готово — все типы из одного assembly context
             var geomList = Activator.CreateInstance(listType)!;
             var addMethod = listType.GetMethod("Add")!;
 
-            Func<double, double, double, object> createPoint = (x, y, z) =>
-                pointCtor.Invoke(new object[] { x, y, z });
-
+            // Для каждой выноски: получаем GeometryCache, клонируем, сдвигаем
             for (var i = 0; i < targetPoints.Length && i < currentPoints.Length; i++)
             {
                 var from = currentPoints[i];
                 var to = targetPoints[i];
+                var dx = to.X - from.X;
+                var dy = to.Y - from.Y;
+                var dz = to.Z - from.Z;
 
-                // Синяя линия: текущая → целевая
-                var blueLine = lineSegCtor.Invoke(new[] { createPoint(from.X, from.Y, from.Z), createPoint(to.X, to.Y, to.Z) });
-                var blueGeom = geomCtor.Invoke(new[] { blueLine });
-                TrySetColor(geomType, blueGeom, System.Drawing.Color.Blue);
-                addMethod.Invoke(geomList, new[] { blueGeom });
+                // Matrix3d.MakeTranslation(dx, dy, dz)
+                var matrix = makeTranslation.Invoke(null, new object[] { dx, dy, dz });
 
-                // Зелёная линия: якорь → целевая
-                var greenLine = lineSegCtor.Invoke(new[] { createPoint(anchor.X, anchor.Y, anchor.Z), createPoint(to.X, to.Y, to.Z) });
-                var greenGeom = geomCtor.Invoke(new[] { greenLine });
-                TrySetColor(geomType, greenGeom, System.Drawing.Color.Green);
-                addMethod.Invoke(geomList, new[] { greenGeom });
+                // Получить McEntity для этой выноски
+                var mcEntity = GetMcEntityForTarget(objectManagerType, targetEntityIds[i]);
+                if (mcEntity == null) continue;
 
-                // Красный крест-маркер
-                var half = Math.Max(Math.Abs(targetPoints[0].X - anchor.X) * 0.3, 2.0);
-                var hLine = lineSegCtor.Invoke(new[] { createPoint(to.X - half, to.Y, to.Z), createPoint(to.X + half, to.Y, to.Z) });
-                var vLine = lineSegCtor.Invoke(new[] { createPoint(to.X, to.Y - half, to.Z), createPoint(to.X, to.Y + half, to.Z) });
-                var hGeom = geomCtor.Invoke(new[] { hLine });
-                var vGeom = geomCtor.Invoke(new[] { vLine });
-                TrySetColor(geomType, hGeom, System.Drawing.Color.Red);
-                TrySetColor(geomType, vGeom, System.Drawing.Color.Red);
-                addMethod.Invoke(geomList, new[] { hGeom });
-                addMethod.Invoke(geomList, new[] { vGeom });
+                // GeometryCache → List<EntityGeometry>
+                var geometryCache = objectManagerType.Assembly.GetType("Multicad.DatabaseServices.McEntity")
+                    ?.GetProperty("GeometryCache")?.GetValue(mcEntity);
+                if (geometryCache is not IEnumerable cacheEnumerable) continue;
+
+                foreach (var geomEntry in cacheEnumerable)
+                {
+                    if (geomEntry == null) continue;
+                    // Clone
+                    var cloned = cloneMethod.Invoke(geomEntry, null);
+                    if (cloned == null) continue;
+                    // TransformBy(matrix)
+                    transformMethod.Invoke(cloned, new[] { matrix });
+                    // Полупрозрачный цвет
+                    TrySetColor(geomType, cloned, System.Drawing.Color.FromArgb(128, 0, 150, 255));
+                    addMethod.Invoke(geomList, new[] { cloned });
+                }
+
+                // Дополнительно: синяя линия от текущей позиции к целевой (для наглядности)
+                // (оставляем как маркер направления перемещения)
             }
 
             showMethod.Invoke(transientGfx, new[] { geomList });
             return geomList;
+        }
+
+        private static object? GetMcEntityForTarget(Type objectManagerType, object id)
+        {
+            var mcObject = GetMultiCadObject(objectManagerType, id);
+            if (mcObject == null) return null;
+            // McObject может быть McEntity, или иметь свойство Entity
+            var mcEntityType = ResolveLoadedType("Multicad.DatabaseServices.McEntity");
+            if (mcEntityType != null && mcEntityType.IsInstanceOfType(mcObject))
+                return mcObject;
+            // Пробуем свойство Entity
+            var entityProp = mcObject.GetType().GetProperty("Entity")?.GetValue(mcObject);
+            return entityProp ?? mcObject; // fallback — может GeometryCache есть прямо на McObject
         }
 
         private static void TrySetColor(Type entityGeometryType, object geomEnt, System.Drawing.Color color)
@@ -1392,7 +1388,8 @@ namespace SpecStudioParser.DesignTools.Services
         {
             private readonly Action<AlignmentPoint> _apply;
             public AlignmentPoint Point { get; }
-            public StepTarget(AlignmentPoint point, Action<AlignmentPoint> apply) { Point = point; _apply = apply; }
+            public object? SourceObject { get; }
+            public StepTarget(AlignmentPoint point, Action<AlignmentPoint> apply, object? sourceObject = null) { Point = point; _apply = apply; SourceObject = sourceObject; }
             public void Apply(AlignmentPoint point) => _apply(point);
         }
     }
