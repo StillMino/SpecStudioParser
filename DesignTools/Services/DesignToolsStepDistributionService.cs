@@ -720,27 +720,40 @@ namespace SpecStudioParser.DesignTools.Services
             var entityGeometryType = ResolveLoadedType("Multicad.Geometry.EntityGeometry")
                 ?? throw new InvalidOperationException("Multicad.Geometry.EntityGeometry не найден");
 
-            var listType = typeof(List<>).MakeGenericType(entityGeometryType);
-            var geomList = Activator.CreateInstance(listType);
-            var addMethod = listType.GetMethod("Add")
-                ?? throw new InvalidOperationException("List<EntityGeometry>.Add не найден");
+            // Ищем Show-метод и берём ТОЧНЫЙ тип параметра из его сигнатуры,
+            // чтобы избежать .NET type identity mismatch (та же ошибка: List<T> из разных context).
+            MethodInfo? showMethod = null;
+            Type? listType = null;
+            Type? elemType = null;
 
-            // Пробуем Show без ref — SDK может врать про ref (как с WorldDraw)
-            var listParamType = typeof(List<>).MakeGenericType(entityGeometryType);
-            var showMethod = transientGfx.GetType().GetMethod("Show", new[] { listParamType })
-                ?? transientGfx.GetType().GetMethod("Show", new[] { listParamType.MakeByRefType() });
-            if (showMethod == null)
+            foreach (var m in transientGfx.GetType().GetMethods())
             {
-                // Последняя попытка — ищем любой Show
-                foreach (var m in transientGfx.GetType().GetMethods())
-                    if (m.Name == "Show" && m.GetParameters().Length == 1)
-                        { showMethod = m; break; }
+                if (m.Name != "Show" || m.GetParameters().Length != 1) continue;
+                var pt = m.GetParameters()[0].ParameterType;
+                if (pt.IsByRef) pt = pt.GetElementType()!;
+                // Нас интересует overload, принимающий List<EntityGeometry>
+                if (pt.IsGenericType && pt.GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    showMethod = m;
+                    listType = pt;
+                    elemType = pt.GetGenericArguments()[0];
+                    break;
+                }
             }
-            if (showMethod == null)
-                throw new InvalidOperationException("McTransientGraphics.Show не найден");
+
+            if (showMethod == null || listType == null || elemType == null)
+                throw new InvalidOperationException("McTransientGraphics.Show(List<EntityGeometry>) не найден");
+
+            // Если EntityGeometry из ResolveLoadedType не совпадает с типом из Show-сигнатуры,
+            // используем тип из сигнатуры для создания геометрии.
+            var geomType = elemType;
+
+            var geomList = Activator.CreateInstance(listType)!;
+            var addMethod = listType.GetMethod("Add")
+                ?? throw new InvalidOperationException("List.Add не найден");
 
             Func<double, double, double, object> createPoint = (x, y, z) =>
-                Activator.CreateInstance(point3dType, x, y, z);
+                Activator.CreateInstance(point3dType, x, y, z)!;
 
             for (var i = 0; i < targetPoints.Length && i < currentPoints.Length; i++)
             {
@@ -751,16 +764,16 @@ namespace SpecStudioParser.DesignTools.Services
                 var blueLine = Activator.CreateInstance(lineSeg3dType,
                     createPoint(from.X, from.Y, from.Z),
                     createPoint(to.X, to.Y, to.Z));
-                var blueGeom = Activator.CreateInstance(entityGeometryType, blueLine);
-                TrySetColor(entityGeometryType, blueGeom, System.Drawing.Color.Blue);
+                var blueGeom = Activator.CreateInstance(geomType, blueLine)!;
+                TrySetColor(geomType, blueGeom, System.Drawing.Color.Blue);
                 addMethod.Invoke(geomList, new[] { blueGeom });
 
                 // Зелёная линия: якорь → целевая
                 var greenLine = Activator.CreateInstance(lineSeg3dType,
                     createPoint(anchor.X, anchor.Y, anchor.Z),
                     createPoint(to.X, to.Y, to.Z));
-                var greenGeom = Activator.CreateInstance(entityGeometryType, greenLine);
-                TrySetColor(entityGeometryType, greenGeom, System.Drawing.Color.Green);
+                var greenGeom = Activator.CreateInstance(geomType, greenLine)!;
+                TrySetColor(geomType, greenGeom, System.Drawing.Color.Green);
                 addMethod.Invoke(geomList, new[] { greenGeom });
 
                 // Красный крест-маркер в целевой точке
@@ -771,10 +784,10 @@ namespace SpecStudioParser.DesignTools.Services
                 var vLine = Activator.CreateInstance(lineSeg3dType,
                     createPoint(to.X, to.Y - half, to.Z),
                     createPoint(to.X, to.Y + half, to.Z));
-                var hGeom = Activator.CreateInstance(entityGeometryType, hLine);
-                var vGeom = Activator.CreateInstance(entityGeometryType, vLine);
-                TrySetColor(entityGeometryType, hGeom, System.Drawing.Color.Red);
-                TrySetColor(entityGeometryType, vGeom, System.Drawing.Color.Red);
+                var hGeom = Activator.CreateInstance(geomType, hLine)!;
+                var vGeom = Activator.CreateInstance(geomType, vLine)!;
+                TrySetColor(geomType, hGeom, System.Drawing.Color.Red);
+                TrySetColor(geomType, vGeom, System.Drawing.Color.Red);
                 addMethod.Invoke(geomList, new[] { hGeom });
                 addMethod.Invoke(geomList, new[] { vGeom });
             }
