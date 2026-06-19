@@ -648,18 +648,20 @@ namespace SpecStudioParser.DesignTools.Services
                 }
 
                 // Фаза 3: подтверждение
-                var confirmOpts = new PromptKeywordOptions("\nПрименить групповое выравнивание? [Yes/No] <No>: ")
+                var confirmOpts = new PromptKeywordOptions("\nПрименить? ")
                 {
                     AllowNone = true
                 };
                 confirmOpts.Keywords.Add("Yes");
                 confirmOpts.Keywords.Add("No");
-                confirmOpts.Keywords.Default = "No";
                 var confirmResult = editor.GetKeywords(confirmOpts);
 
-                // Применяем ТОЛЬКО при явном Yes
-                var accepted = confirmResult.Status == PromptStatus.Keyword
-                    && string.Equals(confirmResult.StringResult, "Yes", StringComparison.OrdinalIgnoreCase);
+                editor.WriteMessage($"\n[DesignTools]: Status={confirmResult.Status}, String='{confirmResult.StringResult}'\n");
+
+                // Применяем если Status OK или Keyword и результат содержит Y
+                var accepted = (confirmResult.Status == PromptStatus.Keyword || confirmResult.Status == PromptStatus.OK)
+                    && confirmResult.StringResult != null
+                    && confirmResult.StringResult.StartsWith("Y", StringComparison.OrdinalIgnoreCase);
                 if (!accepted)
                 {
                     HideMcTransientGraphics(transientGfx);
