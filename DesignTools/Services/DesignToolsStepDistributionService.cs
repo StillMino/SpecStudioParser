@@ -713,7 +713,7 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static object? ShowMcTransientPreview(object transientGfx, AlignmentPoint[] currentPoints, AlignmentPoint[] targetPoints, AlignmentPoint anchor)
         {
-            // Найти Show(List<EntityGeometry>) и взять типы ПРЯМО из его сигнатуры
+            // Шаг 1: Найти Show(List<EntityGeometry>) — типы берём ПРЯМО из сигнатуры
             MethodInfo? showMethod = null;
             Type? listType = null;
             Type? geomType = null;
@@ -734,46 +734,52 @@ namespace SpecStudioParser.DesignTools.Services
             if (showMethod == null || geomType == null)
                 throw new InvalidOperationException("McTransientGraphics.Show(List<EntityGeometry>) не найден");
 
-            // Найти конструктор EntityGeometry, принимающий 1 параметр типа LineSeg3d (или похожий)
-            // Берём тип параметра ПРЯМО из конструктора — тот же assembly context
+            // Шаг 2: Найти конструктор EntityGeometry(LineSeg3d) — ТОЧНОЕ имя, без Contains
             Type? lineSegType = null;
-            Type? pointType = null;
-
-            foreach (var ctor in geomType.GetConstructors())
+            ConstructorInfo? geomCtor = null;
+            foreach (var c in geomType.GetConstructors())
             {
-                var parms = ctor.GetParameters();
+                var parms = c.GetParameters();
                 if (parms.Length != 1) continue;
-                var pType = parms[0].ParameterType;
-                var pName = pType.Name;
-
-                if (pName.Contains("LineSeg") || pName.Contains("Line3"))
-                    lineSegType ??= pType;
-                if (pName.Contains("Point3"))
-                    pointType ??= pType;
+                if (parms[0].ParameterType.Name == "LineSeg3d")
+                {
+                    lineSegType = parms[0].ParameterType;
+                    geomCtor = c;
+                    break;
+                }
             }
-
-            // Если не нашли через конструкторы — попробуем обычный поиск (fallback)
-            lineSegType ??= ResolveLoadedType("Multicad.Geometry.LineSeg3d");
-            pointType ??= ResolveLoadedType("Multicad.Geometry.Point3d");
-
-            if (lineSegType == null)
-                throw new InvalidOperationException("LineSeg3d тип не найден ни через конструктор, ни через ResolveLoadedType");
-            if (pointType == null)
-                throw new InvalidOperationException("Point3d тип не найден");
-
-            // Найти конструктор EntityGeometry(LineSeg3d) с точным типом параметра
-            var geomCtor = geomType.GetConstructor(new[] { lineSegType })
-                ?? geomType.GetConstructors()
-                    .FirstOrDefault(c => c.GetParameters().Length == 1
-                        && c.GetParameters()[0].ParameterType.IsAssignableFrom(lineSegType))
-                ?? throw new InvalidOperationException($"EntityGeometry(ctor с {lineSegType.Name}) не найден. Доступные: "
+            if (lineSegType == null || geomCtor == null)
+                throw new InvalidOperationException("EntityGeometry(LineSeg3d) конструктор не найден. Доступные: "
                     + string.Join(", ", geomType.GetConstructors().Select(c => $"({string.Join(", ", c.GetParameters().Select(p => p.ParameterType.Name))})")));
 
+            // Шаг 3: Найти LineSeg3d(Point3d, Point3d) — берём тип Point3d прямо оттуда
+            Type? pointType = null;
+            ConstructorInfo? lineSegCtor = null;
+            foreach (var c in lineSegType.GetConstructors())
+            {
+                var parms = c.GetParameters();
+                if (parms.Length == 2
+                    && parms[0].ParameterType.Name == "Point3d"
+                    && parms[1].ParameterType.Name == "Point3d")
+                {
+                    pointType = parms[0].ParameterType;
+                    lineSegCtor = c;
+                    break;
+                }
+            }
+            if (pointType == null || lineSegCtor == null)
+                throw new InvalidOperationException("LineSeg3d(Point3d, Point3d) конструктор не найден");
+
+            // Шаг 4: Point3d(double, double, double)
+            var pointCtor = pointType.GetConstructor(new[] { typeof(double), typeof(double), typeof(double) })
+                ?? throw new InvalidOperationException("Point3d(double,double,double) конструктор не найден");
+
+            // Всё готово — все типы из одного assembly context
             var geomList = Activator.CreateInstance(listType)!;
             var addMethod = listType.GetMethod("Add")!;
 
             Func<double, double, double, object> createPoint = (x, y, z) =>
-                Activator.CreateInstance(pointType, x, y, z)!;
+                pointCtor.Invoke(new object[] { x, y, z });
 
             for (var i = 0; i < targetPoints.Length && i < currentPoints.Length; i++)
             {
@@ -781,29 +787,21 @@ namespace SpecStudioParser.DesignTools.Services
                 var to = targetPoints[i];
 
                 // Синяя линия: текущая → целевая
-                var blueLine = Activator.CreateInstance(lineSegType,
-                    createPoint(from.X, from.Y, from.Z),
-                    createPoint(to.X, to.Y, to.Z));
+                var blueLine = lineSegCtor.Invoke(new[] { createPoint(from.X, from.Y, from.Z), createPoint(to.X, to.Y, to.Z) });
                 var blueGeom = geomCtor.Invoke(new[] { blueLine });
                 TrySetColor(geomType, blueGeom, System.Drawing.Color.Blue);
                 addMethod.Invoke(geomList, new[] { blueGeom });
 
                 // Зелёная линия: якорь → целевая
-                var greenLine = Activator.CreateInstance(lineSegType,
-                    createPoint(anchor.X, anchor.Y, anchor.Z),
-                    createPoint(to.X, to.Y, to.Z));
+                var greenLine = lineSegCtor.Invoke(new[] { createPoint(anchor.X, anchor.Y, anchor.Z), createPoint(to.X, to.Y, to.Z) });
                 var greenGeom = geomCtor.Invoke(new[] { greenLine });
                 TrySetColor(geomType, greenGeom, System.Drawing.Color.Green);
                 addMethod.Invoke(geomList, new[] { greenGeom });
 
-                // Красный крест-маркер в целевой точке
+                // Красный крест-маркер
                 var half = Math.Max(Math.Abs(targetPoints[0].X - anchor.X) * 0.3, 2.0);
-                var hLine = Activator.CreateInstance(lineSegType,
-                    createPoint(to.X - half, to.Y, to.Z),
-                    createPoint(to.X + half, to.Y, to.Z));
-                var vLine = Activator.CreateInstance(lineSegType,
-                    createPoint(to.X, to.Y - half, to.Z),
-                    createPoint(to.X, to.Y + half, to.Z));
+                var hLine = lineSegCtor.Invoke(new[] { createPoint(to.X - half, to.Y, to.Z), createPoint(to.X + half, to.Y, to.Z) });
+                var vLine = lineSegCtor.Invoke(new[] { createPoint(to.X, to.Y - half, to.Z), createPoint(to.X, to.Y + half, to.Z) });
                 var hGeom = geomCtor.Invoke(new[] { hLine });
                 var vGeom = geomCtor.Invoke(new[] { vLine });
                 TrySetColor(geomType, hGeom, System.Drawing.Color.Red);
