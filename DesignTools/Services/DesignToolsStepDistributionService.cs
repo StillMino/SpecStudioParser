@@ -759,12 +759,16 @@ namespace SpecStudioParser.DesignTools.Services
             var geomList = Activator.CreateInstance(listType)!;
             var addMethod = listType.GetMethod("Add")!;
 
-            // APPLY: применяем целевые позиции
-            for (var i = 0; i < orderedTargets.Length && i < targetPoints.Length; i++)
-                orderedTargets[i].Apply(targetPoints[i]);
-
+            // APPLY через транзакцию: Start → Apply → MarkModified → UpdateGraphics → Capture → Abort
+            StartMultiCadTransaction(objectManagerType);
             try
             {
+                for (var i = 0; i < orderedTargets.Length && i < targetPoints.Length; i++)
+                    orderedTargets[i].Apply(targetPoints[i]);
+
+                // Force geometry cache rebuild
+                InvokeTransactionMethod(objectManagerType, "UpdateGraphics");
+
                 // CAPTURE: читаем GeometryCache и клонируем
                 for (var i = 0; i < orderedIds.Count; i++)
                 {
@@ -785,9 +789,8 @@ namespace SpecStudioParser.DesignTools.Services
             }
             finally
             {
-                // REVERT: возвращаем исходные позиции
-                for (var i = 0; i < orderedTargets.Length && i < originalPoints.Length; i++)
-                    orderedTargets[i].Apply(originalPoints[i]);
+                // ABORT: откатывает все изменения
+                AbortMultiCadTransaction(objectManagerType);
             }
 
             showMethod.Invoke(transientGfx, new[] { geomList });
