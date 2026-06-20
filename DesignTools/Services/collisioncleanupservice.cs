@@ -19,8 +19,8 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static readonly string[] AnchorPointProperties =
         {
-            "TextLocation", "BlockPosition", "Origin", "TextPosition", "TextPos", "PntText",
-            "Location", "Position"
+            "Origin", "TextLocation", "BlockPosition", "TextPosition", "TextPos", "PntText",
+            "Start", "End", "Location", "Position"
         };
 
         public CollisionCleanupResult DetectAndResolveCollisions(double minDistance, string scope = "text")
@@ -293,11 +293,7 @@ namespace SpecStudioParser.DesignTools.Services
             var resolved = 0;
             try
             {
-                var mcAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.GetName().Name == "Multicad");
-                if (mcAssembly == null) return 0;
-
-                var objectManagerType = mcAssembly.GetType("Multicad.ObjectManager");
+                var objectManagerType = ResolveMcObjectManager();
                 if (objectManagerType == null) return 0;
 
                 // Start McTransaction
@@ -329,9 +325,10 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static bool TryShiftMultiCadLeader(object obj, double delta, bool horizontal)
         {
-            // Strategy 1: property set + RecordGraphicsModified (proven path from StepDistributionService)
+            // Strategy 1: property or field set + RecordGraphicsModified
             foreach (var propName in AnchorPointProperties)
             {
+                // Try property (read/write)
                 var prop = obj.GetType().GetProperty(propName, BindingFlags.Instance | BindingFlags.Public);
                 if (prop?.CanRead == true && prop.CanWrite && TryGetPoint(prop.GetValue(obj), out var pt))
                 {
@@ -341,6 +338,21 @@ namespace SpecStudioParser.DesignTools.Services
                     if (newPt != null)
                     {
                         prop.SetValue(obj, newPt);
+                        MarkMcObjectModified(obj);
+                        return true;
+                    }
+                }
+
+                // Try field (McNote.Origin is a public field, not a property!)
+                var field = obj.GetType().GetField(propName, BindingFlags.Instance | BindingFlags.Public);
+                if (field != null && TryGetPoint(field.GetValue(obj), out var fpt))
+                {
+                    var newPt = horizontal
+                        ? CreateMcPoint(field.FieldType, fpt.X + delta, fpt.Y, fpt.Z)
+                        : CreateMcPoint(field.FieldType, fpt.X, fpt.Y + delta, fpt.Z);
+                    if (newPt != null)
+                    {
+                        field.SetValue(obj, newPt);
                         MarkMcObjectModified(obj);
                         return true;
                     }
@@ -442,11 +454,7 @@ namespace SpecStudioParser.DesignTools.Services
             var result = new List<CollisionItem>();
             try
             {
-                var mcAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.GetName().Name == "Multicad");
-                if (mcAssembly == null) return result;
-
-                var objectManagerType = mcAssembly.GetType("Multicad.ObjectManager");
+                var objectManagerType = ResolveMcObjectManager();
                 if (objectManagerType == null) return result;
 
                 // Get selection IDs: cached or live
@@ -558,14 +566,23 @@ namespace SpecStudioParser.DesignTools.Services
             }
             catch { }
 
-            // Fallback: anchor point with padding
+            // Fallback: anchor point or field with padding
             foreach (var propName in AnchorPointProperties)
             {
+                // Try property
                 var prop = obj.GetType().GetProperty(propName, BindingFlags.Instance | BindingFlags.Public);
                 if (prop?.CanRead == true && TryGetPoint(prop.GetValue(obj), out var pt))
                 {
                     min = new Point3d(pt.X - 15, pt.Y - 5, 0);
                     max = new Point3d(pt.X + 25, pt.Y + 8, 0);
+                    return true;
+                }
+                // Try field (McNote.Origin is a public field, not a property!)
+                var field = obj.GetType().GetField(propName, BindingFlags.Instance | BindingFlags.Public);
+                if (field != null && TryGetPoint(field.GetValue(obj), out var fpt))
+                {
+                    min = new Point3d(fpt.X - 15, fpt.Y - 5, 0);
+                    max = new Point3d(fpt.X + 25, fpt.Y + 8, 0);
                     return true;
                 }
             }
@@ -614,6 +631,20 @@ namespace SpecStudioParser.DesignTools.Services
             var transactions = objectManagerType.GetProperty("Transactions", BindingFlags.Static | BindingFlags.Public)?.GetValue(null);
             transactions?.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, Type.EmptyTypes)
                 ?.Invoke(transactions, Array.Empty<object>());
+        }
+
+        private static Type? ResolveMcObjectManager()
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    var type = assembly.GetType("Multicad.DatabaseServices.McObjectManager", false, true);
+                    if (type != null) return type;
+                }
+                catch { }
+            }
+            return null;
         }
 
         private static bool TryGetPoint(object? value, out Point3d point)
