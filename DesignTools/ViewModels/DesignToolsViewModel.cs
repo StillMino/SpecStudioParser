@@ -461,6 +461,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 CollisionScope = scope
             };
 
+            // Cache MultiCAD selection before sending command (selection is lost on SendStringToExecute)
+            if (scope is "leaders" or "all")
+                state.MultiCadSelectionIds = CaptureMultiCadSelectionIds();
+
             DesignToolsCommandStateService.SetPendingState(state);
             SetCardStatus(card, $"Поиск коллизий: {card.SelectedSource} (порог {state.MinDistanceThreshold:F1})...");
             SendNanoCadCommand("DT_COLLISION_CLEANUP");
