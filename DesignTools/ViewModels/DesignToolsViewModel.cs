@@ -260,10 +260,10 @@ namespace SpecStudioParser.DesignTools.ViewModels
             return new DesignToolCardViewModel(
                 "collision-cleanup",
                 "Распаковка",
-                "Поиск наложений текста и авто-разнесение по чертежу. Укажите порог минимального расстояния между объектами.",
+                "Поиск наложений текста и выносок, авто-разнесение по чертежу.",
                 FilterDrafting,
                 "M20.83 11.17L13.5 3.83L6.17 11.17L7.88 12.88L12.25 8.5V20.5H14.75V8.5L19.12 12.88L20.83 11.17Z",
-                new[] { "Текст" },
+                new[] { "Текст", "Выноски", "Всё" },
                 new[] { "Найти и разнести" },
                 new[] { "Горизонтально", "Вертикально" },
                 new[] { "Авто" },
@@ -446,15 +446,23 @@ namespace SpecStudioParser.DesignTools.ViewModels
 
         private void ExecuteCollisionCleanup(DesignToolCardViewModel card)
         {
+            var scope = card.SelectedSource switch
+            {
+                "Выноски" => "leaders",
+                "Всё" => "all",
+                _ => "text"
+            };
+
             var state = new DesignToolsCommandState
             {
                 ToolKind = DesignToolsToolKind.CollisionCleanup,
                 Operation = DesignToolsOperation.Align,
-                MinDistanceThreshold = card.MinDistanceThreshold
+                MinDistanceThreshold = card.MinDistanceThreshold,
+                CollisionScope = scope
             };
 
             DesignToolsCommandStateService.SetPendingState(state);
-            SetCardStatus(card, $"Поиск коллизий (порог {state.MinDistanceThreshold:F1})...");
+            SetCardStatus(card, $"Поиск коллизий: {card.SelectedSource} (порог {state.MinDistanceThreshold:F1})...");
             SendNanoCadCommand("DT_COLLISION_CLEANUP");
         }
 

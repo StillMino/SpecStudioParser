@@ -56,6 +56,8 @@ namespace SpecStudioParser.DesignTools.Services
         public List<object>? MultiCadSelectionIds { get; set; }
         /// <summary>Порог минимального расстояния для инструмента распаковки коллизий (в единицах чертежа)</summary>
         public double MinDistanceThreshold { get; init; } = 2.0;
+        /// <summary>Scope для распаковки: "text", "leaders", "all"</summary>
+        public string CollisionScope { get; init; } = "text";
     }
 
     public sealed class DesignToolsCommandResultEventArgs : EventArgs

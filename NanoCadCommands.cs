@@ -173,7 +173,7 @@ namespace SpecStudioParser.Commands
                 }
 
                 var service = new CollisionCleanupService();
-                var result = service.DetectAndResolveCollisions(state.MinDistanceThreshold);
+                var result = service.DetectAndResolveCollisions(state.MinDistanceThreshold, state.CollisionScope);
                 LogToNanoCadConsole($"\n[DesignTools]: {result.Message}\n");
                 DesignToolsCommandStateService.PublishResult(toolKind, result.Message);
             }
