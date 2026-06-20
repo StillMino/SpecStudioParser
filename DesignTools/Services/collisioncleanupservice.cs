@@ -205,29 +205,22 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static bool TryGetMLeaderBounds(MLeader ml, out Point3d min, out Point3d max)
         {
+            // GeometricExtents includes leader line + arrowhead → bbox too large.
+            // Use TextLocation as center with padding proportional to text length.
             try
             {
-                var ext = ml.GeometricExtents;
-                min = ext.MinPoint;
-                max = ext.MaxPoint;
+                var tl = ml.TextLocation;
+                var textLen = 10.0; // default half-width
+                try { textLen = Math.Max(10, (ml.MText?.Text ?? "").Length * 2.5); } catch {}
+                min = new Point3d(tl.X - 3, tl.Y - 3, 0);
+                max = new Point3d(tl.X + textLen, tl.Y + 3, 0);
                 return true;
             }
             catch
             {
-                // Fallback: use TextLocation with reasonable padding
-                try
-                {
-                    var tl = ml.TextLocation;
-                    min = new Point3d(tl.X - 15, tl.Y - 5, 0);
-                    max = new Point3d(tl.X + 15, tl.Y + 5, 0);
-                    return true;
-                }
-                catch
-                {
-                    min = Point3d.Origin;
-                    max = Point3d.Origin;
-                    return false;
-                }
+                min = Point3d.Origin;
+                max = Point3d.Origin;
+                return false;
             }
         }
 
@@ -320,7 +313,7 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static bool TryShiftMultiCadLeader(object obj, double delta, bool horizontal)
         {
-            // Try property-based shift
+            // Strategy 1: property set + RecordGraphicsModified (proven path from StepDistributionService)
             foreach (var propName in AnchorPointProperties)
             {
                 var prop = obj.GetType().GetProperty(propName, BindingFlags.Instance | BindingFlags.Public);
@@ -332,12 +325,13 @@ namespace SpecStudioParser.DesignTools.Services
                     if (newPt != null)
                     {
                         prop.SetValue(obj, newPt);
+                        MarkMcObjectModified(obj);
                         return true;
                     }
                 }
             }
 
-            // Try Get/Set method pairs
+            // Strategy 2: Get/Set method pairs
             foreach (var baseName in new[] { "TextLocation", "BlockPosition", "ContentLocation", "DoglegPoint" })
             {
                 var getMethod = obj.GetType().GetMethod("Get" + baseName, BindingFlags.Instance | BindingFlags.Public);
@@ -353,14 +347,21 @@ namespace SpecStudioParser.DesignTools.Services
                         if (newPt != null)
                         {
                             setMethod.Invoke(obj, new[] { newPt });
+                            MarkMcObjectModified(obj);
                             return true;
                         }
                     }
                 }
             }
 
-            // Try TransformBy with translation matrix (most reliable for McNote)
+            // Strategy 3: TransformBy with translation matrix + RecordGraphicsModified
             return TryTransformByShift(obj, delta, horizontal);
+        }
+
+        private static void MarkMcObjectModified(object obj)
+        {
+            try { obj.GetType().GetMethod("RecordGraphicsModified", BindingFlags.Instance | BindingFlags.Public, new[] { typeof(bool) })?.Invoke(obj, new object[] { true }); }
+            catch { /* not all objects have this method */ }
         }
 
         private static bool TryTransformByShift(object obj, double delta, bool horizontal)
@@ -388,6 +389,7 @@ namespace SpecStudioParser.DesignTools.Services
                         var vec = Activator.CreateInstance(vecType, tx, ty, 0.0);
                         setMethod.Invoke(identity, new[] { vec });
                         transformMethod.Invoke(obj, new[] { identity });
+                        MarkMcObjectModified(obj);
                         return true;
                     }
                 }
