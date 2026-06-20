@@ -16,6 +16,8 @@
 
 	<Window.Resources>
 		<conv:GeometryPathConverter x:Key="GeometryPathConverter"/>
+		<conv:CollisionThresholdVisibilityConverter x:Key="CollisionThresholdVisibility"/>
+		<conv:CollisionThresholdVisibilityConverter x:Key="CollisionThresholdVisibility"/>
 	</Window.Resources>
 
 	<Grid RowDefinitions="Auto, Auto, Auto, *, Auto" Background="{StaticResource AppBackgroundBrush}">
@@ -69,6 +71,11 @@
 									<ComboBox Grid.Column="1" ItemsSource="{Binding Operations}" SelectedItem="{Binding SelectedOperation}" FontSize="11" MinHeight="26" Margin="0,0,4,0"/>
 									<ComboBox Grid.Column="2" ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis}" FontSize="11" MinHeight="26" Margin="0,0,4,0"/>
 									<ComboBox Grid.Column="3" ItemsSource="{Binding References}" SelectedItem="{Binding SelectedReference}" IsEnabled="{Binding IsReferenceEnabled}" FontSize="11" MinHeight="26"/>
+								</Grid>
+
+																<Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,*" Margin="0,3,0,0" IsVisible="{Binding Id, Converter={StaticResource CollisionThresholdVisibility}}">
+									<TextBlock Grid.Column="0" Text="Порог:" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource SecondaryTextBrush}"/>
+									<NumericUpDown Grid.Column="1" Value="{Binding MinDistanceThreshold}" Minimum="0" Maximum="1000" Increment="0.5" FontSize="11" MinHeight="26"/>
 								</Grid>
 
 								<TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Status}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" ToolTip.Tip="{Binding Status}"/>

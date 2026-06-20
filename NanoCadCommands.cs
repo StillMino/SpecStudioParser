@@ -159,6 +159,32 @@ namespace SpecStudioParser.Commands
             }
         }
 
+        [CommandMethod("DT_COLLISION_CLEANUP", CommandFlags.Modal)]
+        public static void ExecuteCollisionCleanup()
+        {
+            var toolKind = DesignToolsToolKind.CollisionCleanup;
+            try
+            {
+                var state = DesignToolsCommandStateService.GetPendingState(toolKind);
+                if (state == null)
+                {
+                    LogToNanoCadConsole("\n[DesignTools]: Нет параметров для распаковки коллизий. Запустите из панели DesignTools.\n");
+                    return;
+                }
+
+                var service = new CollisionCleanupService();
+                var result = service.DetectAndResolveCollisions(state.MinDistanceThreshold);
+                LogToNanoCadConsole($"\n[DesignTools]: {result.Message}\n");
+                DesignToolsCommandStateService.PublishResult(toolKind, result.Message);
+            }
+            catch (System.Exception ex)
+            {
+                var message = $"Ошибка распаковки коллизий: {ex.Message}";
+                LogToNanoCadConsole($"\n[DesignTools Error]: {message}\n");
+                DesignToolsCommandStateService.PublishResult(toolKind, message);
+            }
+        }
+
         [CommandMethod("DT_RUN_DIAGNOSTICS_TOOL", CommandFlags.Modal)]
         public static void RunDesignToolsDiagnosticsTool()
         {

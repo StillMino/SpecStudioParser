@@ -77,6 +77,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
         [ObservableProperty] private string _selectedReference = string.Empty;
         [ObservableProperty] private bool _isReferenceLocked;
         [ObservableProperty] private string _referenceLockLabel = "Опорная";
+        [ObservableProperty] private double _minDistanceThreshold = 2.0;
 
         public bool IsReferenceEnabled => !IsReferenceLocked;
 
@@ -169,6 +170,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
         private DesignToolCardViewModel? _leadersCard;
         private DesignToolCardViewModel? _dimensionsCard;
         private DesignToolCardViewModel? _diagnosticsCard;
+        private DesignToolCardViewModel? _collisionCleanupCard;
 
         [ObservableProperty] private string _status = "Инструменты проектировщика готовы к работе.";
         [ObservableProperty] private string _documentStatus = "Документ nanoCAD не проверен.";
@@ -191,10 +193,12 @@ namespace SpecStudioParser.DesignTools.ViewModels
             _leadersCard = CreateLeaderToolCard();
             _dimensionsCard = CreateDimensionToolCard();
             _diagnosticsCard = CreateDiagnosticsToolCard();
+            _collisionCleanupCard = CreateCollisionCleanupCard();
 
             _allToolCards.Add(_leadersCard);
             _allToolCards.Add(_dimensionsCard);
             _allToolCards.Add(_diagnosticsCard);
+            _allToolCards.Add(_collisionCleanupCard);
             _allToolCards.Add(CreateModelToolCard());
             _allToolCards.Add(CreateSpecifierToolCard());
 
@@ -249,6 +253,21 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 new[] { "-" },
                 new[] { "-" },
                 ExecuteDiagnosticsTool);
+        }
+
+        private DesignToolCardViewModel CreateCollisionCleanupCard()
+        {
+            return new DesignToolCardViewModel(
+                "collision-cleanup",
+                "Распаковка",
+                "Поиск наложений текста и авто-разнесение по чертежу. Укажите порог минимального расстояния между объектами.",
+                FilterDrafting,
+                "M20.83 11.17L13.5 3.83L6.17 11.17L7.88 12.88L12.25 8.5V20.5H14.75V8.5L19.12 12.88L20.83 11.17Z",
+                new[] { "Текст" },
+                new[] { "Найти и разнести" },
+                new[] { "Горизонтально", "Вертикально" },
+                new[] { "Авто" },
+                ExecuteCollisionCleanup);
         }
 
         private DesignToolCardViewModel CreateModelToolCard()
@@ -425,6 +444,20 @@ namespace SpecStudioParser.DesignTools.ViewModels
             }
         }
 
+        private void ExecuteCollisionCleanup(DesignToolCardViewModel card)
+        {
+            var state = new DesignToolsCommandState
+            {
+                ToolKind = DesignToolsToolKind.CollisionCleanup,
+                Operation = DesignToolsOperation.Align,
+                MinDistanceThreshold = card.MinDistanceThreshold
+            };
+
+            DesignToolsCommandStateService.SetPendingState(state);
+            SetCardStatus(card, $"Поиск коллизий (порог {state.MinDistanceThreshold:F1})...");
+            SendNanoCadCommand("DT_COLLISION_CLEANUP");
+        }
+
         private void ExecuteStubTool(DesignToolCardViewModel card)
         {
             SetCardStatus(card, "Каркас инструмента создан. Реализация будет добавлена следующим шагом.");
@@ -437,6 +470,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 DesignToolsToolKind.Leaders => _leadersCard,
                 DesignToolsToolKind.Dimensions => _dimensionsCard,
                 DesignToolsToolKind.Diagnostics => _diagnosticsCard,
+                DesignToolsToolKind.CollisionCleanup => _collisionCleanupCard,
                 _ => null
             };
 

@@ -8,7 +8,8 @@ namespace SpecStudioParser.DesignTools.Services
         Leaders,
         Dimensions,
         Diagnostics,
-        GroupDrag
+        GroupDrag,
+        CollisionCleanup
     }
 
     public enum DesignToolsLeaderSource
@@ -53,6 +54,8 @@ namespace SpecStudioParser.DesignTools.Services
         public DesignToolsDiagnosticsSource DiagnosticsSource { get; init; } = DesignToolsDiagnosticsSource.AllObjects;
         /// <summary>Кэшированные ID MultiCAD-выносок из селекции (чтобы не терять при переходе в команду)</summary>
         public List<object>? MultiCadSelectionIds { get; set; }
+        /// <summary>Порог минимального расстояния для инструмента распаковки коллизий (в единицах чертежа)</summary>
+        public double MinDistanceThreshold { get; init; } = 2.0;
     }
 
     public sealed class DesignToolsCommandResultEventArgs : EventArgs
