@@ -205,23 +205,39 @@ namespace SpecStudioParser.DesignTools.Services
 
         private static bool TryGetMLeaderBounds(MLeader ml, out Point3d min, out Point3d max)
         {
-            // GeometricExtents includes leader line + arrowhead → bbox too large.
-            // Use TextLocation as center with padding proportional to text length.
+            // GetContentGeomExtents returns bbox of text/block content only (no leader lines/arrowheads)
             try
             {
-                var tl = ml.TextLocation;
-                var textLen = 10.0; // default half-width
-                try { textLen = Math.Max(10, (ml.MText?.Text ?? "").Length * 2.5); } catch {}
-                min = new Point3d(tl.X - 3, tl.Y - 3, 0);
-                max = new Point3d(tl.X + textLen, tl.Y + 3, 0);
-                return true;
+                var ext = ml.GetContentGeomExtents();
+                if (ext != null)
+                {
+                    min = ext.MinPoint;
+                    max = ext.MaxPoint;
+                    return true;
+                }
             }
             catch
             {
-                min = Point3d.Origin;
-                max = Point3d.Origin;
-                return false;
+                // Fallback: TextLocation with text-length-based padding
+                try
+                {
+                    var tl = ml.TextLocation;
+                    var textLen = 10.0;
+                    try { textLen = Math.Max(10, (ml.MText?.Text ?? "").Length * 2.5); } catch {}
+                    min = new Point3d(tl.X - 3, tl.Y - 3, 0);
+                    max = new Point3d(tl.X + textLen, tl.Y + 3, 0);
+                    return true;
+                }
+                catch
+                {
+                    min = Point3d.Origin;
+                    max = Point3d.Origin;
+                    return false;
+                }
             }
+            min = Point3d.Origin;
+            max = Point3d.Origin;
+            return false;
         }
 
         private static bool IsHorizontalSpread(List<CollisionItem> items, List<int> members)
