@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Концепт 5 — Radial / Hub</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+  body { background:#101018; display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+  .panel { width:440px; height:640px; background:#14141e; border-radius:12px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 12px 48px rgba(0,0,0,.5); position:relative; }
+  /* Top bar */
+  .top { padding:10px 16px; display:flex; align-items:center; justify-content:space-between; z-index:2; }
+  .top-t { font-size:14px; font-weight:700; color:#c0c0d5; }
+  .top-v { font-size:9px; color:#444; margin-left:8px; }
+  .top-btn { width:28px; height:28px; border-radius:6px; background:#1e1e2a; border:none; color:#666; cursor:pointer; font-size:14px; }
+  /* Search */
+  .search { padding:4px 16px 8px; z-index:2; }
+  .search input { width:100%; padding:7px 14px; border-radius:20px; border:1px solid #222; background:#1a1a26; color:#aaa; font-size:12px; }
+  /* Hub area — radial concept */
+  .hub { flex:1; position:relative; display:flex; align-items:center; justify-content:center; }
+  /* Center orb */
+  .orb { width:72px; height:72px; border-radius:50%; background:radial-gradient(circle at 30% 30%,#5c3cfc,#3a1c8c); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 0 24px rgba(92,60,252,.3); cursor:pointer; position:relative; z-index:5; }
+  .orb-lbl { position:absolute; bottom:-22px; font-size:10px; color:#7c5cfc; font-weight:600; white-space:nowrap; }
+  /* Satellite nodes */
+  .sat { position:absolute; width:64px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; transition:.2s; z-index:4; }
+  .sat:hover { transform:scale(1.1); }
+  .sat-ic { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; position:relative; }
+  .sat-lbl { font-size:10px; color:#888; font-weight:500; text-align:center; }
+  .sat-cnt { font-size:8px; color:#555; }
+  .sat-led { position:absolute; top:2px; right:2px; width:7px; height:7px; border-radius:50%; border:1.5px solid #14141e; }
+  .led-ok{background:#4caf50}.led-err{background:#f44336}.led-idle{background:#333}
+  /* Connector lines (SVG overlay) */
+  .lines { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+  /* Config dock — slides up from bottom when tool selected */
+  .dock { padding:10px 16px; background:#1a1a26; border-top:1px solid #222; border-radius:12px 12px 0 0; z-index:10; }
+  .dock-title { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .dock-ic { width:32px; height:32px; border-radius:8px; background:#2a2a3e; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .dock-name { font-size:13px; font-weight:600; color:#ccc; }
+  .dock-st { font-size:10px; margin-left:auto; }
+  .st-ok{color:#4caf50}.st-err{color:#f44336}.st-wait{color:#555}
+  /* Config grid */
+  .dock-cfg { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+  .cfg-item { display:flex; flex-direction:column; gap:2px; }
+  .cfg-lbl { font-size:9px; color:#555; text-transform:uppercase; letter-spacing:.5px; }
+  .cfg-val { display:flex; gap:3px; }
+  .chip { font-size:10px; padding:3px 8px; border-radius:4px; background:#222232; color:#777; border:1px solid #2a2a3a; cursor:pointer; }
+  .chip.on { background:#2a2050; color:#9a7aff; border-color:#3a3070; }
+  /* Run button full width */
+  .dock-run { width:100%; padding:8px; font-size:12px; font-weight:600; border-radius:6px; background:#4a3a7c; color:#c0a0ff; border:none; cursor:pointer; }
+  .dock-run:hover { background:#5a4a8c; }
+  /* Status bar */
+  .stat { padding:5px 16px; background:#101018; display:flex; align-items:center; gap:6px; }
+  .stat-led { width:7px; height:7px; border-radius:50%; background:#4caf50; box-shadow:0 0 3px #4caf50; }
+  .stat-t { font-size:10px; color:#444; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* WIP */
+  .sat.stub .sat-ic { opacity:.35; border:1.5px dashed #333; }
+  .sat.stub .sat-lbl { color:#444; }
+  .wip-mini { font-size:7px; color:#ffb400; background:#221a00; padding:1px 3px; border-radius:2px; margin-top:2px; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="top">
+    <div><span class="top-t">DesignTools</span><span class="top-v">v1.0 · 6fc186e</span></div>
+    <button class="top-btn">↻</button>
+  </div>
+  <div class="search"><input placeholder="🔍 Поиск инструмента..."></div>
+  <!-- Hub -->
+  <div class="hub">
+    <svg class="lines" viewBox="0 0 440 380" preserveAspectRatio="none">
+      <!-- center: ~220,190 -->
+      <line x1="220" y1="190" x2="90"  y2="70"  stroke="#1e1e2a" stroke-width="1.5" stroke-dasharray="3,4"/>
+      <line x1="220" y1="190" x2="350" y2="70"  stroke="#1e1e2a" stroke-width="1.5" stroke-dasharray="3,4"/>
+      <line x1="220" y1="190" x2="50"  y2="190" stroke="#1e1e2a" stroke-width="1.5" stroke-dasharray="3,4"/>
+      <line x1="220" y1="190" x2="390" y2="190" stroke="#1e1e2a" stroke-width="1.5" stroke-dasharray="3,4"/>
+      <line x1="220" y1="190" x2="90"  y2="310" stroke="#1e1e2a" stroke-width="1.5" stroke-dasharray="3,4"/>
+      <line x1="220" y1="190" x2="350" y2="310" stroke="#1e1e2a" stroke-width="1.5" stroke-dasharray="3,4"/>
+      <!-- highlight active connection -->
+      <line x1="220" y1="190" x2="90"  y2="70"  stroke="#4a3a7c" stroke-width="2"/>
+    </svg>
+    <!-- Center -->
+    <div class="orb">
+      🛠
+      <div class="orb-lbl">DesignTools</div>
+    </div>
+    <!-- Satellites -->
+    <div class="sat" style="top:38px;left:46px;">
+      <div class="sat-ic" style="background:#1a2540">📐
+        <div class="sat-led led-ok"></div>
+      </div>
+      <div class="sat-lbl">Выноски</div>
+      <div class="sat-cnt">8 ops</div>
+    </div>
+    <div class="sat" style="top:38px;right:46px;">
+      <div class="sat-ic" style="background:#2a1a40">📏
+        <div class="sat-led led-idle"></div>
+      </div>
+      <div class="sat-lbl">Размеры</div>
+      <div class="sat-cnt">7 ops</div>
+    </div>
+    <div class="sat" style="top:160px;left:10px;">
+      <div class="sat-ic" style="background:#3a1515">💥
+        <div class="sat-led led-err"></div>
+      </div>
+      <div class="sat-lbl">Распаковка</div>
+      <div class="sat-cnt">1 op</div>
+    </div>
+    <div class="sat" style="top:160px;right:10px;">
+      <div class="sat-ic" style="background:#0a2818">🔍
+        <div class="sat-led led-idle"></div>
+      </div>
+      <div class="sat-lbl">Диагностика</div>
+      <div class="sat-cnt">1 op</div>
+    </div>
+    <div class="sat stub" style="bottom:30px;left:66px;">
+      <div class="sat-ic" style="background:#252530">🏗</div>
+      <div class="sat-lbl">3D / Model</div>
+      <div class="wip-mini">WIP</div>
+    </div>
+    <div class="sat stub" style="bottom:30px;right:66px;">
+      <div class="sat-ic" style="background:#252530">📋</div>
+      <div class="sat-lbl">Спецификатор</div>
+      <div class="wip-mini">WIP</div>
+    </div>
+  </div>
+  <!-- Config dock -->
+  <div class="dock">
+    <div class="dock-title">
+      <div class="dock-ic" style="background:#1a2540">📐</div>
+      <div class="dock-name">Выноски — Умная группа</div>
+      <div class="dock-st st-ok">✓ 8 объектов · 0.3с</div>
+    </div>
+    <div class="dock-cfg">
+      <div class="cfg-item">
+        <div class="cfg-lbl">Источник</div>
+        <div class="cfg-val">
+          <span class="chip on">MultiCAD</span>
+          <span class="chip">Teigha</span>
+        </div>
+      </div>
+      <div class="cfg-item">
+        <div class="cfg-lbl">Операция</div>
+        <div class="cfg-val">
+          <span class="chip">Выровнять</span>
+          <span class="chip">Распределить</span>
+          <span class="chip on">Умная группа</span>
+        </div>
+      </div>
+      <div class="cfg-item">
+        <div class="cfg-lbl">Ось</div>
+        <div class="cfg-val">
+          <span class="chip on">↔ Горизонт.</span>
+          <span class="chip">↕ Вертик.</span>
+        </div>
+      </div>
+      <div class="cfg-item">
+        <div class="cfg-lbl">Опорная точка</div>
+        <div class="cfg-val">
+          <span class="chip on">Первая</span>
+          <span class="chip">Указать</span>
+        </div>
+      </div>
+    </div>
+    <button class="dock-run">▶ Запустить: Выноски — Умная группа</button>
+  </div>
+  <div class="stat"><div class="stat-led"></div><div class="stat-t">Готово · Кран_монтажный.dwg</div></div>
+</div>
+<script>
+document.querySelectorAll('.sat').forEach(s=>s.onclick=()=>{
+  document.querySelectorAll('.sat').forEach(x=>x.style.transform='');
+  s.style.transform='scale(1.15)';
+});
+</script>
+</body>
+</html>

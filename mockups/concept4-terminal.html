@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Концепт 4 — Консольный командир</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Consolas','Cascadia Code','Segoe UI',monospace; }
+  body { background:#0d0d12; display:flex; justify-content:center; padding:20px; }
+  .panel { width:400px; height:640px; background:#12121a; border-radius:6px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,.6); border:1px solid #1e1e2a; }
+  /* Header — terminal style */
+  .hdr { padding:8px 12px; background:#0a0a10; border-bottom:1px solid #1a1a26; display:flex; align-items:center; justify-content:space-between; }
+  .hdr-l { font-size:12px; color:#4a4a6a; }
+  .hdr-l b { color:#7c5cfc; }
+  .hdr-v { font-size:9px; color:#333; }
+  .hdr-btn { width:22px; height:22px; border-radius:3px; background:#1a1a26; border:none; color:#555; cursor:pointer; font-size:12px; }
+  /* Terminal body */
+  .term { flex:1; overflow-y:auto; padding:8px 12px; font-size:11px; line-height:1.6; }
+  .t-line { color:#555; }
+  .t-cmd { color:#7c5cfc; }
+  .t-ok { color:#4caf50; }
+  .t-err { color:#f44336; }
+  .t-warn { color:#ffb400; }
+  .t-dim { color:#333; }
+  .t-info { color:#5a8aaa; }
+  .cursor { display:inline-block; width:8px; height:13px; background:#4a4a6a; animation:blink 1s step-end infinite; vertical-align:text-bottom; }
+  @keyframes blink { 50%{opacity:0} }
+  /* Command list */
+  .cmds { border-top:1px solid #1a1a26; padding:8px 12px; }
+  .cmds-hdr { font-size:10px; color:#444; margin-bottom:6px; text-transform:uppercase; letter-spacing:1px; }
+  .cmd-row { display:flex; align-items:center; gap:8px; padding:4px 8px; border-radius:4px; cursor:pointer; transition:.1s; }
+  .cmd-row:hover { background:#1a1a28; }
+  .cmd-key { font-size:10px; color:#7c5cfc; background:#1e1a30; padding:2px 6px; border-radius:3px; border:1px solid #2a2440; min-width:32px; text-align:center; font-weight:600; }
+  .cmd-name { font-size:11px; color:#777; flex:1; font-family:'Segoe UI',sans-serif; }
+  .cmd-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .d-ok{background:#4caf50}.d-err{background:#f44336}.d-idle{background:#333}
+  /* Input bar */
+  .input-bar { padding:8px 12px; background:#0a0a10; border-top:1px solid #1a1a26; display:flex; align-items:center; gap:6px; }
+  .prompt { color:#7c5cfc; font-size:12px; font-weight:bold; }
+  .input-bar input { flex:1; background:transparent; border:none; color:#aaa; font-size:12px; font-family:inherit; outline:none; }
+  .send-btn { padding:3px 10px; font-size:11px; background:#1e1a30; color:#7c5cfc; border:1px solid #2a2440; border-radius:3px; cursor:pointer; font-family:inherit; }
+  /* Quick config */
+  .quick-cfg { padding:6px 12px; background:#0e0e16; border-top:1px solid #1a1a26; display:flex; gap:4px; flex-wrap:wrap; align-items:center; }
+  .qc-lbl { font-size:9px; color:#444; text-transform:uppercase; letter-spacing:.5px; }
+  .qc-chip { font-size:10px; padding:2px 8px; border-radius:3px; background:#15151f; color:#666; border:1px solid #1e1e2a; cursor:pointer; font-family:'Segoe UI',sans-serif; }
+  .qc-chip.on { background:#1e1a30; color:#7c5cfc; border-color:#2a2440; }
+  .qc-sep { color:#222; margin:0 2px; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="hdr">
+    <div class="hdr-l"><b>◈</b> DesignTools <span class="hdr-v">v1.0 · 6fc186e</span></div>
+    <button class="hdr-btn">↻</button>
+  </div>
+  <div class="term">
+    <div class="t-line"><span class="t-info">[18:42]</span> <span class="t-dim">Панель открыта. nanoCAD x64 25.0.</span></div>
+    <div class="t-line"><span class="t-info">[18:42]</span> <span class="t-dim">Документ:</span> <span style="color:#aaa">Кран_монтажный.dwg</span></div>
+    <div class="t-line">&nbsp;</div>
+    <div class="t-line"><span class="t-cmd">› leaders smartgroup --axis=horizontal</span></div>
+    <div class="t-line"><span class="t-dim">  Selecting MultiCAD leaders... 8 found</span></div>
+    <div class="t-line"><span class="t-dim">  Anchor: first object (2415.3, 830.1)</span></div>
+    <div class="t-line"><span class="t-dim">  Step: auto 15.0</span></div>
+    <div class="t-line"><span class="t-ok">  ✓ Aligned 8 leaders in 0.34s</span></div>
+    <div class="t-line">&nbsp;</div>
+    <div class="t-line"><span class="t-cmd">› collision unpack --scope=text --threshold=2.0</span></div>
+    <div class="t-line"><span class="t-dim">  Scanning AcDbText, AcDbMText...</span></div>
+    <div class="t-line"><span class="t-ok">  ✓ 3 clusters, 7 pairs resolved</span></div>
+    <div class="t-line">&nbsp;</div>
+    <div class="t-line"><span class="t-cmd">› leaders group --axis=horizontal --ref=first</span></div>
+    <div class="t-line"><span class="t-warn">  ⚠ Select MultiCAD leaders first</span></div>
+    <div class="t-line"><span class="t-err">  ✗ No MultiCAD selection found</span></div>
+    <div class="t-line">&nbsp;</div>
+    <div class="t-line"><span class="t-cmd">› </span><span class="cursor"></span></div>
+  </div>
+  <!-- Quick config for current context -->
+  <div class="quick-cfg">
+    <span class="qc-lbl">ctx:</span>
+    <span class="qc-chip on">MultiCAD</span>
+    <span class="qc-chip">Teigha</span>
+    <span class="qc-sep">│</span>
+    <span class="qc-chip on">↔</span>
+    <span class="qc-chip">↕</span>
+    <span class="qc-sep">│</span>
+    <span class="qc-lbl">op:</span>
+    <span class="qc-chip">Выровнять</span>
+    <span class="qc-chip">Группа</span>
+    <span class="qc-chip on">Умная группа</span>
+  </div>
+  <!-- Quick commands -->
+  <div class="cmds">
+    <div class="cmds-hdr">⌨ Команды</div>
+    <div class="cmd-row"><span class="cmd-key">F1</span><span class="cmd-name">Выноски — умная группа</span><span class="cmd-dot d-ok"></span></div>
+    <div class="cmd-row"><span class="cmd-key">F2</span><span class="cmd-name">Выноски — выровнять</span><span class="cmd-dot d-idle"></span></div>
+    <div class="cmd-row"><span class="cmd-key">F3</span><span class="cmd-name">Размеры — выровнять</span><span class="cmd-dot d-idle"></span></div>
+    <div class="cmd-row"><span class="cmd-key">F4</span><span class="cmd-name">Распаковка текста</span><span class="cmd-dot d-err"></span></div>
+    <div class="cmd-row"><span class="cmd-key">F5</span><span class="cmd-name">Диагностика</span><span class="cmd-dot d-idle"></span></div>
+    <div class="cmd-row"><span class="cmd-key">···</span><span class="cmd-name" style="color:#444">3D / Spec (недоступно)</span><span class="cmd-dot d-idle"></span></div>
+  </div>
+  <div class="input-bar">
+    <span class="prompt">›</span>
+    <input placeholder="Введите команду или /help..." autofocus>
+    <button class="send-btn">↵</button>
+  </div>
+</div>
+</body>
+</html>
