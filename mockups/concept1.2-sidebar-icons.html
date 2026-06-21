@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Концепт 1.2 — Sidebar + секции и иконки операций</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+  body { background:#1e1e2e; display:flex; justify-content:center; padding:20px; }
+  .panel { width:300px; height:640px; background:#252535; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,.4); }
+  /* Header */
+  .hdr { padding:10px 14px; background:#2a2a3e; border-bottom:1px solid #333; display:flex; align-items:center; justify-content:space-between; }
+  .hdr-t { font-size:13px; font-weight:600; color:#e0e0f0; }
+  .hdr-v { font-size:9px; color:#666; margin-left:6px; }
+  .hdr-btn { width:24px; height:24px; border-radius:4px; background:#333; border:none; color:#888; cursor:pointer; font-size:13px; }
+  /* Search */
+  .search { padding:8px 12px; background:#222232; }
+  .search input { width:100%; padding:6px 12px; border-radius:4px; border:1px solid #333; background:#1a1a2a; color:#ccc; font-size:11px; }
+  /* Section headers */
+  .tools { flex:1; overflow-y:auto; }
+  .sec-hdr { padding:6px 14px 4px; font-size:9px; color:#555; text-transform:uppercase; letter-spacing:1px; font-weight:600; background:#1e1e2a; }
+  .sec-hdr:first-child { padding-top:8px; }
+  /* Tool row with inline operation icons */
+  .tool { padding:8px 14px; border-bottom:1px solid #2a2a3a; cursor:pointer; transition:.15s; }
+  .tool:hover { background:#2e2e44; }
+  .tool.active { background:#2c2c46; border-left:3px solid #7c5cfc; padding-left:11px; }
+  .tool-top { display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+  .tool-ic { width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+  .bg-blue{background:#1a2540} .bg-purple{background:#2a1a40} .bg-red{background:#3a1515} .bg-green{background:#0a2818} .bg-dark{background:#252530}
+  .tool-name { font-size:12px; color:#ddd; font-weight:500; flex:1; }
+  .tool-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .d-ok{background:#4caf50}.d-err{background:#f44336}.d-idle{background:#444}
+  .wip { font-size:7px; color:#ffb400; background:#332200; padding:1px 4px; border-radius:2px; margin-left:4px; font-weight:600; }
+  .tool.stub { opacity:.45; }
+  /* Operation mini-icons row */
+  .ops-row { display:flex; gap:3px; padding-left:40px; flex-wrap:wrap; }
+  .op-btn { width:26px; height:26px; border-radius:5px; background:#2a2a3a; border:1px solid #333; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; position:relative; transition:.1s; }
+  .op-btn:hover { background:#333344; border-color:#444; }
+  .op-btn.on { background:#3a2a6c; border-color:#4a3a7c; }
+  .op-ic { font-size:11px; color:#777; line-height:1; }
+  .op-btn.on .op-ic { color:#b39dff; }
+  .op-tip { position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:8px; color:#aaa; background:#1a1a2a; padding:1px 5px; border-radius:3px; white-space:nowrap; opacity:0; pointer-events:none; transition:.1s; z-index:10; }
+  .op-btn:hover .op-tip { opacity:1; bottom:-20px; }
+  /* Secondary controls (axis/ref) — only for active tool */
+  .sub-row { display:flex; align-items:center; gap:4px; padding:4px 14px 6px 54px; flex-wrap:wrap; }
+  .sub-lbl { font-size:8px; color:#444; text-transform:uppercase; }
+  .mini-chip { font-size:9px; padding:2px 6px; border-radius:4px; background:#2a2a3a; color:#777; border:1px solid #333; cursor:pointer; }
+  .mini-chip.on { background:#322058; color:#a080ff; border-color:#423068; }
+  /* Threshold mini */
+  .mini-num { font-size:9px; padding:1px 5px; width:34px; border-radius:3px; background:#2a2a3a; color:#888; border:1px solid #333; text-align:center; }
+  /* Run button */
+  .run-bar { padding:6px 14px 8px 54px; }
+  .run-btn { padding:5px 10px; font-size:11px; font-weight:600; border-radius:5px; background:#4a3a7c; color:#c0a0ff; border:none; cursor:pointer; }
+  .run-btn:hover { background:#5a4a8c; }
+  /* Footer */
+  .ftr { padding:6px 14px; background:#2a2a3e; border-top:1px solid #333; }
+  .ftr-t { font-size:10px; color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Filter */
+  .pills { display:flex; gap:4px; padding:4px 12px 6px; background:#222232; flex-wrap:wrap; }
+  .pill { padding:3px 9px; font-size:10px; border-radius:10px; background:#333; color:#777; cursor:pointer; border:none; }
+  .pill.on { background:#4a3a7c; color:#b39dff; }
+  /* Collapse for non-active tools */
+  .tool:not(.active) .ops-row,
+  .tool:not(.active) .sub-row,
+  .tool:not(.active) .run-bar { display:none; }
+  .tool.active .ops-row { display:flex; margin-bottom:2px; }
+  .tool.active .sub-row { display:flex; }
+  .tool.active .run-bar { display:block; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="hdr">
+    <div><span class="hdr-t">🛠 DesignTools</span><span class="hdr-v">1.0-master-35-6fc186e</span></div>
+    <button class="hdr-btn">↻</button>
+  </div>
+  <div class="search"><input placeholder="🔍 Поиск инструмента..."></div>
+  <div class="pills">
+    <button class="pill on">Все</button>
+    <button class="pill">2D</button>
+    <button class="pill">3D</button>
+    <button class="pill">Диагн.</button>
+  </div>
+  <div class="tools">
+    <!-- Section: Черчение -->
+    <div class="sec-hdr">Черчение 2D</div>
+
+    <div class="tool active">
+      <div class="tool-top">
+        <div class="tool-ic bg-blue">📐</div>
+        <div class="tool-name">Выноски</div>
+        <div class="tool-dot d-ok"></div>
+      </div>
+      <div class="ops-row">
+        <div class="op-btn"><span class="op-ic">⇄</span><span class="op-tip">Выровнять</span></div>
+        <div class="op-btn"><span class="op-ic">⇋</span><span class="op-tip">Распределить</span></div>
+        <div class="op-btn"><span class="op-ic">↦</span><span class="op-tip">Сдвинуть</span></div>
+        <div class="op-btn"><span class="op-ic">▦</span><span class="op-tip">Шаг</span></div>
+        <div class="op-btn"><span class="op-ic">▤</span><span class="op-tip">Полки по линии</span></div>
+        <div class="op-btn"><span class="op-ic">⊟</span><span class="op-tip">Выносные по линии</span></div>
+        <div class="op-btn"><span class="op-ic">◈</span><span class="op-tip">Группа</span></div>
+        <div class="op-btn on"><span class="op-ic">✦</span><span class="op-tip">Умная группа</span></div>
+      </div>
+      <div class="sub-row">
+        <span class="sub-lbl">Тип:</span><span class="mini-chip on">MultiCAD</span><span class="mini-chip">Teigha</span>
+        <span style="color:#333;margin:0 2px">·</span>
+        <span class="sub-lbl">Ось:</span><span class="mini-chip on">↔</span><span class="mini-chip">↕</span>
+        <span style="color:#333;margin:0 2px">·</span>
+        <span class="sub-lbl">Якорь:</span><span class="mini-chip on">Первая</span><span class="mini-chip">Точка</span>
+      </div>
+      <div class="run-bar"><button class="run-btn">▶ Умная группа · MultiCAD · ↔</button></div>
+    </div>
+
+    <div class="tool">
+      <div class="tool-top">
+        <div class="tool-ic bg-purple">📏</div>
+        <div class="tool-name">Размеры</div>
+        <div class="tool-dot d-idle"></div>
+      </div>
+      <div class="ops-row">
+        <div class="op-btn"><span class="op-ic">⇄</span><span class="op-tip">Выровнять</span></div>
+        <div class="op-btn"><span class="op-ic">⇋</span><span class="op-tip">Распределить</span></div>
+        <div class="op-btn"><span class="op-ic">↦</span><span class="op-tip">Сдвинуть</span></div>
+        <div class="op-btn"><span class="op-ic">▦</span><span class="op-tip">Шаг</span></div>
+        <div class="op-btn"><span class="op-ic">↺</span><span class="op-tip">Сбросить</span></div>
+      </div>
+    </div>
+
+    <div class="tool">
+      <div class="tool-top">
+        <div class="tool-ic bg-red">💥</div>
+        <div class="tool-name">Распаковка</div>
+        <div class="tool-dot d-err"></div>
+      </div>
+      <div class="ops-row">
+        <div class="op-btn on"><span class="op-ic">📄</span><span class="op-tip">Текст</span></div>
+      </div>
+      <div class="sub-row">
+        <span class="sub-lbl">Порог:</span>
+        <input class="mini-num" type="number" value="2.0">
+        <span style="color:#333;margin:0 2px">·</span>
+        <span class="sub-lbl">Ось:</span><span class="mini-chip on">↔</span><span class="mini-chip">↕</span>
+      </div>
+    </div>
+
+    <!-- Section: Служебные -->
+    <div class="sec-hdr">Служебные</div>
+
+    <div class="tool">
+      <div class="tool-top">
+        <div class="tool-ic bg-green">🔍</div>
+        <div class="tool-name">Диагностика</div>
+        <div class="tool-dot d-idle"></div>
+      </div>
+      <div class="ops-row">
+        <div class="op-btn"><span class="op-ic">📋</span><span class="op-tip">Проверить</span></div>
+      </div>
+    </div>
+
+    <!-- Section: В разработке -->
+    <div class="sec-hdr">В разработке</div>
+
+    <div class="tool stub">
+      <div class="tool-top">
+        <div class="tool-ic bg-dark">🏗</div>
+        <div class="tool-name">3D / Model <span class="wip">WIP</span></div>
+        <div class="tool-dot d-idle"></div>
+      </div>
+    </div>
+
+    <div class="tool stub">
+      <div class="tool-top">
+        <div class="tool-ic bg-dark">📋</div>
+        <div class="tool-name">Спецификатор <span class="wip">WIP</span></div>
+        <div class="tool-dot d-idle"></div>
+      </div>
+    </div>
+  </div>
+  <div class="ftr"><div class="ftr-t">✓ Выноски: Умная группа — 8 объектов за 0.3с</div></div>
+</div>
+<script>
+document.querySelectorAll('.tool').forEach(t=>t.onclick=e=>{
+  if(e.target.closest('.op-btn')||e.target.closest('.mini-chip')||e.target.closest('.run-btn')||e.target.closest('.mini-num')) return;
+  document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+});
+document.querySelectorAll('.op-btn').forEach(b=>b.onclick=e=>{
+  e.stopPropagation();
+  var row=b.parentElement;
+  row.querySelectorAll('.op-btn').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+});
+document.querySelectorAll('.mini-chip').forEach(c=>c.onclick=e=>{
+  e.stopPropagation();
+  c.parentElement.querySelectorAll('.mini-chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');
+});
+</script>
+</body>
+</html>
