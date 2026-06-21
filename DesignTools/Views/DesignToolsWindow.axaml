@@ -59,41 +59,49 @@
 			<ItemsControl ItemsSource="{Binding ToolCards}">
 				<ItemsControl.ItemTemplate>
 					<DataTemplate x:DataType="vm:DesignToolCardViewModel">
-						<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,0,0,6" Opacity="{Binding IsStub, Converter={x:Static vm:StubOpacityConverter.Instance}}">
-							<Grid RowDefinitions="Auto, Auto, Auto, Auto, Auto" ColumnDefinitions="Auto, *, Auto">
+						<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,0,0,6">
+							<Border.Opacity>
+								<Binding Path="IsStub" Converter="{x:Static vm:StubOpacityConverter.Instance}"/>
+							</Border.Opacity>
 
-								<!-- Collapse/expand toggle (chevron) -->
-								<Button Grid.Row="0" Grid.Column="0" Width="20" Height="34" Padding="0" Margin="0,0,4,0" Background="Transparent" BorderThickness="0" Command="{Binding $parent[ItemsControl].((vm:DesignToolsViewModel) DataContext).ToggleExpandCommand}" CommandParameter="{Binding}" ToolTip.Tip="Свернуть/развернуть">
-									<TextBlock Text="{Binding IsExpanded, Converter={x:Static vm:ExpandChevronConverter.Instance}}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}"/>
-								</Button>
+							<!-- Row 0: header (chevron + run icon + title + badges) -->
+							<!-- Row 1: collapsible content -->
+							<!-- Row 2: status text -->
+							<Grid RowDefinitions="Auto, Auto, Auto">
 
-								<!-- Run button -->
-								<Button Grid.Row="0" Grid.Column="1" Grid.RowSpan="1" Command="{Binding RunCommand}" Width="34" Height="34" Padding="4" Margin="0,0,7,0" Background="{StaticResource AccentSoftBrush}" ToolTip.Tip="Запустить инструмент" HorizontalAlignment="Left">
-									<Viewbox Width="24" Height="24" Stretch="Uniform">
-										<Path Data="{Binding IconGeometry, Converter={StaticResource GeometryPathConverter}}" Stroke="{StaticResource TextBrush}" StrokeThickness="1.3" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent"/>
-									</Viewbox>
-								</Button>
+								<!-- Header row: chevron | run button | title+badges -->
+								<Grid Grid.Row="0" ColumnDefinitions="20, 34, *">
+									<!-- Chevron toggle -->
+									<Button Grid.Column="0" Width="20" Height="30" Padding="0" Margin="0,0,2,0" Background="Transparent" BorderThickness="0" Command="{Binding $parent[ItemsControl].((vm:DesignToolsViewModel) DataContext).ToggleExpandCommand}" CommandParameter="{Binding}" ToolTip.Tip="Свернуть/развернуть">
+										<TextBlock Text="{Binding IsExpanded, Converter={x:Static vm:ExpandChevronConverter.Instance}}" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
+									</Button>
 
-								<!-- Title + status dot + WIP badge -->
-								<StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="44,0,0,0">
-									<!-- Status dot -->
-									<Ellipse Width="8" Height="8" Margin="0,0,5,0" Fill="Green" IsVisible="{Binding IsOk}"/>
-									<Ellipse Width="8" Height="8" Margin="0,0,5,0" Fill="Red" IsVisible="{Binding IsError}"/>
-									<TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Description}"/>
-									<!-- WIP badge -->
-									<Border Background="#444" CornerRadius="3" Padding="4,1" Margin="6,0,0,0" IsVisible="{Binding IsStub}" ToolTip.Tip="Инструмент в разработке">
-										<TextBlock Text="WIP" FontSize="9" Foreground="#FFB400" FontWeight="Bold"/>
-									</Border>
-								</StackPanel>
+									<!-- Run button -->
+									<Button Grid.Column="1" Command="{Binding RunCommand}" Width="34" Height="34" Padding="4" Margin="0,0,5,0" Background="{StaticResource AccentSoftBrush}" ToolTip.Tip="Запустить инструмент">
+										<Viewbox Width="24" Height="24" Stretch="Uniform">
+											<Path Data="{Binding IconGeometry, Converter={StaticResource GeometryPathConverter}}" Stroke="{StaticResource TextBrush}" StrokeThickness="1.3" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent"/>
+										</Viewbox>
+									</Button>
+
+									<!-- Title + status dot + WIP badge -->
+									<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="2,0,0,0">
+										<Ellipse Width="8" Height="8" Margin="0,0,5,0" Fill="Green" IsVisible="{Binding IsOk}"/>
+										<Ellipse Width="8" Height="8" Margin="0,0,5,0" Fill="Red" IsVisible="{Binding IsError}"/>
+										<TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Description}"/>
+										<Border Background="#444" CornerRadius="3" Padding="4,1" Margin="6,0,0,0" IsVisible="{Binding IsStub}" ToolTip.Tip="Инструмент в разработке">
+											<TextBlock Text="WIP" FontSize="9" Foreground="#FFB400" FontWeight="Bold"/>
+										</Border>
+									</StackPanel>
+								</Grid>
 
 								<!-- Collapsible content -->
-								<StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" IsVisible="{Binding IsExpanded}" Margin="0,4,0,0">
+								<StackPanel Grid.Row="1" IsVisible="{Binding IsExpanded}" Margin="0,5,0,0">
 
 									<!-- Description -->
-									<TextBlock Text="{Binding Description}" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,5" IsVisible="{Binding IsExpanded}"/>
+									<TextBlock Text="{Binding Description}" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,5"/>
 
-									<!-- Combos row: only show what's meaningful -->
-									<Grid ColumnDefinitions="*, *, *, *" Margin="0,0,0,0">
+									<!-- Combos: only show what's meaningful -->
+									<Grid ColumnDefinitions="*, *, *, *">
 										<ComboBox Grid.Column="0" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasSources}"/>
 										<ComboBox Grid.Column="1" ItemsSource="{Binding Operations}" SelectedItem="{Binding SelectedOperation}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasOperations}"/>
 										<ComboBox Grid.Column="2" ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasAxes}"/>
@@ -108,7 +116,7 @@
 								</StackPanel>
 
 								<!-- Status text (always visible) -->
-								<TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding Status}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" ToolTip.Tip="{Binding Status}"/>
+								<TextBlock Grid.Row="2" Text="{Binding Status}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" ToolTip.Tip="{Binding Status}"/>
 							</Grid>
 						</Border>
 					</DataTemplate>
