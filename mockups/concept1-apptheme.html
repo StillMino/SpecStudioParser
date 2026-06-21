@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Концепт 1 — Sidebar (AppTheme colors)</title>
+<style>
+  :root {
+    --app-bg: #F7F7F5;
+    --panel: #FFFFFF;
+    --text: #1F1F1F;
+    --text-2: #5F6368;
+    --border: #D0D0CC;
+    --accent: #B76E2B;
+    --accent-soft: #F3E6DA;
+    --danger: #A24B3A;
+    --danger-soft: #F1E0DD;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+  body { background:var(--app-bg); display:flex; justify-content:center; padding:20px; gap:20px; }
+  .panel { width:280px; height:640px; background:var(--app-bg); border-radius:6px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08); border:1px solid var(--border); }
+  /* Header */
+  .hdr { padding:10px 12px; background:var(--panel); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .hdr-t { font-size:13px; font-weight:600; color:var(--text); }
+  .hdr-v { font-size:9px; color:var(--text-2); margin-left:6px; }
+  .hdr-btn { width:24px; height:24px; border-radius:4px; background:var(--panel); border:1px solid var(--border); color:var(--text-2); cursor:pointer; font-size:13px; }
+  .hdr-btn:hover { background:var(--accent-soft); border-color:var(--accent); }
+  /* Search */
+  .search { padding:8px 10px; background:var(--app-bg); }
+  .search input { width:100%; padding:6px 10px; border-radius:4px; border:1px solid var(--border); background:var(--panel); color:var(--text); font-size:11px; outline:none; }
+  .search input:focus { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+  /* Filter pills */
+  .pills { display:flex; gap:4px; padding:4px 10px 6px; background:var(--app-bg); flex-wrap:wrap; }
+  .pill { padding:3px 10px; font-size:10px; border-radius:10px; background:var(--panel); color:var(--text-2); cursor:pointer; border:1px solid var(--border); transition:.1s; }
+  .pill:hover { border-color:var(--accent); color:var(--accent); }
+  .pill.on { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); font-weight:500; }
+  /* Tool list */
+  .tools { flex:1; overflow-y:auto; }
+  .tool { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid #ECECE8; cursor:pointer; transition:.1s; }
+  .tool:hover { background:#FAFAF8; }
+  .tool.active { background:var(--accent-soft); border-left:3px solid var(--accent); padding-left:9px; }
+  .tool-ic { width:32px; height:32px; border-radius:6px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; border:1px solid #E8D5C5; }
+  .tool-info { flex:1; min-width:0; }
+  .tool-name { font-size:12px; color:var(--text); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tool-desc { font-size:9px; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+  .tool-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .dot-ok { background:#3D8B3D; } .dot-err { background:var(--danger); } .dot-idle { background:#BBB; }
+  /* Op count */
+  .ops { font-size:8px; color:var(--text-2); background:#EFEFEC; padding:1px 6px; border-radius:8px; margin-left:auto; }
+  /* Config strip */
+  .cfg { padding:6px 12px 8px; background:#FAFAF8; border-bottom:1px solid #ECECE8; display:none; }
+  .cfg.show { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .cfg select { padding:3px 6px; font-size:10px; border-radius:3px; background:var(--panel); color:var(--text); border:1px solid var(--border); min-width:60px; }
+  .cfg-num { width:50px; padding:3px; font-size:10px; border-radius:3px; background:var(--panel); color:var(--text); border:1px solid var(--border); }
+  .cfg-lbl { font-size:9px; color:var(--text-2); align-self:center; }
+  /* Run button */
+  .run-bar { padding:0 12px 8px; background:#FAFAF8; display:none; }
+  .run-bar.show { display:block; }
+  .run-btn { width:100%; padding:6px; font-size:11px; font-weight:600; border-radius:5px; background:var(--accent); color:var(--panel); border:none; cursor:pointer; }
+  .run-btn:hover { background:#A56328; }
+  /* Footer */
+  .ftr { padding:6px 12px; background:var(--panel); border-top:1px solid var(--border); }
+  .ftr-t { font-size:10px; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* WIP */
+  .wip { font-size:8px; color:#8A6519; background:#FFF3DC; padding:1px 5px; border-radius:3px; margin-left:4px; font-weight:600; border:1px solid #F0DCA0; }
+  .tool.stub { opacity:.55; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="hdr">
+    <div><span class="hdr-t">🛠 DesignTools</span><span class="hdr-v">1.0-master-35-6fc186e</span></div>
+    <button class="hdr-btn">↻</button>
+  </div>
+  <div class="search"><input placeholder="🔍 Поиск инструмента..." value="выноск"></div>
+  <div class="pills">
+    <button class="pill on">Все</button>
+    <button class="pill">2D</button>
+    <button class="pill">3D</button>
+    <button class="pill">Диагн.</button>
+  </div>
+  <div class="tools">
+    <div class="tool active" onclick="sel(this)">
+      <div class="tool-ic">📐</div>
+      <div class="tool-info">
+        <div class="tool-name">Выноски</div>
+        <div class="tool-desc">Выравнивание, распределение, шаг, группа</div>
+      </div>
+      <span class="ops">8</span>
+      <div class="tool-dot dot-ok"></div>
+    </div>
+    <div class="cfg show">
+      <select><option>MultiCAD</option><option>Мультивыноски</option></select>
+      <select><option>Выровнять</option><option>Распределить</option><option>Сдвинуть</option><option>Шаг</option><option>Группа</option><option>Умная группа</option></select>
+      <select><option>↔ Горизонт.</option><option>↕ Вертик.</option></select>
+      <select><option>📌 Первая</option><option>🎯 Точка</option></select>
+    </div>
+    <div class="run-bar show">
+      <button class="run-btn">▶ Выноски · Выровнять · ↔</button>
+    </div>
+
+    <div class="tool" onclick="sel(this)">
+      <div class="tool-ic">📏</div>
+      <div class="tool-info">
+        <div class="tool-name">Размеры</div>
+        <div class="tool-desc">Управление текстом размеров</div>
+      </div>
+      <span class="ops">7</span>
+      <div class="tool-dot dot-idle"></div>
+    </div>
+
+    <div class="tool" onclick="sel(this)">
+      <div class="tool-ic">💥</div>
+      <div class="tool-info">
+        <div class="tool-name">Распаковка</div>
+        <div class="tool-desc">Разнесение наложений текста и выносок</div>
+      </div>
+      <span class="ops">1</span>
+      <div class="tool-dot dot-err"></div>
+    </div>
+
+    <div class="tool stub" onclick="sel(this)">
+      <div class="tool-ic">🏗</div>
+      <div class="tool-info">
+        <div class="tool-name">3D / Model <span class="wip">WIP</span></div>
+        <div class="tool-desc">Каркас будущих команд</div>
+      </div>
+      <div class="tool-dot dot-idle"></div>
+    </div>
+
+    <div class="tool stub" onclick="sel(this)">
+      <div class="tool-ic">📋</div>
+      <div class="tool-info">
+        <div class="tool-name">Спецификатор <span class="wip">WIP</span></div>
+        <div class="tool-desc">Анализ данных спецификатора</div>
+      </div>
+      <div class="tool-dot dot-idle"></div>
+    </div>
+
+    <div class="tool" onclick="sel(this)">
+      <div class="tool-ic">🔍</div>
+      <div class="tool-info">
+        <div class="tool-name">Диагностика</div>
+        <div class="tool-desc">Сведения по выделенным объектам</div>
+      </div>
+      <div class="tool-dot dot-idle"></div>
+    </div>
+  </div>
+  <div class="ftr"><div class="ftr-t">✓ Выноски: Выровнено 8 объектов по горизонтали</div></div>
+</div>
+
+<script>
+function sel(el){
+  document.querySelectorAll('.tool').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>
