@@ -72,7 +72,7 @@
 								<!-- Header row: chevron | run button | title+badges -->
 								<Grid Grid.Row="0" ColumnDefinitions="20, 34, *">
 									<!-- Chevron toggle -->
-									<Button Grid.Column="0" Width="20" Height="30" Padding="0" Margin="0,0,2,0" Background="Transparent" BorderThickness="0" Command="{Binding $parent[ItemsControl].((vm:DesignToolsViewModel) DataContext).ToggleExpandCommand}" CommandParameter="{Binding}" ToolTip.Tip="Свернуть/развернуть">
+									<Button Grid.Column="0" Width="20" Height="30" Padding="0" Margin="0,0,2,0" Background="Transparent" BorderThickness="0" Command="{Binding ToggleExpandCommand}" ToolTip.Tip="Свернуть/развернуть">
 										<TextBlock Text="{Binding IsExpanded, Converter={x:Static vm:ExpandChevronConverter.Instance}}" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
 									</Button>
 

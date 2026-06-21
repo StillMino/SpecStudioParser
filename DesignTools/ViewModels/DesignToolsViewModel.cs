@@ -101,6 +101,13 @@ namespace SpecStudioParser.DesignTools.ViewModels
             OnPropertyChanged(nameof(IsError));
         }
 
+        public ICommand ToggleExpandCommand { get; }
+
+        private void ToggleExpand()
+        {
+            IsExpanded = !IsExpanded;
+        }
+
         public string Id { get; }
         public string Title { get; }
         public string Description { get; }
@@ -140,6 +147,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
             SelectedAxis = Axes.FirstOrDefault() ?? string.Empty;
             SelectedReference = References.FirstOrDefault() ?? string.Empty;
             RunCommand = new RelayCommand(async () => await DeferredCommandRunner.RunAsync(() => execute(this)));
+            ToggleExpandCommand = new RelayCommand(ToggleExpand);
 
             // Collapse stubs by default
             if (isStub) IsExpanded = false;
