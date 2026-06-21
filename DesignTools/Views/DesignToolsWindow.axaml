@@ -5,11 +5,11 @@
         x:Class="SpecStudioParser.DesignTools.Views.DesignToolsWindow"
         x:DataType="vm:DesignToolsViewModel"
         Title="Инструменты проектировщика"
-        Width="420"
+        Width="300"
         Height="640"
-        MinWidth="340"
+        MinWidth="260"
         MinHeight="480"
-        CanResize="False"
+        CanResize="True"
         ShowInTaskbar="False"
         SystemDecorations="None"
         Background="{StaticResource AppBackgroundBrush}">
@@ -20,113 +20,121 @@
 	</Window.Resources>
 
 	<Grid RowDefinitions="Auto, Auto, Auto, *, Auto" Background="{StaticResource AppBackgroundBrush}">
+
 		<!-- Header -->
-		<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8">
-			<Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
-				<StackPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
-					<TextBlock Text="Инструменты проектировщика" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
-					<TextBlock Text="{Binding Version}" Margin="8,0,0,0" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" ToolTip.Tip="Версия сборки (ветка-коммиты-хэш)"/>
+		<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="10,8">
+			<Grid ColumnDefinitions="*, Auto">
+				<StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+					<TextBlock Text="Инструменты проектировщика" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+					<TextBlock Text="{Binding Version}" Margin="6,0,0,0" FontSize="9" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/>
 				</StackPanel>
-				<Button Grid.Column="1" Grid.Row="0" Classes="neutralButton" Command="{Binding RefreshContextCommand}" Padding="6,2" ToolTip.Tip="Обновить сведения об активном документе nanoCAD">
+				<Button Grid.Column="1" Classes="neutralButton" Command="{Binding RefreshContextCommand}" Padding="6,2" ToolTip.Tip="Обновить документ">
 					<TextBlock Text="↻" FontSize="13"/>
 				</Button>
-				<TextBlock Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Text="{Binding DocumentStatus}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
 			</Grid>
 		</Border>
 
-		<!-- Filter bar -->
-		<Border Grid.Row="1" Padding="6,5,6,2" Background="{StaticResource AppBackgroundBrush}">
+		<!-- Filter pills -->
+		<Border Grid.Row="1" Padding="8,4,8,4">
 			<WrapPanel Orientation="Horizontal">
-				<Button Content="Все" Command="{Binding SelectFilterCommand}" CommandParameter="all" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Показать все инструменты"/>
-				<Button Content="2D" Command="{Binding SelectFilterCommand}" CommandParameter="drafting" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Инструменты 2D-проектирования"/>
-				<Button Content="Диагностика" Command="{Binding SelectFilterCommand}" CommandParameter="diagnostics" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Служебные диагностические инструменты"/>
-				<Button Content="3D" Command="{Binding SelectFilterCommand}" CommandParameter="model" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Инструменты модели"/>
-				<Button Content="Spec" Command="{Binding SelectFilterCommand}" CommandParameter="specifier" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Связь со спецификатором"/>
+				<Button Content="Все" Command="{Binding SelectFilterCommand}" CommandParameter="all" Padding="8,3" Margin="0,0,4,2" FontSize="10" Classes="neutralButton"/>
+				<Button Content="2D" Command="{Binding SelectFilterCommand}" CommandParameter="drafting" Padding="8,3" Margin="0,0,4,2" FontSize="10" Classes="neutralButton"/>
+				<Button Content="3D" Command="{Binding SelectFilterCommand}" CommandParameter="model" Padding="8,3" Margin="0,0,4,2" FontSize="10" Classes="neutralButton"/>
+				<Button Content="Диагн." Command="{Binding SelectFilterCommand}" CommandParameter="diagnostics" Padding="8,3" Margin="0,0,4,2" FontSize="10" Classes="neutralButton"/>
+				<Button Content="Spec" Command="{Binding SelectFilterCommand}" CommandParameter="specifier" Padding="8,3" Margin="0,0,4,2" FontSize="10" Classes="neutralButton"/>
 			</WrapPanel>
 		</Border>
 
 		<!-- Search -->
-		<Border Grid.Row="2" Padding="6,2,6,5" Background="{StaticResource AppBackgroundBrush}">
+		<Border Grid.Row="2" Padding="8,0,8,6">
 			<TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-			         Watermark="Поиск инструмента или режима"
-			         FontSize="12"
+			         Watermark="🔍 Поиск инструмента..."
+			         FontSize="11"
 			         MinHeight="28"
-			         ToolTip.Tip="Поиск по названию инструмента, описанию и параметрам"/>
+			         Padding="8,4"/>
 		</Border>
 
-		<!-- Tool cards -->
-		<ScrollViewer Grid.Row="3" Margin="6,0,6,6">
+		<!-- Tool list -->
+		<ScrollViewer Grid.Row="3">
 			<ItemsControl ItemsSource="{Binding ToolCards}">
 				<ItemsControl.ItemTemplate>
 					<DataTemplate x:DataType="vm:DesignToolCardViewModel">
-						<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,0,0,6">
-							<Border.Opacity>
-								<Binding Path="IsStub" Converter="{x:Static vm:StubOpacityConverter.Instance}"/>
-							</Border.Opacity>
 
-							<!-- Row 0: header (chevron + run icon + title + badges) -->
-							<!-- Row 1: collapsible content -->
-							<!-- Row 2: status text -->
-							<Grid RowDefinitions="Auto, Auto, Auto">
+						<StackPanel>
+							<!-- Tool row: clickable button with accent bar when active -->
+							<Button Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Command="{Binding ToggleExpandCommand}">
+								<Grid ColumnDefinitions="3, 32, *, Auto" Margin="8,6">
 
-								<!-- Header row: chevron | run button | title+badges -->
-								<Grid Grid.Row="0" ColumnDefinitions="20, 34, *">
-									<!-- Chevron toggle -->
-									<Button Grid.Column="0" Width="20" Height="30" Padding="0" Margin="0,0,2,0" Background="Transparent" BorderThickness="0" Command="{Binding ToggleExpandCommand}" ToolTip.Tip="Свернуть/развернуть">
-										<TextBlock Text="{Binding IsExpanded, Converter={x:Static vm:ExpandChevronConverter.Instance}}" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}"/>
-									</Button>
+									<!-- Active accent bar -->
+									<Border Grid.Column="0" Width="3" CornerRadius="2" Background="{StaticResource AccentBrush}" IsVisible="{Binding IsExpanded}" HorizontalAlignment="Left" Margin="0,0,3,0"/>
 
-									<!-- Run button -->
-									<Button Grid.Column="1" Command="{Binding RunCommand}" Width="34" Height="34" Padding="4" Margin="0,0,5,0" Background="{StaticResource AccentSoftBrush}" ToolTip.Tip="Запустить инструмент">
-										<Viewbox Width="24" Height="24" Stretch="Uniform">
+									<!-- Icon -->
+									<Border Grid.Column="1" Width="32" Height="32" CornerRadius="6" Background="{StaticResource AccentSoftBrush}" BorderBrush="#E8D5C5" BorderThickness="1">
+										<Viewbox Width="20" Height="20" Stretch="Uniform">
 											<Path Data="{Binding IconGeometry, Converter={StaticResource GeometryPathConverter}}" Stroke="{StaticResource TextBrush}" StrokeThickness="1.3" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent"/>
 										</Viewbox>
-									</Button>
+									</Border>
 
-									<!-- Title + status dot + WIP badge -->
-									<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="2,0,0,0">
-										<Ellipse Width="8" Height="8" Margin="0,0,5,0" Fill="Green" IsVisible="{Binding IsOk}"/>
-										<Ellipse Width="8" Height="8" Margin="0,0,5,0" Fill="Red" IsVisible="{Binding IsError}"/>
-										<TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Description}"/>
-										<Border Background="#444" CornerRadius="3" Padding="4,1" Margin="6,0,0,0" IsVisible="{Binding IsStub}" ToolTip.Tip="Инструмент в разработке">
-											<TextBlock Text="WIP" FontSize="9" Foreground="#FFB400" FontWeight="Bold"/>
-										</Border>
+									<!-- Name + desc -->
+									<StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center">
+										<StackPanel Orientation="Horizontal">
+											<TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Medium" Foreground="{StaticResource TextBrush}"/>
+											<Border Background="#FFF3DC" BorderBrush="#F0DCA0" BorderThickness="1" CornerRadius="3" Padding="4,1" Margin="4,0,0,0" IsVisible="{Binding IsStub}">
+												<TextBlock Text="WIP" FontSize="8" Foreground="#8A6519" FontWeight="Bold"/>
+											</Border>
+										</StackPanel>
+										<TextBlock Text="{Binding Description}" FontSize="9" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+									</StackPanel>
+
+									<!-- Status dot -->
+									<StackPanel Grid.Column="3" VerticalAlignment="Center">
+										<Ellipse Width="7" Height="7" Fill="#3D8B3D" IsVisible="{Binding IsOk}"/>
+										<Ellipse Width="7" Height="7" Fill="{StaticResource DangerBrush}" IsVisible="{Binding IsError}"/>
+										<Ellipse Width="7" Height="7" Fill="#BBB" IsVisible="{Binding IsIdle}"/>
 									</StackPanel>
 								</Grid>
+							</Button>
 
-								<!-- Collapsible content -->
-								<StackPanel Grid.Row="1" IsVisible="{Binding IsExpanded}" Margin="0,5,0,0">
+							<!-- Config section (only when expanded) -->
+							<Border IsVisible="{Binding IsExpanded}" Background="#FAFAF8" Padding="10,4,10,8">
+							<StackPanel>
 
-									<!-- Description -->
-									<TextBlock Text="{Binding Description}" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,5"/>
+								<!-- Dropdowns -->
+								<WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
+									<ComboBox ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" FontSize="10" MinHeight="24" Margin="0,0,4,3" IsVisible="{Binding HasSources}"/>
+									<ComboBox ItemsSource="{Binding Operations}" SelectedItem="{Binding SelectedOperation}" FontSize="10" MinHeight="24" Margin="0,0,4,3" IsVisible="{Binding HasOperations}"/>
+									<ComboBox ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis}" FontSize="10" MinHeight="24" Margin="0,0,4,3" IsVisible="{Binding HasAxes}"/>
+									<ComboBox ItemsSource="{Binding References}" SelectedItem="{Binding SelectedReference}" IsEnabled="{Binding IsReferenceEnabled}" FontSize="10" MinHeight="24" Margin="0,0,4,3" IsVisible="{Binding HasReferences}"/>
+								</WrapPanel>
 
-									<!-- Combos: only show what's meaningful -->
-									<Grid ColumnDefinitions="*, *, *, *">
-										<ComboBox Grid.Column="0" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasSources}"/>
-										<ComboBox Grid.Column="1" ItemsSource="{Binding Operations}" SelectedItem="{Binding SelectedOperation}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasOperations}"/>
-										<ComboBox Grid.Column="2" ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasAxes}"/>
-										<ComboBox Grid.Column="3" ItemsSource="{Binding References}" SelectedItem="{Binding SelectedReference}" IsEnabled="{Binding IsReferenceEnabled}" FontSize="11" MinHeight="26" IsVisible="{Binding HasReferences}"/>
-									</Grid>
-
-									<!-- Threshold (collision cleanup only) -->
-									<Grid ColumnDefinitions="Auto,*" Margin="0,3,0,0" IsVisible="{Binding Id, Converter={StaticResource CollisionThresholdVisibility}}">
-										<TextBlock Grid.Column="0" Text="Порог:" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource SecondaryTextBrush}"/>
-										<NumericUpDown Grid.Column="1" Value="{Binding MinDistanceThreshold}" Minimum="0" Maximum="1000" Increment="0.5" FontSize="11" MinHeight="26"/>
-									</Grid>
+								<!-- Threshold (collision cleanup only) -->
+								<StackPanel Orientation="Horizontal" Margin="0,0,0,4" IsVisible="{Binding Id, Converter={StaticResource CollisionThresholdVisibility}}">
+									<TextBlock Text="Порог:" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="{StaticResource SecondaryTextBrush}"/>
+									<NumericUpDown Value="{Binding MinDistanceThreshold}" Minimum="0" Maximum="1000" Increment="0.5" FontSize="10" MinHeight="24"/>
 								</StackPanel>
 
-								<!-- Status text (always visible) -->
-								<TextBlock Grid.Row="2" Text="{Binding Status}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" ToolTip.Tip="{Binding Status}"/>
-							</Grid>
-						</Border>
+								<!-- Run button -->
+								<Button Command="{Binding RunCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5" Margin="0,2,0,0" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0" CornerRadius="4">
+									<TextBlock Text="▶ Запустить" FontSize="11" FontWeight="Medium" Foreground="White"/>
+								</Button>
+
+								<!-- Status text -->
+								<TextBlock Text="{Binding Status}" FontSize="9" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" IsVisible="{Binding HasStatus}"/>
+							</StackPanel>
+							</Border>
+						</StackPanel>
+
 					</DataTemplate>
 				</ItemsControl.ItemTemplate>
 			</ItemsControl>
 		</ScrollViewer>
 
 		<!-- Footer -->
-		<Border Grid.Row="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="7">
-			<TextBlock Text="{Binding Status}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{StaticResource TextBrush}"/>
+		<Border Grid.Row="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="8,5">
+			<Grid ColumnDefinitions="Auto, *">
+				<TextBlock Grid.Column="0" Text="{Binding DocumentStatus}" FontSize="9" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+				<TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="9" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" TextAlignment="Right"/>
+			</Grid>
 		</Border>
 	</Grid>
 </Window>

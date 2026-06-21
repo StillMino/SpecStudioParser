@@ -92,6 +92,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
         public bool HasStatus => !string.IsNullOrWhiteSpace(LastRunStatus);
         public bool IsOk => LastRunStatus == "ok";
         public bool IsError => LastRunStatus == "error";
+        public bool IsIdle => LastRunStatus != "ok" && LastRunStatus != "error";
 
         public void SetResultStatus(bool success)
         {
@@ -99,6 +100,7 @@ namespace SpecStudioParser.DesignTools.ViewModels
             OnPropertyChanged(nameof(HasStatus));
             OnPropertyChanged(nameof(IsOk));
             OnPropertyChanged(nameof(IsError));
+            OnPropertyChanged(nameof(IsIdle));
         }
 
         public ICommand ToggleExpandCommand { get; }
