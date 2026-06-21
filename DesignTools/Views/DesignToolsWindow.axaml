@@ -20,6 +20,7 @@
 	</Window.Resources>
 
 	<Grid RowDefinitions="Auto, Auto, Auto, *, Auto" Background="{StaticResource AppBackgroundBrush}">
+		<!-- Header -->
 		<Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8">
 			<Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
 				<StackPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
@@ -33,6 +34,7 @@
 			</Grid>
 		</Border>
 
+		<!-- Filter bar -->
 		<Border Grid.Row="1" Padding="6,5,6,2" Background="{StaticResource AppBackgroundBrush}">
 			<WrapPanel Orientation="Horizontal">
 				<Button Content="Все" Command="{Binding SelectFilterCommand}" CommandParameter="all" Padding="8,3" Margin="0,0,4,3" ToolTip.Tip="Показать все инструменты"/>
@@ -43,6 +45,7 @@
 			</WrapPanel>
 		</Border>
 
+		<!-- Search -->
 		<Border Grid.Row="2" Padding="6,2,6,5" Background="{StaticResource AppBackgroundBrush}">
 			<TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
 			         Watermark="Поиск инструмента или режима"
@@ -51,33 +54,61 @@
 			         ToolTip.Tip="Поиск по названию инструмента, описанию и параметрам"/>
 		</Border>
 
+		<!-- Tool cards -->
 		<ScrollViewer Grid.Row="3" Margin="6,0,6,6">
 			<ItemsControl ItemsSource="{Binding ToolCards}">
 				<ItemsControl.ItemTemplate>
 					<DataTemplate x:DataType="vm:DesignToolCardViewModel">
-						<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,0,0,6">
-							<Grid RowDefinitions="Auto, Auto, Auto, Auto" ColumnDefinitions="Auto, *">
-								<Button Grid.Row="0" Grid.Column="0" Grid.RowSpan="3" Command="{Binding RunCommand}" Width="34" Height="34" Padding="4" Margin="0,0,7,0" Background="{StaticResource AccentSoftBrush}" ToolTip.Tip="Запустить инструмент">
+						<Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,0,0,6" Opacity="{Binding IsStub, Converter={x:Static vm:StubOpacityConverter.Instance}}">
+							<Grid RowDefinitions="Auto, Auto, Auto, Auto, Auto" ColumnDefinitions="Auto, *, Auto">
+
+								<!-- Collapse/expand toggle (chevron) -->
+								<Button Grid.Row="0" Grid.Column="0" Width="20" Height="34" Padding="0" Margin="0,0,4,0" Background="Transparent" BorderThickness="0" Command="{Binding $parent[ItemsControl].((vm:DesignToolsViewModel) DataContext).ToggleExpandCommand}" CommandParameter="{Binding}" ToolTip.Tip="Свернуть/развернуть">
+									<TextBlock Text="{Binding IsExpanded, Converter={x:Static vm:ExpandChevronConverter.Instance}}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}"/>
+								</Button>
+
+								<!-- Run button -->
+								<Button Grid.Row="0" Grid.Column="1" Grid.RowSpan="1" Command="{Binding RunCommand}" Width="34" Height="34" Padding="4" Margin="0,0,7,0" Background="{StaticResource AccentSoftBrush}" ToolTip.Tip="Запустить инструмент" HorizontalAlignment="Left">
 									<Viewbox Width="24" Height="24" Stretch="Uniform">
 										<Path Data="{Binding IconGeometry, Converter={StaticResource GeometryPathConverter}}" Stroke="{StaticResource TextBrush}" StrokeThickness="1.3" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent"/>
 									</Viewbox>
 								</Button>
 
-								<TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Description}"/>
+								<!-- Title + status dot + WIP badge -->
+								<StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="44,0,0,0">
+									<!-- Status dot -->
+									<Ellipse Width="8" Height="8" Margin="0,0,5,0" Fill="Green" IsVisible="{Binding IsOk}"/>
+									<Ellipse Width="8" Height="8" Margin="0,0,5,0" Fill="Red" IsVisible="{Binding IsError}"/>
+									<TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Description}"/>
+									<!-- WIP badge -->
+									<Border Background="#444" CornerRadius="3" Padding="4,1" Margin="6,0,0,0" IsVisible="{Binding IsStub}" ToolTip.Tip="Инструмент в разработке">
+										<TextBlock Text="WIP" FontSize="9" Foreground="#FFB400" FontWeight="Bold"/>
+									</Border>
+								</StackPanel>
 
-								<Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*, *, *, *" Margin="0,5,0,0">
-									<ComboBox Grid.Column="0" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" FontSize="11" MinHeight="26" Margin="0,0,4,0"/>
-									<ComboBox Grid.Column="1" ItemsSource="{Binding Operations}" SelectedItem="{Binding SelectedOperation}" FontSize="11" MinHeight="26" Margin="0,0,4,0"/>
-									<ComboBox Grid.Column="2" ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis}" FontSize="11" MinHeight="26" Margin="0,0,4,0"/>
-									<ComboBox Grid.Column="3" ItemsSource="{Binding References}" SelectedItem="{Binding SelectedReference}" IsEnabled="{Binding IsReferenceEnabled}" FontSize="11" MinHeight="26"/>
-								</Grid>
+								<!-- Collapsible content -->
+								<StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" IsVisible="{Binding IsExpanded}" Margin="0,4,0,0">
 
-								<Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="Auto,*" Margin="0,3,0,0" IsVisible="{Binding Id, Converter={StaticResource CollisionThresholdVisibility}}">
-									<TextBlock Grid.Column="0" Text="Порог:" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource SecondaryTextBrush}"/>
-									<NumericUpDown Grid.Column="1" Value="{Binding MinDistanceThreshold}" Minimum="0" Maximum="1000" Increment="0.5" FontSize="11" MinHeight="26"/>
-								</Grid>
+									<!-- Description -->
+									<TextBlock Text="{Binding Description}" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,5" IsVisible="{Binding IsExpanded}"/>
 
-								<TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Status}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" ToolTip.Tip="{Binding Status}"/>
+									<!-- Combos row: only show what's meaningful -->
+									<Grid ColumnDefinitions="*, *, *, *" Margin="0,0,0,0">
+										<ComboBox Grid.Column="0" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasSources}"/>
+										<ComboBox Grid.Column="1" ItemsSource="{Binding Operations}" SelectedItem="{Binding SelectedOperation}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasOperations}"/>
+										<ComboBox Grid.Column="2" ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis}" FontSize="11" MinHeight="26" Margin="0,0,4,0" IsVisible="{Binding HasAxes}"/>
+										<ComboBox Grid.Column="3" ItemsSource="{Binding References}" SelectedItem="{Binding SelectedReference}" IsEnabled="{Binding IsReferenceEnabled}" FontSize="11" MinHeight="26" IsVisible="{Binding HasReferences}"/>
+									</Grid>
+
+									<!-- Threshold (collision cleanup only) -->
+									<Grid ColumnDefinitions="Auto,*" Margin="0,3,0,0" IsVisible="{Binding Id, Converter={StaticResource CollisionThresholdVisibility}}">
+										<TextBlock Grid.Column="0" Text="Порог:" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource SecondaryTextBrush}"/>
+										<NumericUpDown Grid.Column="1" Value="{Binding MinDistanceThreshold}" Minimum="0" Maximum="1000" Increment="0.5" FontSize="11" MinHeight="26"/>
+									</Grid>
+								</StackPanel>
+
+								<!-- Status text (always visible) -->
+								<TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding Status}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" ToolTip.Tip="{Binding Status}"/>
 							</Grid>
 						</Border>
 					</DataTemplate>
@@ -85,6 +116,7 @@
 			</ItemsControl>
 		</ScrollViewer>
 
+		<!-- Footer -->
 		<Border Grid.Row="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="7">
 			<TextBlock Text="{Binding Status}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{StaticResource TextBrush}"/>
 		</Border>

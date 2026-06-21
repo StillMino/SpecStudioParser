@@ -78,8 +78,28 @@ namespace SpecStudioParser.DesignTools.ViewModels
         [ObservableProperty] private bool _isReferenceLocked;
         [ObservableProperty] private string _referenceLockLabel = "Опорная";
         [ObservableProperty] private double _minDistanceThreshold = 2.0;
+        [ObservableProperty] private bool _isExpanded = true;
+        [ObservableProperty] private bool _isStub;
+        [ObservableProperty] private string _lastRunStatus = ""; // "ok" | "error" | "" 
 
         public bool IsReferenceEnabled => !IsReferenceLocked;
+
+        // Conditional visibility: hide combos when there's nothing meaningful to select
+        public bool HasSources => Sources.Count > 1;
+        public bool HasOperations => Operations.Count > 1;
+        public bool HasAxes => Axes.Count > 1 && !(Axes.Count == 1 && Axes[0] == "-");
+        public bool HasReferences => References.Count > 1 && !(References.Count == 1 && References[0] == "-");
+        public bool HasStatus => !string.IsNullOrWhiteSpace(LastRunStatus);
+        public bool IsOk => LastRunStatus == "ok";
+        public bool IsError => LastRunStatus == "error";
+
+        public void SetResultStatus(bool success)
+        {
+            LastRunStatus = success ? "ok" : "error";
+            OnPropertyChanged(nameof(HasStatus));
+            OnPropertyChanged(nameof(IsOk));
+            OnPropertyChanged(nameof(IsError));
+        }
 
         public string Id { get; }
         public string Title { get; }
@@ -102,13 +122,15 @@ namespace SpecStudioParser.DesignTools.ViewModels
             IEnumerable<string> operations,
             IEnumerable<string> axes,
             IEnumerable<string> references,
-            Action<DesignToolCardViewModel> execute)
+            Action<DesignToolCardViewModel> execute,
+            bool isStub = false)
         {
             Id = id;
             Title = title;
             Description = description;
             Category = category;
             IconGeometry = iconGeometry;
+            IsStub = isStub;
             foreach (var source in sources) Sources.Add(source);
             foreach (var operation in operations) Operations.Add(operation);
             foreach (var axis in axes) Axes.Add(axis);
@@ -118,6 +140,14 @@ namespace SpecStudioParser.DesignTools.ViewModels
             SelectedAxis = Axes.FirstOrDefault() ?? string.Empty;
             SelectedReference = References.FirstOrDefault() ?? string.Empty;
             RunCommand = new RelayCommand(async () => await DeferredCommandRunner.RunAsync(() => execute(this)));
+
+            // Collapse stubs by default
+            if (isStub) IsExpanded = false;
+
+            OnPropertyChanged(nameof(HasSources));
+            OnPropertyChanged(nameof(HasOperations));
+            OnPropertyChanged(nameof(HasAxes));
+            OnPropertyChanged(nameof(HasReferences));
         }
 
         partial void OnSelectedOperationChanged(string value)
@@ -184,11 +214,13 @@ namespace SpecStudioParser.DesignTools.ViewModels
         public ObservableCollection<DesignToolBlockViewModel> Blocks { get; } = new();
         public ICommand RefreshContextCommand { get; }
         public ICommand SelectFilterCommand { get; }
+        public ICommand ToggleExpandCommand { get; }
 
         public DesignToolsViewModel()
         {
             RefreshContextCommand = new RelayCommand(RefreshContext);
             SelectFilterCommand = new RelayCommand<string>(SelectFilter);
+            ToggleExpandCommand = new RelayCommand<DesignToolCardViewModel>(card => { if (card != null) card.IsExpanded = !card.IsExpanded; });
 
             _leadersCard = CreateLeaderToolCard();
             _dimensionsCard = CreateDimensionToolCard();
@@ -282,7 +314,8 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 new[] { "Проверка пустых параметров" },
                 new[] { "-" },
                 new[] { "-" },
-                ExecuteStubTool);
+                ExecuteStubTool,
+                isStub: true);
         }
 
         private DesignToolCardViewModel CreateSpecifierToolCard()
@@ -297,7 +330,8 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 new[] { "Проверка данных" },
                 new[] { "-" },
                 new[] { "-" },
-                ExecuteStubTool);
+                ExecuteStubTool,
+                isStub: true);
         }
 
         private void SelectFilter(string? filter)
@@ -491,7 +525,14 @@ namespace SpecStudioParser.DesignTools.ViewModels
                 return;
             }
 
-            Dispatcher.UIThread.Post(() => SetCardStatus(card, e.Message));
+            Dispatcher.UIThread.Post(() =>
+            {
+                SetCardStatus(card, e.Message);
+                var isSuccess = !e.Message.Contains("Ошибка", StringComparison.OrdinalIgnoreCase) &&
+                                !e.Message.Contains("отмен", StringComparison.OrdinalIgnoreCase) &&
+                                !e.Message.Contains("Недостаточно", StringComparison.OrdinalIgnoreCase);
+                SetCardResultStatus(card, isSuccess);
+            });
         }
 
         private static LeaderAlignmentAxis ParseAxis(string value)
@@ -530,6 +571,11 @@ namespace SpecStudioParser.DesignTools.ViewModels
         {
             card.Status = message;
             Status = $"{card.Title}: {message}";
+        }
+
+        private void SetCardResultStatus(DesignToolCardViewModel card, bool success)
+        {
+            card.SetResultStatus(success);
         }
 
         private void RefreshContext()
