@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Концепт 2 — Аккордеон по категориям</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+  body { background:#1a1a2e; display:flex; justify-content:center; padding:20px; }
+  .panel { width:420px; height:640px; background:#1e1e30; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,.4); }
+  /* Header */
+  .hdr { padding:12px 16px; background:#222238; border-bottom:1px solid #2e2e44; display:flex; align-items:center; justify-content:space-between; }
+  .hdr-t { font-size:14px; font-weight:700; color:#e8e8f5; }
+  .hdr-v { font-size:9px; color:#555; }
+  .hdr-r { display:flex; gap:6px; }
+  .hdr-btn { width:28px; height:28px; border-radius:5px; background:#2a2a42; border:none; color:#888; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  /* Search big */
+  .search-bar { padding:10px 16px; background:#1c1c30; }
+  .search-bar input { width:100%; padding:8px 14px; border-radius:20px; border:1px solid #333; background:#252540; color:#ccc; font-size:12px; }
+  /* Tags */
+  .tags { display:flex; gap:6px; padding:4px 16px 8px; background:#1c1c30; flex-wrap:wrap; }
+  .tag { padding:4px 10px; font-size:10px; border-radius:12px; background:#252540; color:#7a7aaa; cursor:pointer; border:1px solid #333; transition:.15s; }
+  .tag.on { background:#4a3a7c; color:#c0a0ff; border-color:#5a4a8c; }
+  /* Accordion */
+  .body { flex:1; overflow-y:auto; }
+  .grp { border-bottom:1px solid #262640; }
+  .grp-hdr { padding:10px 16px; display:flex; align-items:center; gap:8px; cursor:pointer; background:#202034; }
+  .grp-hdr:hover { background:#242440; }
+  .grp-ic { font-size:14px; width:20px; text-align:center; }
+  .grp-name { font-size:12px; font-weight:600; color:#bbb; flex:1; }
+  .grp-cnt { font-size:10px; color:#555; background:#2a2a42; padding:2px 7px; border-radius:8px; }
+  .grp-chev { font-size:10px; color:#555; transition:.2s; }
+  .grp.open .grp-chev { transform:rotate(90deg); }
+  .grp-body { display:none; padding:6px 16px 10px; }
+  .grp.open .grp-body { display:block; }
+  /* Command row */
+  .cmd { display:flex; align-items:flex-start; gap:10px; padding:8px; border-radius:6px; margin-bottom:4px; background:#242438; border:1px solid #2a2a3e; transition:.15s; }
+  .cmd:hover { background:#2a2a48; border-color:#3a3a55; }
+  .cmd-ic { width:30px; height:30px; border-radius:6px; background:#333350; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; margin-top:1px; }
+  .cmd-info { flex:1; min-width:0; }
+  .cmd-name { font-size:12px; color:#ddd; font-weight:500; }
+  .cmd-desc { font-size:10px; color:#666; margin-top:2px; line-height:1.3; }
+  /* Config inline */
+  .cmd-cfg { display:flex; gap:4px; margin-top:5px; flex-wrap:wrap; }
+  .cmd-sel { padding:2px 6px; font-size:10px; border-radius:3px; background:#1e1e30; color:#999; border:1px solid #333; }
+  .cmd-run { width:28px; height:28px; border-radius:5px; background:#3a2a6c; border:none; color:#a080ff; cursor:pointer; font-size:13px; flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+  .cmd-run:hover { background:#4a3a7c; }
+  /* Status */
+  .cmd-st { font-size:9px; margin-top:3px; }
+  .st-ok { color:#4caf50; } .st-err { color:#f44336; } .st-wait { color:#666; }
+  .wip-badge { font-size:8px; color:#ffb400; background:#2a2200; padding:1px 5px; border-radius:3px; margin-left:4px; font-weight:600; }
+  .cmd.stub { opacity:.45; }
+  /* Footer */
+  .ftr { padding:8px 16px; background:#222238; border-top:1px solid #2e2e44; display:flex; align-items:center; gap:8px; }
+  .ftr-led { width:8px; height:8px; border-radius:50%; background:#4caf50; box-shadow:0 0 4px #4caf50; }
+  .ftr-t { font-size:11px; color:#777; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="hdr">
+    <div><div class="hdr-t">Инструменты проектировщика</div><div class="hdr-v">1.0-master-35-6fc186e</div></div>
+    <div class="hdr-r"><button class="hdr-btn">↻</button><button class="hdr-btn">✕</button></div>
+  </div>
+  <div class="search-bar"><input placeholder="🔍 Найти инструмент или режим..." value="групп"></div>
+  <div class="tags">
+    <button class="tag on">Все</button>
+    <button class="tag">2D</button>
+    <button class="tag">3D</button>
+    <button class="tag">Диагностика</button>
+    <button class="tag">Spec</button>
+  </div>
+  <div class="body">
+    <!-- Group: Черчение 2D -->
+    <div class="grp open" onclick="togGrp(this)">
+      <div class="grp-hdr">
+        <span class="grp-ic">📐</span>
+        <span class="grp-name">Черчение 2D</span>
+        <span class="grp-cnt">3</span>
+        <span class="grp-chev">▶</span>
+      </div>
+      <div class="grp-body">
+        <!-- Highlighted: search match -->
+        <div class="cmd" style="border-color:#4a3a7c;background:#2a2745;">
+          <div class="cmd-ic">📐</div>
+          <div class="cmd-info">
+            <div class="cmd-name">Выноски</div>
+            <div class="cmd-desc">8 операций: выравнивание, распределение, сдвиг, <b style="color:#a080ff">групп</b>а, умная <b style="color:#a080ff">групп</b>а</div>
+            <div class="cmd-cfg">
+              <select class="cmd-sel"><option>MultiCAD</option><option>Мультивыноски</option></select>
+              <select class="cmd-sel"><option>Группа</option><option>Умная группа</option><option>Выровнять</option></select>
+              <select class="cmd-sel"><option>↔ Горизонт.</option><option>↕ Вертик.</option></select>
+            </div>
+            <div class="cmd-st st-ok">✓ Умная группа: выровнено 6 выносок за 0.3с</div>
+          </div>
+          <button class="cmd-run">▶</button>
+        </div>
+        <div class="cmd">
+          <div class="cmd-ic">📏</div>
+          <div class="cmd-info">
+            <div class="cmd-name">Размеры</div>
+            <div class="cmd-desc">Выравнивание, распределение, сброс текста размеров</div>
+            <div class="cmd-cfg">
+              <select class="cmd-sel"><option>Текст</option></select>
+              <select class="cmd-sel"><option>Выровнять</option><option>Распределить</option><option>Сбросить</option></select>
+              <select class="cmd-sel"><option>↔</option><option>↕</option></select>
+            </div>
+            <div class="cmd-st st-wait">Готово</div>
+          </div>
+          <button class="cmd-run">▶</button>
+        </div>
+        <div class="cmd">
+          <div class="cmd-ic">💥</div>
+          <div class="cmd-info">
+            <div class="cmd-name">Распаковка</div>
+            <div class="cmd-desc">Поиск наложений текста и выносок, авто-разнесение</div>
+            <div class="cmd-cfg">
+              <select class="cmd-sel"><option>📄 Текст</option><option>📐 Выноски</option><option>🔢 Всё</option></select>
+              <span style="font-size:9px;color:#555;align-self:center">Порог:</span>
+              <input class="cmd-sel" type="number" value="2.0" style="width:40px;color:#999;background:#1e1e30;border:1px solid #333;border-radius:3px;padding:2px 4px;font-size:10px;">
+            </div>
+            <div class="cmd-st st-err">✗ Ошибка: Недостаточно объектов</div>
+          </div>
+          <button class="cmd-run">▶</button>
+        </div>
+      </div>
+    </div>
+    <!-- Group: Диагностика -->
+    <div class="grp" onclick="togGrp(this)">
+      <div class="grp-hdr">
+        <span class="grp-ic">🔍</span>
+        <span class="grp-name">Диагностика</span>
+        <span class="grp-cnt">1</span>
+        <span class="grp-chev">▶</span>
+      </div>
+      <div class="grp-body">
+        <div class="cmd">
+          <div class="cmd-ic">🔍</div>
+          <div class="cmd-info">
+            <div class="cmd-name">Диагностика объектов</div>
+            <div class="cmd-desc">Вывод сведений по выделенным объектам</div>
+            <div class="cmd-st st-wait">Готово</div>
+          </div>
+          <button class="cmd-run">▶</button>
+        </div>
+      </div>
+    </div>
+    <!-- Group: Модель -->
+    <div class="grp" onclick="togGrp(this)">
+      <div class="grp-hdr">
+        <span class="grp-ic">🏗</span>
+        <span class="grp-name">3D и спецификатор <span class="wip-badge">WIP</span></span>
+        <span class="grp-cnt">2</span>
+        <span class="grp-chev">▶</span>
+      </div>
+      <div class="grp-body">
+        <div class="cmd stub">
+          <div class="cmd-ic">🏗</div>
+          <div class="cmd-info"><div class="cmd-name">Model Studio CS</div><div class="cmd-desc">Каркас будущих команд</div></div>
+          <button class="cmd-run">▶</button>
+        </div>
+        <div class="cmd stub">
+          <div class="cmd-ic">📋</div>
+          <div class="cmd-info"><div class="cmd-name">Спецификатор</div><div class="cmd-desc">Анализ данных спецификатора</div></div>
+          <button class="cmd-run">▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ftr">
+    <div class="ftr-led"></div>
+    <div class="ftr-t">Выноски: Умная группа — выровнено 6 выносок</div>
+  </div>
+</div>
+<script>
+function togGrp(el){ el.classList.toggle('open'); }
+</script>
+</body>
+</html>

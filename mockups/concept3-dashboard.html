@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Концепт 3 — Dashboard плитки</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+  body { background:#15151f; display:flex; justify-content:center; padding:20px; }
+  .panel { width:440px; height:640px; background:#1a1a28; border-radius:10px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,.5); }
+  /* Header with version */
+  .hdr { padding:10px 14px; background:linear-gradient(135deg,#1e1e30,#252540); border-bottom:1px solid #2a2a3e; display:flex; align-items:center; justify-content:space-between; }
+  .hdr-l { display:flex; align-items:baseline; gap:8px; }
+  .hdr-t { font-size:14px; font-weight:700; color:#e0e0f0; }
+  .hdr-v { font-size:9px; color:#555; }
+  .hdr-r { display:flex; gap:5px; }
+  .hdr-btn { width:26px; height:26px; border-radius:5px; background:#2a2a3e; border:none; color:#777; cursor:pointer; font-size:13px; }
+  /* Compact search */
+  .search { padding:6px 14px 4px; }
+  .search input { width:100%; padding:6px 12px; border-radius:6px; border:1px solid #2a2a3e; background:#15151f; color:#aaa; font-size:11px; }
+  /* Horizontal filter tabs */
+  .tabs { display:flex; gap:0; padding:0 14px 8px; border-bottom:1px solid #2a2a3e; }
+  .tab { padding:5px 14px; font-size:11px; color:#666; cursor:pointer; border:none; background:none; border-bottom:2px solid transparent; transition:.15s; }
+  .tab.on { color:#a080ff; border-bottom-color:#6c5ce7; }
+  /* Grid of cards */
+  .grid { flex:1; overflow-y:auto; padding:10px 14px; display:grid; grid-template-columns:1fr 1fr; gap:8px; align-content:start; }
+  /* Card */
+  .card { background:#202030; border:1px solid #2a2a3e; border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px; cursor:pointer; transition:.15s; position:relative; }
+  .card:hover { border-color:#3a3a55; background:#242438; }
+  .card.span2 { grid-column:span 2; }
+  .card-top { display:flex; align-items:center; gap:8px; }
+  .card-ic { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .bg-blue { background:#1a2540; } .bg-purple { background:#2a1a40; } .bg-red { background:#3a1515; } .bg-green { background:#0a2818; } .bg-dark { background:#252530; }
+  .card-t { flex:1; }
+  .card-name { font-size:12px; font-weight:600; color:#ddd; }
+  .card-st { display:flex; align-items:center; gap:4px; margin-top:1px; }
+  .led { width:6px; height:6px; border-radius:50%; }
+  .led-ok { background:#4caf50; box-shadow:0 0 3px #4caf50; }
+  .led-err { background:#f44336; box-shadow:0 0 3px #f44336; }
+  .led-idle { background:#444; }
+  .led-t { font-size:9px; color:#666; }
+  /* Config area inside card */
+  .card-cfg { display:flex; flex-wrap:wrap; gap:3px; }
+  .cfg-pill { font-size:9px; padding:2px 7px; border-radius:8px; background:#2a2a3e; color:#888; border:1px solid #333; cursor:pointer; }
+  .cfg-pill.act { background:#3a2a6c; color:#a080ff; border-color:#4a3a7c; }
+  /* Run button */
+  .card-run { position:absolute; top:10px; right:10px; width:22px; height:22px; border-radius:5px; background:#3a2a6c; border:none; color:#a080ff; cursor:pointer; font-size:10px; display:flex; align-items:center; justify-content:center; opacity:0; transition:.15s; }
+  .card:hover .card-run { opacity:1; }
+  /* WIP card */
+  .card.stub { opacity:.4; border-style:dashed; }
+  .wip-tag { position:absolute; top:8px; right:8px; font-size:8px; color:#ffb400; background:#2a2200; padding:2px 5px; border-radius:3px; font-weight:700; }
+  /* Desc */
+  .card-desc { font-size:9px; color:#555; line-height:1.3; }
+  /* Quick run bar (bottom) */
+  .quick { padding:8px 14px; background:#1e1e30; border-top:1px solid #2a2a3e; display:flex; align-items:center; gap:8px; }
+  .quick-lbl { font-size:10px; color:#666; white-space:nowrap; }
+  .quick-cfg { display:flex; gap:4px; flex:1; }
+  .quick-sel { padding:3px 6px; font-size:10px; border-radius:4px; background:#252538; color:#888; border:1px solid #2e2e44; }
+  .quick-btn { padding:5px 12px; font-size:11px; font-weight:600; border-radius:5px; background:#4a3a7c; color:#c0a0ff; border:none; cursor:pointer; white-space:nowrap; }
+  .quick-btn:hover { background:#5a4a8c; }
+  /* Status bar */
+  .stat { padding:4px 14px; background:#15151f; display:flex; align-items:center; gap:6px; }
+  .stat-t { font-size:10px; color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="hdr">
+    <div class="hdr-l"><span class="hdr-t">🛠 DesignTools</span><span class="hdr-v">v1.0 · master · 6fc186e</span></div>
+    <div class="hdr-r"><button class="hdr-btn">↻</button></div>
+  </div>
+  <div class="search"><input placeholder="🔍 Поиск..."></div>
+  <div class="tabs">
+    <button class="tab on">Все</button>
+    <button class="tab">2D</button>
+    <button class="tab">3D</button>
+    <button class="tab">Диагностика</button>
+    <button class="tab">Spec</button>
+  </div>
+  <div class="grid">
+    <!-- Big card: Выноски -->
+    <div class="card span2" style="border-color:#3a3055;">
+      <button class="card-run">▶</button>
+      <div class="card-top">
+        <div class="card-ic bg-blue">📐</div>
+        <div class="card-t">
+          <div class="card-name">Выноски</div>
+          <div class="card-st"><span class="led led-ok"></span><span class="led-t">✓ Выровнено 8 объектов</span></div>
+        </div>
+      </div>
+      <div class="card-desc">8 операций: выравнивание, распределение, сдвиг, шаг, группа, умная группа</div>
+      <div class="card-cfg">
+        <span class="cfg-pill act">MultiCAD</span>
+        <span class="cfg-pill">Мультивыноски</span>
+        <span class="cfg-pill act">Группа</span>
+        <span class="cfg-pill">Выровнять</span>
+        <span class="cfg-pill">Распределить</span>
+        <span class="cfg-pill act">↔</span>
+        <span class="cfg-pill">↕</span>
+      </div>
+    </div>
+    <!-- Размеры -->
+    <div class="card">
+      <button class="card-run">▶</button>
+      <div class="card-top">
+        <div class="card-ic bg-purple">📏</div>
+        <div class="card-t">
+          <div class="card-name">Размеры</div>
+          <div class="card-st"><span class="led led-idle"></span><span class="led-t">Готово</span></div>
+        </div>
+      </div>
+      <div class="card-cfg">
+        <span class="cfg-pill act">Текст</span>
+        <span class="cfg-pill act">Выровнять</span>
+        <span class="cfg-pill act">↔</span>
+      </div>
+    </div>
+    <!-- Распаковка -->
+    <div class="card" style="border-color:#3a2030;">
+      <button class="card-run">▶</button>
+      <div class="card-top">
+        <div class="card-ic bg-red">💥</div>
+        <div class="card-t">
+          <div class="card-name">Распаковка</div>
+          <div class="card-st"><span class="led led-err"></span><span class="led-t">✗ Недостаточно объектов</span></div>
+        </div>
+      </div>
+      <div class="card-cfg">
+        <span class="cfg-pill act">📄 Текст</span>
+        <span class="cfg-pill">📐 Выноски</span>
+        <span class="cfg-pill act">Порог 2.0</span>
+      </div>
+    </div>
+    <!-- Диагностика -->
+    <div class="card">
+      <button class="card-run">▶</button>
+      <div class="card-top">
+        <div class="card-ic bg-green">🔍</div>
+        <div class="card-t">
+          <div class="card-name">Диагностика</div>
+          <div class="card-st"><span class="led led-idle"></span><span class="led-t">Готово</span></div>
+        </div>
+      </div>
+      <div class="card-desc">Сведения по выделенным объектам</div>
+    </div>
+    <!-- 3D WIP -->
+    <div class="card stub">
+      <span class="wip-tag">WIP</span>
+      <div class="card-top">
+        <div class="card-ic bg-dark">🏗</div>
+        <div class="card-t">
+          <div class="card-name">3D / Model</div>
+          <div class="card-st"><span class="led led-idle"></span><span class="led-t">—</span></div>
+        </div>
+      </div>
+      <div class="card-desc">Каркас будущих команд</div>
+    </div>
+    <!-- Spec WIP -->
+    <div class="card stub">
+      <span class="wip-tag">WIP</span>
+      <div class="card-top">
+        <div class="card-ic bg-dark">📋</div>
+        <div class="card-t">
+          <div class="card-name">Спецификатор</div>
+          <div class="card-st"><span class="led led-idle"></span><span class="led-t">—</span></div>
+        </div>
+      </div>
+      <div class="card-desc">Анализ данных</div>
+    </div>
+  </div>
+  <!-- Quick run bar -->
+  <div class="quick">
+    <span class="quick-lbl">Быстрый запуск:</span>
+    <div class="quick-cfg">
+      <select class="quick-sel"><option>📐 Выноски</option><option>📏 Размеры</option><option>💥 Распаковка</option></select>
+      <select class="quick-sel"><option>Выровнять</option><option>Группа</option></select>
+      <select class="quick-sel"><option>↔</option><option>↕</option></select>
+    </div>
+    <button class="quick-btn">▶ Запуск</button>
+  </div>
+  <div class="stat"><span class="led led-ok"></span><span class="stat-t">Готово к работе · nanoCAD x64 25.0</span></div>
+</div>
+<script>
+document.querySelectorAll('.cfg-pill').forEach(p=>p.onclick=e=>{p.classList.toggle('act');e.stopPropagation()});
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on')});
+</script>
+</body>
+</html>
