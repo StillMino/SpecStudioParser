@@ -23,6 +23,7 @@ namespace SpecStudioParser.ViewModels
     public class MainWindowViewModel : INotifyPropertyChanged
     {
         private NanoCadService _nanoCadService;
+        private readonly ISpecificationEngine _specEngine = new SpecificationEngine();
         private List<DwgObject> _rawCache = new();
         private HashSet<string> _manuallyAddedHandles = new();
 
@@ -650,72 +651,25 @@ namespace SpecStudioParser.ViewModels
         {
             if (!_rawCache.Any() || !ActiveProfile.Datasets.Any()) return;
 
-            var aggregatedReportList = new List<Dictionary<string, object>>();
-
-            foreach (var dataset in ActiveProfile.Datasets)
-            {
-                var stepEvaluatedRows = new List<Dictionary<string, string>>();
-
-                foreach (var dwgObj in _rawCache)
+            var sourceObjects = _rawCache
+                .Select(o => new SpecSourceObject
                 {
-                    if (dataset.TargetTypes.Any() && !dataset.TargetTypes.Contains(dwgObj.ObjectName, StringComparer.OrdinalIgnoreCase))
-                        continue;
+                    Handle = o.Handle,
+                    ObjectName = o.ObjectName,
+                    Layer = o.Layer,
+                    RawObjectIdString = o.RawObjectId.ToString(),
+                    Attributes = o.AllAttributes,
+                })
+                .ToList();
 
-                    var evalDict = new Dictionary<string, string>(dwgObj.AllAttributes, StringComparer.OrdinalIgnoreCase);
-                    evalDict["Handle"] = dwgObj.Handle;
-                    evalDict["ObjectName"] = dwgObj.ObjectName;
-                    evalDict["Layer"] = dwgObj.Layer;
-
-                    if (!FilterConditionEvaluator.Matches(dataset, evalDict))
-                    {
-                        continue;
-                    }
-
-                    var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var col in dataset.Columns)
-                    {
-                        row[col.Caption] = FormulaEvaluator.Evaluate(col.DataFormula, evalDict);
-                    }
-                    row["__Handle"] = dwgObj.Handle;
-                    row["__RawObjectIdString"] = dwgObj.RawObjectId.ToString();
-
-                    stepEvaluatedRows.Add(row);
-                }
-
-                var groupColumns = dataset.Columns.Where(c => c.Aggregate == 0 && c.Visible == 1).ToList();
-                var grouped = stepEvaluatedRows.GroupBy(r => string.Join("|", groupColumns.Select(c => r.ContainsKey(c.Caption) ? r[c.Caption] : "")));
-
-                foreach (var g in grouped)
-                {
-                    var repRow = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-                    var first = g.First();
-
-                    foreach (var col in groupColumns) repRow[col.Caption] = first[col.Caption];
-
-                    foreach (var col in dataset.Columns.Where(c => c.Aggregate != 0))
-                    {
-                        if (col.Aggregate == 1)
-                        {
-                            repRow[col.Caption] = g.Count().ToString();
-                        }
-                        else if (col.Aggregate == 8)
-                        {
-                            repRow[col.Caption] = g.Sum(r => double.TryParse(r.ContainsKey(col.Caption) ? r[col.Caption] : "0", out double d) ? d : 0).ToString();
-                        }
-                    }
-
-                    repRow["__Handle"] = first["__Handle"];
-                    repRow["__RawObjectIdString"] = first["__RawObjectIdString"];
-                    aggregatedReportList.Add(repRow);
-                }
-            }
+            var result = _specEngine.Generate(ActiveProfile, sourceObjects);
 
             Dispatcher.UIThread.Post(() =>
             {
                 SpecificationRows.Clear();
-                foreach (var row in aggregatedReportList)
+                foreach (var row in result.Rows)
                 {
-                    SpecificationRows.Add(row);
+                    SpecificationRows.Add(new Dictionary<string, object>(row));
                 }
                 ConnectionStatus = $"Спецификация успешно обновлена. Строк: {SpecificationRows.Count}";
                 OnColumnsStructureChanged?.Invoke();
