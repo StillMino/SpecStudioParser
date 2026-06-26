@@ -28,7 +28,7 @@
         <TextBlock Text="Фильтр по блоку:" FontSize="12"/>
         <ComboBox ItemsSource="{Binding BlockNames}"
                   SelectedItem="{Binding SelectedBlockName}"
-                  PlaceholderToken="(все блокы)"
+                  PlaceholderText="(все блоки)"
                   MinWidth="200"/>
       </StackPanel>
       <StackPanel Grid.Column="1" Spacing="4" Margin="12,0">
