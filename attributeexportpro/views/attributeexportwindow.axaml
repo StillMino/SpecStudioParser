@@ -1,0 +1,80 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SpecStudioParser.AttributeExportPro.ViewModels"
+        x:Class="SpecStudioParser.AttributeExportPro.Views.AttributeExportWindow"
+        Title="Attribute Export Pro — выгрузка атрибутов"
+        Width="680" Height="600"
+        MinWidth="520" MinHeight="480"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+  <Design.DataContext>
+    <vm:AttributeExportViewModel/>
+  </Design.DataContext>
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="16">
+
+    <!-- Заголовок -->
+    <Border Grid.Row="0" Background="#F0F4FF" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+      <StackPanel>
+        <TextBlock Text="Attribute Export Pro" FontWeight="Bold" FontSize="16" Foreground="#1A3867"/>
+        <TextBlock Text="Выгрузка атрибутов блоков в Excel / CSV" FontSize="12" Foreground="#555" Margin="0,2,0,0"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Панель настроек -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,200,120" Margin="0,0,0,10">
+      <StackPanel Grid.Column="0" Spacing="4">
+        <TextBlock Text="Фильтр по блоку:" FontSize="12"/>
+        <ComboBox ItemsSource="{Binding BlockNames}"
+                  SelectedItem="{Binding SelectedBlockName}"
+                  PlaceholderToken="(все блокы)"
+                  MinWidth="200"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Spacing="4" Margin="12,0">
+        <TextBlock Text="Формат:" FontSize="12"/>
+        <ComboBox SelectedItem="{Binding SelectedFormatOption}"
+                  ItemsSource="{Binding FormatOptions}"/>
+      </StackPanel>
+      <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Bottom" HorizontalAlignment="Right">
+        <Button Content="🔍 Сканировать" Command="{Binding ScanCommand}" MinWidth="110"/>
+      </StackPanel>
+    </Grid>
+
+    <!-- Список тегов -->
+    <Border Grid.Row="2" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,10">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Text="Доступные теги атрибутов:" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,4"/>
+        <ScrollViewer Grid.Row="1">
+          <ItemsControl ItemsSource="{Binding AvailableTags}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <CheckBox IsChecked="{Binding IsSelected}" Content="{Binding Tag}" Margin="0,1"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <!-- Опции -->
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="16" Margin="0,0,0,10">
+      <CheckBox IsChecked="{Binding GroupEnabled}" Content="Группировать по имени блока"/>
+      <CheckBox IsChecked="{Binding IncludeHeaderEnabled}" Content="Заголовок колонок"/>
+      <CheckBox IsChecked="{Binding SortEnabled}" Content="Сортировать по имени"/>
+    </StackPanel>
+
+    <!-- Статус и кнопка экспорта -->
+    <Grid Grid.Row="4" ColumnDefinitions="*,140">
+      <TextBlock Grid.Column="0" Text="{Binding StatusText}"
+                 VerticalAlignment="Center" TextWrapping="Wrap"
+                 Foreground="#444" FontSize="12"/>
+      <Button Grid.Column="1" Content="📄 Экспорт"
+              Command="{Binding ExportCommand}"
+              Background="#1A3867" Foreground="White"
+              FontWeight="SemiBold" Padding="0,10"
+              HorizontalAlignment="Stretch"/>
+    </Grid>
+
+  </Grid>
+</Window>

@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SpecStudioParser.PositionNumbering.ViewModels"
+        x:Class="SpecStudioParser.PositionNumbering.Views.PositionNumberingWindow"
+        Title="Position Numbering Engine — автонумерация позиций"
+        Width="750" Height="620"
+        MinWidth="560" MinHeight="480"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+  <Design.DataContext>
+    <vm:PositionNumberingViewModel/>
+  </Design.DataContext>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="16">
+
+    <!-- Заголовок -->
+    <Border Grid.Row="0" Background="#F0FFF4" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+      <StackPanel>
+        <TextBlock Text="Position Numbering Engine" FontWeight="Bold" FontSize="16" Foreground="#1A6B3C"/>
+        <TextBlock Text="Автоматическая нумерация позиций на сборочных чертежах" FontSize="12" Foreground="#555" Margin="0,2,0,0"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Настройки нумерации -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*" Margin="0,0,0,10">
+      <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+        <TextBlock Text="Префикс:" FontSize="12"/>
+        <TextBox Text="{Binding Prefix}" Watermark="(нет)"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,8,0">
+        <TextBlock Text="Начальный №:" FontSize="12"/>
+        <TextBox Text="{Binding StartNumber}" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,8,0">
+        <TextBlock Text="Шаг:" FontSize="12"/>
+        <TextBox Text="{Binding Step}" />
+      </StackPanel>
+      <StackPanel Grid.Column="3" Spacing="4">
+        <TextBlock Text="Сортировка:" FontSize="12"/>
+        <ComboBox ItemsSource="{Binding SortOptions}"
+                  SelectedItem="{Binding SelectedSortOption}"
+                  MinWidth="180"/>
+      </StackPanel>
+    </Grid>
+
+    <!-- Доп. настройки -->
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="16" Margin="0,0,0,10">
+      <CheckBox IsChecked="{Binding OverwriteExisting}" Content="Перезаписывать существующие"/>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Тег атрибута:" VerticalAlignment="Center" FontSize="12"/>
+        <TextBox Text="{Binding TargetAttributeTag}" MinWidth="80"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Слой выносок:" VerticalAlignment="Center" FontSize="12"/>
+        <TextBox Text="{Binding LeaderLayerFilter}" Watermark="(все)" MinWidth="100"/>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Таблица найденных позиций -->
+    <Border Grid.Row="3" BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10">
+      <DataGrid ItemsSource="{Binding Positions}" IsReadOnly="True"
+                GridLinesVisibility="Horizontal" BorderThickness="0"
+                HeadersVisibility="Column">
+        <DataGrid.Columns>
+          <!-- Колонки будут авто-сгенерированы из свойств PositionInfo -->
+        </DataGrid.Columns>
+      </DataGrid>
+    </Border>
+
+    <!-- Статус и кнопки -->
+    <Grid Grid.Row="4" ColumnDefinitions="*,110,110">
+      <TextBlock Grid.Column="0" Text="{Binding StatusText}"
+                 VerticalAlignment="Center" TextWrapping="Wrap"
+                 Foreground="#444" FontSize="12"/>
+      <Button Grid.Column="1" Content="🔍 Сканировать"
+              Command="{Binding ScanCommand}"
+              Margin="0,0,8,0" Padding="0,10"/>
+      <Button Grid.Column="2" Content="№ Применить"
+              Command="{Binding ApplyCommand}"
+              Background="#1A6B3C" Foreground="White"
+              FontWeight="SemiBold" Padding="0,10"/>
+    </Grid>
+
+  </Grid>
+</Window>

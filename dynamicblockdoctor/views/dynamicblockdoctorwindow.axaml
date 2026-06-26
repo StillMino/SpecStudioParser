@@ -1,0 +1,117 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SpecStudioParser.DynamicBlockDoctor.ViewModels"
+        x:Class="SpecStudioParser.DynamicBlockDoctor.Views.DynamicBlockDoctorWindow"
+        Title="Dynamic Block Doctor — диагностика блоков"
+        Width="850" Height="680"
+        MinWidth="640" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+  <Design.DataContext>
+    <vm:DynamicBlockDoctorViewModel/>
+  </Design.DataContext>
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="16">
+
+    <!-- Заголовок -->
+    <Border Grid.Row="0" Background="#FFF3E0" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+      <StackPanel>
+        <TextBlock Text="Dynamic Block Doctor" FontWeight="Bold" FontSize="16" Foreground="#E65100"/>
+        <TextBlock Text="Диагностика и починка динамических блоков AutoCAD в nanoCAD" FontSize="12" Foreground="#555" Margin="0,2,0,0"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Сводная статистика -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*,Auto" Margin="0,0,0,10">
+      <Border Grid.Column="0" Background="#F5F5F5" CornerRadius="4" Padding="8,6" Margin="0,0,6,0">
+        <StackPanel>
+          <TextBlock Text="Всего блоков" FontSize="11" Foreground="#666"/>
+          <TextBlock Text="{Binding TotalBlocks}" FontSize="20" FontWeight="Bold"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Background="#E3F2FD" CornerRadius="4" Padding="8,6" Margin="0,0,6,0">
+        <StackPanel>
+          <TextBlock Text="Динамических" FontSize="11" Foreground="#666"/>
+          <TextBlock Text="{Binding DynamicBlocks}" FontSize="20" FontWeight="Bold" Foreground="#1976D2"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Background="#FFEBEE" CornerRadius="4" Padding="8,6" Margin="0,0,6,0">
+        <StackPanel>
+          <TextBlock Text="Ошибки" FontSize="11" Foreground="#666"/>
+          <TextBlock Text="{Binding ErrorCount}" FontSize="20" FontWeight="Bold" Foreground="#D32F2F"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="3" Background="#FFF3E0" CornerRadius="4" Padding="8,6" Margin="0,0,6,0">
+        <StackPanel>
+          <TextBlock Text="Предупреждения" FontSize="11" Foreground="#666"/>
+          <TextBlock Text="{Binding WarningCount}" FontSize="20" FontWeight="Bold" Foreground="#F57C00"/>
+        </StackPanel>
+      </Border>
+      <Button Grid.Column="4" Content="🔍 Диагностика" Command="{Binding DiagnoseCommand}"
+              Background="#E65100" Foreground="White"
+              FontWeight="SemiBold" Padding="16,10"
+              VerticalAlignment="Stretch"/>
+    </Grid>
+
+    <!-- Основная область: список блоков (слева) + детали проблем (справа) -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,*" Margin="0,0,0,10">
+
+      <!-- Список блоков -->
+      <Border Grid.Column="0" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Margin="0,0,6,0">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Grid.Row="0" Text="Блоки на чертеже" FontWeight="SemiBold" Padding="8,6" Background="#FAFAFA"/>
+          <ListBox Grid.Row="1" ItemsSource="{Binding Reports}"
+                   SelectedItem="{Binding SelectedReport}">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="0,2">
+                  <TextBlock Text="{Binding BlockName}" FontWeight="SemiBold" FontSize="13"/>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding WorstSeverity}" FontSize="11"/>
+                    <TextBlock Text="{Binding EntityCount, StringFormat='{}{0} примит.'}" FontSize="11" Foreground="#888"/>
+                    <TextBlock Text="{Binding ApproxSizeKB, StringFormat='{}~{0} KB'}" FontSize="11" Foreground="#888"/>
+                  </StackPanel>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <!-- Детали проблем выбранного блока -->
+      <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Row="0" Text="Проблемы и рекомендации" FontWeight="SemiBold"
+                     Padding="8,6" Background="#FAFAFA"/>
+          <ScrollViewer Grid.Row="1" Padding="8">
+            <ItemsControl ItemsSource="{Binding SelectedIssues}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="8,6">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"/>
+                      <TextBlock Text="{Binding Description}" FontSize="12" Foreground="#555" TextWrapping="Wrap"/>
+                      <TextBlock Text="{Binding Recommendation}" FontSize="12" Foreground="#2E7D32" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Button Grid.Row="2" Content="❄ Заморозить блок"
+                  Command="{Binding FreezeCommand}"
+                  Background="#1565C0" Foreground="White"
+                  FontWeight="SemiBold" Padding="0,10"
+                  Margin="8"/>
+        </Grid>
+      </Border>
+
+    </Grid>
+
+    <!-- Статус -->
+    <TextBlock Grid.Row="3" Text="{Binding StatusText}"
+               TextWrapping="Wrap" Foreground="#444" FontSize="12" Padding="0,4"/>
+
+  </Grid>
+</Window>
