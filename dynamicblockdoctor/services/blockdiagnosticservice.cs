@@ -300,11 +300,11 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
                 string originalName = ((BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead)).Name;
                 string frozenName = originalName + "_FROZEN";
 
-                // Попытка 1: нативный Teigha API
+                // Попытка 1: нативный Teigha API (сигнатура: void ConvertToStaticBlock(ref String))
                 bool converted = false;
                 try
                 {
-                    br.ConvertToStaticBlock(frozenName);
+                    br.ConvertToStaticBlock(ref frozenName);
                     converted = true;
                 }
                 catch (Exception exConvert)
