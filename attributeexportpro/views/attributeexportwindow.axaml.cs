@@ -12,4 +12,3 @@ namespace SpecStudioParser.AttributeExportPro.Views
         }
     }
 }
-}
