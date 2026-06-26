@@ -289,7 +289,6 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
 
             try
             {
-                // Находим BlockReference по Handle
                 if (!long.TryParse(blockHandle, out long handleVal))
                     return "Неверный Handle.";
 
@@ -299,49 +298,15 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
 
                 var br = (BlockReference)tr.GetObject(brId, OpenMode.ForWrite);
                 string originalName = ((BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead)).Name;
+                string frozenName = originalName + "_FROZEN";
 
-                // Создаём новое определение анонимного блока
-                string newName = originalName + "_FROZEN";
-                var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForWrite);
+                // Нативный API Teigha — ConvertToStaticBlock делает всю работу:
+                // создаёт копию определения, переносит геометрию, удаляет динамические параметры
+                br.ConvertToStaticBlock(frozenName);
 
-                // Если уже есть — удаляем
-                if (bt.Has(newName))
-                {
-                    var existBtr = (BlockTableRecord)tr.GetObject(bt[newName], OpenMode.ForWrite);
-                    if (!existBtr.IsAnonymous)
-                        existBtr.Erase(true);
-                }
-
-                var newBtr = new BlockTableRecord { Name = newName };
-                ObjectId newBtrId = bt.Add(newBtr);
-                tr.AddNewlyCreatedDBObject(newBtr, true);
-
-                // Копируем примитивы
-                var oldBtr = (BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead);
-                foreach (ObjectId entId in oldBtr)
-                {
-                    if (entId.ObjectClass.DxfName == "ATTDEF") continue; // пропускаем определения атрибутов
-
-                    var ent = (Entity)tr.GetObject(entId, OpenMode.ForRead);
-                    var cloned = (Entity)ent.Clone();
-                    newBtr.AppendEntity(cloned);
-                    tr.AddNewlyCreatedDBObject(cloned, true);
-                }
-
-                // Меняем ссылку
-                br.BlockTableRecord = newBtrId;
-
-                // Копируем значения атрибутов как текст
-                foreach (ObjectId arId in br.AttributeCollection)
-                {
-                    var ar = (AttributeReference)tr.GetObject(arId, OpenMode.ForWrite);
-                    // Атрибуты остаются, но больше не динамические
-                }
-
-                br.RecordGraphicsModified(true);
                 tr.Commit();
 
-                return $"Блок «{originalName}» заморожён → «{newName}». " +
+                return $"Блок «{originalName}» заморожён → «{frozenName}». " +
                        "Динамические параметры удалены, геометрия зафиксирована.";
             }
             catch (Exception ex)
