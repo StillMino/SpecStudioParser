@@ -38,9 +38,16 @@ namespace SpecStudioParser.DynamicBlockDoctor.ViewModels
             get => _selectedReport;
             set
             {
-                _selectedReport = value;
-                OnPropertyChanged();
-                FreezeCommand.NotifyCanExecuteChanged();
+                if (SetProperty(ref _selectedReport, value))
+                {
+                    SelectedIssues.Clear();
+                    if (value != null)
+                    {
+                        foreach (var issue in value.Issues.OrderByDescending(i => i.Severity))
+                            SelectedIssues.Add(issue);
+                    }
+                    FreezeCommand.NotifyCanExecuteChanged();
+                }
             }
         }
 
@@ -118,16 +125,7 @@ namespace SpecStudioParser.DynamicBlockDoctor.ViewModels
             }
         }
 
-        // При выборе отчёта — показываем его проблемы
-        partial void OnSelectedReportChanged(BlockDiagnosticReport? value)
-        {
-            SelectedIssues.Clear();
-            if (value != null)
-            {
-                foreach (var issue in value.Issues.OrderByDescending(i => i.Severity))
-                    SelectedIssues.Add(issue);
-            }
-        }
+        // При выборе отчёта — показываем его проблемы (обработано в setter SelectedReport)
 
         private bool CanDiagnose() => !IsBusy;
         private bool CanFreeze() => !IsBusy && SelectedReport != null && SelectedReport.IsDynamic;
