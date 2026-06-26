@@ -300,9 +300,41 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
                 string originalName = ((BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead)).Name;
                 string frozenName = originalName + "_FROZEN";
 
-                // Нативный API Teigha — ConvertToStaticBlock делает всю работу:
-                // создаёт копию определения, переносит геометрию, удаляет динамические параметры
-                br.ConvertToStaticBlock(frozenName);
+                // Попытка 1: нативный Teigha API
+                bool converted = false;
+                try
+                {
+                    br.ConvertToStaticBlock(frozenName);
+                    converted = true;
+                }
+                catch (Exception exConvert)
+                {
+                    doc.Editor.WriteMessage($"\n[BlockDoctor] ConvertToStaticBlock не сработал: {exConvert.Message}. Пытаемся через COM...");
+                }
+
+                // Попытка 2: fallback через COM (AcadObject.ConvertToStaticBlock)
+                if (!converted)
+                {
+                    try
+                    {
+                        dynamic? acadObj = br.AcadObject;
+                        if (acadObj != null)
+                        {
+                            acadObj.ConvertToStaticBlock(frozenName);
+                            converted = true;
+                        }
+                    }
+                    catch (Exception exCom)
+                    {
+                        return $"Оба метода не сработали. Teigha: ошибка. COM: {exCom.Message}";
+                    }
+                }
+
+                if (!converted)
+                    return "Не удалось заморозить блок — оба метода не сработали.";
+
+                // Обновляем графику
+                try { br.RecordGraphicsModified(true); } catch { }
 
                 tr.Commit();
 

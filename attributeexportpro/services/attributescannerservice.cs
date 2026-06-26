@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.IO;
 using Teigha.DatabaseServices;
 using HostMgd.ApplicationServices;
 using CadApp = HostMgd.ApplicationServices.Application;
@@ -16,7 +14,7 @@ namespace SpecStudioParser.AttributeExportPro.Services
     public sealed class AttributeScannerService
     {
         /// <summary>
-        /// Сканирует весь ModelSpace (или выборку) и возвращает данные для выгрузки.
+        /// Сканирует весь ModelSpace и возвращает данные для выгрузки.
         /// </summary>
         public ExportData ScanBlocks(string? blockNameFilter = null)
         {
@@ -33,16 +31,19 @@ namespace SpecStudioParser.AttributeExportPro.Services
 
             foreach (ObjectId id in ms)
             {
-                if (id.ObjectClass.DxfName != "INSERT") continue;
+                if (!id.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(BlockReference)))) continue;
 
-                var br = (BlockReference)tr.GetObject(id, OpenMode.ForRead);
-                var blockDef = (BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead);
+                BlockReference br;
+                try { br = (BlockReference)tr.GetObject(id, OpenMode.ForRead); }
+                catch { continue; }
+
+                BlockTableRecord blockDef;
+                try { blockDef = (BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead); }
+                catch { continue; }
+
                 string bName = blockDef.Name;
-
-                // Пропускаем анонимные / пространственные ссылки
                 if (bName.StartsWith("*")) continue;
 
-                // Фильтр по имени блока
                 if (!string.IsNullOrWhiteSpace(blockNameFilter) &&
                     !bName.Equals(blockNameFilter, StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -54,7 +55,7 @@ namespace SpecStudioParser.AttributeExportPro.Services
                     Handle = br.Handle.ToString()
                 };
 
-                // Системные псевдо-атрибуты
+                // Системные свойства
                 row.Values["$BLOCK_NAME"] = bName;
                 row.Values["$LAYER"] = br.Layer;
                 row.Values["$HANDLE"] = br.Handle.ToString();
@@ -62,32 +63,88 @@ namespace SpecStudioParser.AttributeExportPro.Services
                 row.Values["$Y"] = Math.Round(br.Position.Y, 2).ToString("F2");
                 row.Values["$Z"] = Math.Round(br.Position.Z, 2).ToString("F2");
                 row.Values["$SCALE"] = br.ScaleFactors.X.ToString("F3");
+                row.Values["$ROTATION"] = Math.Round(br.Rotation * 180.0 / Math.PI, 1).ToString("F1");
 
-                // Реальные атрибуты
+                // Реальные атрибуты из BlockReference.AttributeCollection
                 foreach (ObjectId arId in br.AttributeCollection)
                 {
-                    var ar = (AttributeReference)tr.GetObject(arId, OpenMode.ForRead);
-                    string tag = ar.Tag;
-                    row.Values[tag] = ar.TextString;
+                    try
+                    {
+                        var ar = (AttributeReference)tr.GetObject(arId, OpenMode.ForRead);
+                        string tag = ar.Tag;
+                        row.Values[tag] = ar.TextString;
 
-                    if (!data.AllAttributeTags.Contains(tag))
-                        data.AllAttributeTags.Add(tag);
+                        if (!data.AllAttributeTags.Contains(tag))
+                            data.AllAttributeTags.Add(tag);
+                    }
+                    catch { }
                 }
 
-                // Динамические свойства (если есть)
-                CollectDynamicProperties(br, tr, row);
+                // Constant-атрибуты из определения блока (ATTDEF с Constant=true)
+                foreach (ObjectId defId in blockDef)
+                {
+                    if (defId.ObjectClass.DxfName != "ATTDEF") continue;
+                    try
+                    {
+                        var attDef = (AttributeDefinition)tr.GetObject(defId, OpenMode.ForRead);
+                        if (attDef.Constant)
+                        {
+                            string tag = attDef.Tag;
+                            if (!row.Values.ContainsKey(tag))
+                            {
+                                row.Values[tag] = attDef.TextString;
+                                if (!data.AllAttributeTags.Contains(tag))
+                                    data.AllAttributeTags.Add(tag);
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                // Динамические свойства через нативный Teigha API
+                try
+                {
+                    if (br.IsDynamicBlock)
+                    {
+                        var dynProps = br.DynamicBlockReferencePropertyCollection;
+                        if (dynProps != null)
+                        {
+                            foreach (DynamicBlockReferenceProperty prop in dynProps)
+                            {
+                                try
+                                {
+                                    string dynTag = $"DYN.{prop.PropertyName}";
+                                    row.Values[dynTag] = Convert.ToString(prop.Value) ?? "";
+                                    if (!data.AllAttributeTags.Contains(dynTag))
+                                        data.AllAttributeTags.Add(dynTag);
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                // EffectiveName через COM
+                try
+                {
+                    dynamic? acadObj = br.AcadObject;
+                    if (acadObj != null)
+                    {
+                        string effName = acadObj.EffectiveName;
+                        row.Values["$EFFECTIVE_NAME"] = effName ?? "";
+                    }
+                }
+                catch { }
 
                 data.Rows.Add(row);
-
                 if (!data.BlockNames.Contains(bName))
                     data.BlockNames.Add(bName);
             }
 
             tr.Commit();
 
-            if (data.Rows.Count == 0) return data;
-
-            // Пост-обработка: добавляем отсутствующие теги во все строки
+            // Выравниваем теги
             foreach (var tag in data.AllAttributeTags)
             {
                 foreach (var row in data.Rows)
@@ -98,58 +155,6 @@ namespace SpecStudioParser.AttributeExportPro.Services
             }
 
             return data;
-        }
-
-        /// <summary>
-        /// Собирает динамические свойства BlockReference (видимость, состояния параметров).
-        /// </summary>
-        private void CollectDynamicProperties(BlockReference br, Transaction tr, ExportRow row)
-        {
-            try
-            {
-                // Проверяем, является ли блок динамическим
-                dynamic acadBr = br.AcadObject;
-                if (acadBr == null) return;
-
-                // Получаем DynamicBlockReferencePropertyCollection через COM
-                try
-                {
-                    dynamic dynProps = acadBr.GetDynamicBlockProperties();
-                    if (dynProps != null)
-                    {
-                        int count = dynProps.Count;
-                        for (int i = 0; i < count; i++)
-                        {
-                            try
-                            {
-                                dynamic prop = dynProps.Item(i);
-                                string propName = Convert.ToString(prop.PropertyName);
-                                string propValue = Convert.ToString(prop.Value);
-
-                                if (!string.IsNullOrEmpty(propName))
-                                {
-                                    string dynTag = $"DYN.{propName}";
-                                    row.Values[dynTag] = propValue ?? "";
-
-                                    if (!row.Values.ContainsKey(dynTag))
-                                    {
-                                        // ничего, уже записано выше
-                                    }
-                                }
-                            }
-                            catch { }
-                        }
-                    }
-                }
-                catch
-                {
-                    // Блок не динамический — это нормально
-                }
-            }
-            catch
-            {
-                // COM недоступен или блок без динамических свойств
-            }
         }
 
         /// <summary>
@@ -170,11 +175,15 @@ namespace SpecStudioParser.AttributeExportPro.Services
 
             foreach (ObjectId id in ms)
             {
-                if (id.ObjectClass.DxfName != "INSERT") continue;
-                var br = (BlockReference)tr.GetObject(id, OpenMode.ForRead);
-                var blockDef = (BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead);
-                if (!blockDef.Name.StartsWith("*") && !names.Contains(blockDef.Name))
-                    names.Add(blockDef.Name);
+                if (!id.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(BlockReference)))) continue;
+                try
+                {
+                    var br = (BlockReference)tr.GetObject(id, OpenMode.ForRead);
+                    var blockDef = (BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead);
+                    if (!blockDef.Name.StartsWith("*") && !names.Contains(blockDef.Name))
+                        names.Add(blockDef.Name);
+                }
+                catch { }
             }
 
             tr.Commit();

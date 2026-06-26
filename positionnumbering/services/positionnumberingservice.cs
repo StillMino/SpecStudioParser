@@ -4,6 +4,7 @@ using System.Linq;
 using Teigha.DatabaseServices;
 using Teigha.Geometry;
 using HostMgd.ApplicationServices;
+using HostMgd.EditorInput;
 using CadApp = HostMgd.ApplicationServices.Application;
 using SpecStudioParser.PositionNumbering.Models;
 
@@ -11,13 +12,11 @@ namespace SpecStudioParser.PositionNumbering.Services
 {
     /// <summary>
     /// Движок автонумерации позиций на чертеже.
-    /// Находит выноски (MLeader) и блоки с атрибутами, определяет их пространственное положение,
-    /// присваивает номера по заданной стратегии сортировки.
     /// </summary>
     public sealed class PositionNumberingService
     {
         /// <summary>
-        /// Сканирует чертёж и возвращает все найденные позиции (выноски и блоки с атрибутом POS).
+        /// Сканирует чертёж и возвращает все найденные позиции.
         /// </summary>
         public List<PositionInfo> ScanPositions(NumberingProfile profile)
         {
@@ -28,25 +27,30 @@ namespace SpecStudioParser.PositionNumbering.Services
             Database db = doc.Database;
             using var tr = db.TransactionManager.StartTransaction();
             var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-            if (!bt.Has(BlockTableRecord.ModelSpace)) return positions;
+            if (!bt.Has(BlockTableRecord.ModelSpace))
+            {
+                tr.Commit();
+                return positions;
+            }
 
             var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
 
             foreach (ObjectId id in ms)
             {
-                string dxfName = id.ObjectClass.DxfName;
+                string dxfName;
+                try { dxfName = id.ObjectClass.DxfName; } catch { continue; }
 
                 // 1. MLeader (выноски)
-                if (dxfName == "MULTILEADER" || dxfName == "MLINE")
+                if (dxfName == "MULTILEADER")
                 {
                     try
                     {
-                        var ml = (Entity)tr.GetObject(id, OpenMode.ForRead);
+                        var ml = (MLeader)tr.GetObject(id, OpenMode.ForRead);
                         if (!string.IsNullOrEmpty(profile.LeaderLayerFilter) &&
                             !ml.Layer.Equals(profile.LeaderLayerFilter, StringComparison.OrdinalIgnoreCase))
                             continue;
 
-                        var info = ExtractFromMLeader(id, tr);
+                        var info = ExtractFromMLeader(ml);
                         if (info != null) positions.Add(info);
                     }
                     catch { }
@@ -87,8 +91,7 @@ namespace SpecStudioParser.PositionNumbering.Services
             int counter = profile.StartNumber;
             foreach (var pos in sorted)
             {
-                string num = FormatNumber(counter, profile);
-                pos.NewNumber = num;
+                pos.NewNumber = FormatNumber(counter, profile);
                 counter += profile.Step;
             }
 
@@ -103,24 +106,23 @@ namespace SpecStudioParser.PositionNumbering.Services
                 return result;
             }
 
-            using var docLock = doc.LockDocument();
             Database db = doc.Database;
+            using var docLock = doc.LockDocument();
             using var tr = db.TransactionManager.StartTransaction();
-            var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-            var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
             foreach (var pos in sorted)
             {
                 try
                 {
-                    var objId = pos.HandleToObjectId(db);
-                    if (objId == ObjectId.Null) continue;
+                    ObjectId objId = ResolveHandle(pos.Handle, db);
+                    if (objId == ObjectId.Null || objId.IsErased) continue;
 
                     var dbObj = tr.GetObject(objId, OpenMode.ForWrite);
+                    if (dbObj == null) continue;
 
                     if (pos.IsBlockAttribute && dbObj is BlockReference br)
                     {
-                        // Запись в атрибут блока
+                        bool written = false;
                         foreach (ObjectId arId in br.AttributeCollection)
                         {
                             var ar = (AttributeReference)tr.GetObject(arId, OpenMode.ForWrite);
@@ -135,20 +137,46 @@ namespace SpecStudioParser.PositionNumbering.Services
                                 {
                                     result.Skipped++;
                                 }
+                                written = true;
                                 break;
                             }
                         }
+                        if (!written) result.Skipped++;
                     }
-                    else if (pos.IsLeader && dbObj is Entity leaderEntity)
+                    else if (pos.IsLeader && dbObj is MLeader ml)
                     {
-                        // Запись в текст выноски
-                        UpdateLeaderText(leaderEntity, pos.NewNumber, profile);
-                        result.Updated++;
+                        // Перезапись текста MLeader через MText
+                        if (ml.MText != null)
+                        {
+                            if (profile.OverwriteExisting || string.IsNullOrEmpty(GetMLeaderText(ml)))
+                            {
+                                ml.MText.Contents = pos.NewNumber;
+                                result.Updated++;
+                            }
+                            else
+                            {
+                                result.Skipped++;
+                            }
+                        }
+                        else
+                        {
+                            // MLeader без MText — пробуем через ContentType
+                            try
+                            {
+                                ml.MText = new MText { Contents = pos.NewNumber };
+                                result.Updated++;
+                            }
+                            catch { result.Skipped++; }
+                        }
+                    }
+                    else
+                    {
+                        result.Skipped++;
                     }
                 }
                 catch (Exception ex)
                 {
-                    doc.Editor.WriteMessage($"\n[PositionNumbering]: Ошибка записи позиции {pos.Handle}: {ex.Message}");
+                    doc.Editor.WriteMessage($"\n[PositionNumbering]: Ошибка записи {pos.Handle}: {ex.Message}");
                     result.Skipped++;
                 }
             }
@@ -160,28 +188,22 @@ namespace SpecStudioParser.PositionNumbering.Services
 
         // ─── Извлечение позиций ──────────────────────────────────────────
 
-        private PositionInfo? ExtractFromMLeader(ObjectId id, Transaction tr)
+        private PositionInfo? ExtractFromMLeader(MLeader ml)
         {
             try
             {
-                var entity = (Entity)tr.GetObject(id, OpenMode.ForRead);
-                var ext = entity.Bounds;
+                var ext = ml.Bounds;
                 Point3d pt = ext.HasValue ? ext.Value.MinPoint : Point3d.Origin;
 
-                // Текст выноски
-                string text = "";
-                if (entity is MLeader ml)
-                {
-                    text = ml.MText?.Text ?? "";
-                }
+                string text = GetMLeaderText(ml);
 
                 return new PositionInfo
                 {
-                    Handle = entity.Handle.ToString(),
+                    Handle = ml.Handle.ToString(),
                     CurrentNumber = ExtractNumberFromText(text),
                     X = pt.X,
                     Y = pt.Y,
-                    Layer = entity.Layer,
+                    Layer = ml.Layer,
                     IsLeader = true,
                     BlockName = "—"
                 };
@@ -207,7 +229,6 @@ namespace SpecStudioParser.PositionNumbering.Services
                     }
                 }
 
-                // Если нет целевого атрибута — пропускаем
                 if (!hasTargetAttr) return null;
 
                 var blockDef = (BlockTableRecord)tr.GetObject(br.BlockTableRecord, OpenMode.ForRead);
@@ -249,7 +270,7 @@ namespace SpecStudioParser.PositionNumbering.Services
                              .ToList(),
 
                 SortMode.SelectionOrder =>
-                    positions.ToList(), // как есть
+                    positions.ToList(),
 
                 _ => positions.OrderByDescending(p => p.Y).ThenBy(p => p.X).ToList()
             };
@@ -268,41 +289,38 @@ namespace SpecStudioParser.PositionNumbering.Services
 
         private static string ExtractNumberFromText(string text)
         {
-            // Пытаемся извлечь число из текста выноски
             if (string.IsNullOrEmpty(text)) return "";
             var match = System.Text.RegularExpressions.Regex.Match(text, @"\d+");
             return match.Success ? match.Value : text.Trim();
         }
 
-        private static void UpdateLeaderText(Entity entity, string newNumber, NumberingProfile profile)
-        {
-            if (entity is MLeader ml && ml.MText != null)
-            {
-                ml.MText.Contents = newNumber;
-            }
-        }
-
-        private static string GetMLeaderContentType(MLeader ml)
-        {
-            return ml.ContentType.ToString();
-        }
-    }
-
-    /// <summary>
-    /// Методы расширения для PositionInfo.
-    /// </summary>
-    public static class PositionInfoExtensions
-    {
-        public static ObjectId HandleToObjectId(this PositionInfo pos, Database db)
+        private static string GetMLeaderText(MLeader ml)
         {
             try
             {
-                if (long.TryParse(pos.Handle, out long handleValue))
-                {
-                    Handle h = new Handle(handleValue);
-                    if (db.TryGetObjectId(h, out ObjectId id))
-                        return id;
-                }
+                if (ml.MText != null)
+                    return ml.MText.Contents ?? "";
+            }
+            catch { }
+            return "";
+        }
+
+        private static ObjectId ResolveHandle(string handleStr, Database db)
+        {
+            try
+            {
+                // Handle может быть в hex или decimal
+                // Пробуем hex (стандартный формат Handle в DWG)
+                long handleVal = Convert.ToInt64(handleStr, 16);
+                Handle h = new Handle(handleVal);
+                if (db.TryGetObjectId(h, out ObjectId id))
+                    return id;
+
+                // Пробуем decimal
+                handleVal = long.Parse(handleStr);
+                h = new Handle(handleVal);
+                if (db.TryGetObjectId(h, out ObjectId id2))
+                    return id2;
             }
             catch { }
             return ObjectId.Null;
