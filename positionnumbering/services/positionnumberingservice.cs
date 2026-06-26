@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Teigha.DatabaseServices;
 using Teigha.Geometry;
+using HostMgd.ApplicationServices;
 using CadApp = HostMgd.ApplicationServices.Application;
 using SpecStudioParser.PositionNumbering.Models;
 
@@ -115,9 +116,9 @@ namespace SpecStudioParser.PositionNumbering.Services
                     var objId = pos.HandleToObjectId(db);
                     if (objId == ObjectId.Null) continue;
 
-                    var entity = tr.GetObject(objId, OpenMode.ForWrite);
+                    var dbObj = tr.GetObject(objId, OpenMode.ForWrite);
 
-                    if (pos.IsBlockAttribute && entity is BlockReference br)
+                    if (pos.IsBlockAttribute && dbObj is BlockReference br)
                     {
                         // Запись в атрибут блока
                         foreach (ObjectId arId in br.AttributeCollection)
@@ -138,10 +139,10 @@ namespace SpecStudioParser.PositionNumbering.Services
                             }
                         }
                     }
-                    else if (pos.IsLeader)
+                    else if (pos.IsLeader && dbObj is Entity leaderEntity)
                     {
                         // Запись в текст выноски
-                        UpdateLeaderText(entity, pos.NewNumber, profile);
+                        UpdateLeaderText(leaderEntity, pos.NewNumber, profile);
                         result.Updated++;
                     }
                 }
@@ -229,9 +230,6 @@ namespace SpecStudioParser.PositionNumbering.Services
 
         private static List<PositionInfo> SortPositions(List<PositionInfo> positions, SortMode mode)
         {
-            // Допуск группировки по строкам (50 единиц чертежа)
-            const double rowTolerance = 50.0;
-
             return mode switch
             {
                 SortMode.TopToBottom_LeftToRight =>
@@ -280,7 +278,7 @@ namespace SpecStudioParser.PositionNumbering.Services
         {
             if (entity is MLeader ml && ml.MText != null)
             {
-                ml.MText.Text = newNumber;
+                ml.MText.Contents = newNumber;
             }
         }
 

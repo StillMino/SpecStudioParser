@@ -139,7 +139,6 @@ namespace SpecStudioParser.AttributeExportPro.ViewModels
                 }
 
                 string ext = SelectedFormat == ExportFormat.Xlsx ? ".xls" : ".csv";
-                string filter = SelectedFormat == ExportFormat.Xlsx ? "Excel XML|*.xls|All files|*.*" : "CSV|*.csv|All files|*.*";
 
                 var topLevel = TopLevel.GetTopLevel(ApplicationLifetimeUtils.GetMainWindow());
                 string defaultName = $"attribute_export_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
@@ -153,14 +152,7 @@ namespace SpecStudioParser.AttributeExportPro.ViewModels
                         Title = "Сохранить выгрузку атрибутов",
                         DefaultExtension = ext.TrimStart('.'),
                         SuggestedFileName = defaultName,
-                        SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(defaultDir)),
-                        FileTypeFilter = new[]
-                        {
-                            new FilePickerFileType(SelectedFormat == ExportFormat.Xlsx ? "Excel" : "CSV")
-                            {
-                                Patterns = new[] { SelectedFormat == ExportFormat.Xlsx ? "*.xls" : "*.csv" }
-                            }
-                        }
+                        SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri(defaultDir))
                     });
                     filePath = file?.Path.LocalPath;
                 }

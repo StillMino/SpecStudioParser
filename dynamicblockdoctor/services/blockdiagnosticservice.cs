@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Teigha.DatabaseServices;
+using HostMgd.ApplicationServices;
 using CadApp = HostMgd.ApplicationServices.Application;
 using SpecStudioParser.DynamicBlockDoctor.Models;
 
@@ -322,7 +323,7 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
                     if (entId.ObjectClass.DxfName == "ATTDEF") continue; // пропускаем определения атрибутов
 
                     var ent = (Entity)tr.GetObject(entId, OpenMode.ForRead);
-                    var cloned = ent.Clone();
+                    var cloned = (Entity)ent.Clone();
                     newBtr.AppendEntity(cloned);
                     tr.AddNewlyCreatedDBObject(cloned, true);
                 }

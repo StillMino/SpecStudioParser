@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using Teigha.DatabaseServices;
+using HostMgd.ApplicationServices;
 using CadApp = HostMgd.ApplicationServices.Application;
 using SpecStudioParser.AttributeExportPro.Models;
 
