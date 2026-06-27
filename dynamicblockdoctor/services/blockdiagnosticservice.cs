@@ -310,7 +310,7 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
                     br.ConvertToStaticBlock(frozenName);
                     converted = true;
                 }
-                catch (Exception exConvert)
+                catch (System.Exception exConvert)
                 {
                     doc.Editor.WriteMessage($"\n[BlockDoctor] ConvertToStaticBlock не сработал: {exConvert.Message}. Пытаемся через COM...");
                 }
@@ -327,7 +327,7 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
                             converted = true;
                         }
                     }
-                    catch (Exception exCom)
+                    catch (System.Exception exCom)
                     {
                         return $"Оба метода не сработали. Teigha: ошибка. COM: {exCom.Message}";
                     }
@@ -344,7 +344,7 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
                 return $"Блок «{originalName}» заморожён → «{frozenName}». " +
                        "Динамические параметры удалены, геометрия зафиксирована.";
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 tr.Abort();
                 return $"Ошибка заморозки блока: {ex.Message}";

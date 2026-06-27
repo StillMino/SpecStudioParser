@@ -175,7 +175,7 @@ namespace SpecStudioParser.PositionNumbering.Services
                         result.Skipped++;
                     }
                 }
-                catch (Exception ex)
+                catch (System.Exception ex)
                 {
                     doc.Editor.WriteMessage($"\n[PositionNumbering]: Ошибка записи {pos.Handle}: {ex.Message}");
                     result.Skipped++;
