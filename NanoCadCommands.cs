@@ -8,6 +8,9 @@ using SpecStudioParser.ViewModels;
 using SpecStudioParser.CadLib;
 using SpecStudioParser.DesignTools;
 using SpecStudioParser.DesignTools.Services;
+using SpecStudioParser.AttributeExportPro.Views;
+using SpecStudioParser.PositionNumbering.Views;
+using SpecStudioParser.DynamicBlockDoctor.Views;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform; // Для работы с IPlatformHandle
@@ -239,6 +242,84 @@ namespace SpecStudioParser.Commands
             catch (System.Exception ex)
             {
                 ed.WriteMessage($"\n[SpecStudio Error]: Ошибка фонового сканирования: {ex.Message}\n");
+            }
+        }
+
+        // ─── Attribute Export Pro ─────────────────────────────────────────
+
+        [CommandMethod("ATTR_EXPORT_SHOW", CommandFlags.Session)]
+        public static void ShowAttributeExportPro()
+        {
+            try
+            {
+                EnsureAvaloniaInitialized();
+                IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var window = new AttributeExportWindow();
+                    if (nanoCadHwnd != IntPtr.Zero)
+                        window.Opened += (_, _) => AttachToNanoCadWindow(window, nanoCadHwnd);
+                    ShowWindowWithOptionalOwner(window);
+                });
+
+                LogToNanoCadConsole("\n[AttributeExportPro]: Окно экспорта атрибутов открыто.\n");
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[AttributeExportPro Error]: {ex.Message}\n");
+            }
+        }
+
+        // ─── Position Numbering Engine ───────────────────────────────────
+
+        [CommandMethod("POS_NUM_SHOW", CommandFlags.Session)]
+        public static void ShowPositionNumbering()
+        {
+            try
+            {
+                EnsureAvaloniaInitialized();
+                IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var window = new PositionNumberingWindow();
+                    if (nanoCadHwnd != IntPtr.Zero)
+                        window.Opened += (_, _) => AttachToNanoCadWindow(window, nanoCadHwnd);
+                    ShowWindowWithOptionalOwner(window);
+                });
+
+                LogToNanoCadConsole("\n[PositionNumbering]: Движок автонумерации позиций открыт.\n");
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[PositionNumbering Error]: {ex.Message}\n");
+            }
+        }
+
+        // ─── Dynamic Block Doctor ────────────────────────────────────────
+
+        [CommandMethod("BLOCK_DOCTOR_SHOW", CommandFlags.Session)]
+        public static void ShowDynamicBlockDoctor()
+        {
+            try
+            {
+                EnsureAvaloniaInitialized();
+                IntPtr nanoCadHwnd = CadApp.MainWindow.Handle;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var window = new DynamicBlockDoctorWindow();
+                    if (nanoCadHwnd != IntPtr.Zero)
+                        window.Opened += (_, _) => AttachToNanoCadWindow(window, nanoCadHwnd);
+                    ShowWindowWithOptionalOwner(window);
+                });
+
+                LogToNanoCadConsole("\n[BlockDoctor]: Диагностика блоков открыта.\n");
+            }
+            catch (System.Exception ex)
+            {
+                LogToNanoCadConsole($"\n[BlockDoctor Error]: {ex.Message}\n");
             }
         }
 

@@ -22,8 +22,15 @@ C:\Program Files\Nanosoft\nanoCAD x64 25.0\bin
 
 ## Основные команды nanoCAD
 
-- `SPEC_SHOW` — открыть окно конструктора спецификаций.
-- `SPEC_SCAN` — выполнить быстрое сканирование активного чертежа.
+| Команда | Описание |
+|---------|----------|
+| `SPEC_SHOW` | Открыть окно конструктора спецификаций |
+| `SPEC_SCAN` | Быстрое сканирование активного чертежа |
+| `SPEC_DB_CONNECT` | Подключение к CADLib БД |
+| `DESIGN_TOOLS_SHOW` | Панель инструментов проектировщика |
+| `ATTR_EXPORT_SHOW` | **Attribute Export Pro** — выгрузка атрибутов блоков в Excel/CSV |
+| `POS_NUM_SHOW` | **Position Numbering Engine** — автонумерация позиций на чертеже |
+| `BLOCK_DOCTOR_SHOW` | **Dynamic Block Doctor** — диагностика и починка динамических блоков |
 
 ## XML-профили
 
@@ -63,3 +70,29 @@ C:\Program Files\Nanosoft\nanoCAD x64 25.0\bin
 2. Расширить поддержку XML Model Studio без потери неизвестных секций.
 3. Добавить тестовый проект для формул, XML и движка спецификаций.
 4. Нормализовать имена атрибутов Model Studio CS.
+
+## Новые плагины (v1.1)
+
+### Attribute Export Pro (`ATTR_EXPORT_SHOW`)
+
+Выгрузка атрибутов блоков в Excel (SpreadsheetML) и CSV. Сканирует все вхождения блоков в ModelSpace, извлекает атрибуты, координаты, динамические свойства. Поддерживает фильтрацию по имени блока, выбор тегов атрибутов, группировку и сортировку.
+
+- **Сервис:** `AttributeExportPro/Services/AttributeScannerService.cs`
+- **UI:** `AttributeExportPro/Views/AttributeExportWindow.axaml`
+- **Профили:** XML-формат, совместимый с существующей системой профилей
+
+### Position Numbering Engine (`POS_NUM_SHOW`)
+
+Автоматическая нумерация позиций на сборочных чертежах (ГОСТ 2.109). Находит выноски (MLeader) и блоки с позиционными атрибутами, сортирует по пространственному положению, присваивает номера. Поддерживает стратегии сортировки, префиксы, формат чисел.
+
+- **Сервис:** `PositionNumbering/Services/PositionNumberingService.cs`
+- **UI:** `PositionNumbering/Views/PositionNumberingWindow.axaml`
+- **Синергия:** Работает совместно с Design Tools (выравнивание выносок)
+
+### Dynamic Block Doctor (`BLOCK_DOCTOR_SHOW`)
+
+Диагностика динамических блоков AutoCAD в nanoCAD. Сканирует все определения блоков, выявляет потенциальные проблемы совместимости (параметры видимости, растяжения, ассоциативные штриховки, прокси-объекты, тяжёлые блоки). Позволяет «заморозить» динамический блок — конвертировать в статический с текущим состоянием.
+
+- **Сервис:** `DynamicBlockDoctor/Services/BlockDiagnosticService.cs`
+- **UI:** `DynamicBlockDoctor/Views/DynamicBlockDoctorWindow.axaml`
+- **Функция заморозки:** Создаёт копию определения блока без динамических параметров
