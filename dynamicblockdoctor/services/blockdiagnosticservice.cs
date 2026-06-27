@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Teigha.DatabaseServices;
+using Teigha.Runtime;
 using HostMgd.ApplicationServices;
 using CadApp = HostMgd.ApplicationServices.Application;
 using SpecStudioParser.DynamicBlockDoctor.Models;
@@ -48,7 +49,7 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
                     var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
                     foreach (ObjectId id in ms)
                     {
-                        if (id.ObjectClass.DxfName == "INSERT")
+                        if (id.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(BlockReference))))
                         {
                             var br = (BlockReference)tr.GetObject(id, OpenMode.ForRead);
                             if (br.BlockTableRecord == btrId)
@@ -289,8 +290,10 @@ namespace SpecStudioParser.DynamicBlockDoctor.Services
 
             try
             {
-                if (!long.TryParse(blockHandle, out long handleVal))
-                    return "Неверный Handle.";
+                // Handle в DWG — hex-строка (например "1A2F")
+                long handleVal;
+                try { handleVal = Convert.ToInt64(blockHandle, 16); }
+                catch { return $"Неверный Handle: {blockHandle}"; }
 
                 Handle h = new Handle(handleVal);
                 if (!db.TryGetObjectId(h, out ObjectId brId))

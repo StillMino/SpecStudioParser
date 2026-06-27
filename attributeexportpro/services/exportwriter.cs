@@ -140,6 +140,8 @@ namespace SpecStudioParser.AttributeExportPro.Services
             columns.Add(new() { SourceAttribute = "$Y", DisplayHeader = "Y" });
             columns.Add(new() { SourceAttribute = "$Z", DisplayHeader = "Z" });
             columns.Add(new() { SourceAttribute = "$SCALE", DisplayHeader = "Масштаб" });
+            columns.Add(new() { SourceAttribute = "$ROTATION", DisplayHeader = "Поворот°" });
+            columns.Add(new() { SourceAttribute = "$EFFECTIVE_NAME", DisplayHeader = "Effective Name" });
 
             return columns;
         }

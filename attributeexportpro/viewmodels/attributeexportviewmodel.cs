@@ -131,10 +131,9 @@ namespace SpecStudioParser.AttributeExportPro.ViewModels
                 var selectedTags = AvailableTags.Where(t => t.IsSelected).Select(t => t.Tag).ToHashSet();
                 if (selectedTags.Count > 0)
                 {
+                    // Оставляем только те колонки, чьи теги выбраны
                     profile.Columns = profile.Columns
-                        .Where(c => !c.SourceAttribute.StartsWith("$") || c.SourceAttribute is "$BLOCK_NAME" or "$LAYER")
-                        .Concat(profile.Columns.Where(c => selectedTags.Contains(c.SourceAttribute) || !c.SourceAttribute.StartsWith("DYN.")))
-                        .Distinct()
+                        .Where(c => selectedTags.Contains(c.SourceAttribute))
                         .ToList();
                 }
 

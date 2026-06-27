@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Teigha.DatabaseServices;
 using Teigha.Geometry;
+using Teigha.Runtime;
 using HostMgd.ApplicationServices;
 using HostMgd.EditorInput;
 using CadApp = HostMgd.ApplicationServices.Application;
@@ -58,7 +59,7 @@ namespace SpecStudioParser.PositionNumbering.Services
                 }
 
                 // 2. BlockReference с атрибутом-позицией
-                if (dxfName == "INSERT")
+                if (id.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(BlockReference))))
                 {
                     try
                     {
